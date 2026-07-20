@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DMH Hotel Profiles</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --paper:#F5F4EF; --card:#FFFFFF; --ink:#1C2620; --ink-soft:#5B6660;
+    --line:#E1DDCE; --teal:#0E6E55; --teal-soft:#E4EFE9;
+    --brick:#AE4A2E; --brick-soft:#F6E7E1;
+    --mustard:#A9791B; --mustard-soft:#F5EBD3;
+    --slate:#8C8A7E; --slate-soft:#EEECE3;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;}
+  .app{display:flex;height:100vh;overflow:hidden;}
+
+  /* Sidebar */
+  .sidebar{width:250px;flex-shrink:0;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;}
+  .sidebar-head{padding:16px 16px 10px;border-bottom:1px solid var(--line);}
+  .sidebar-head h1{font-family:'Fraunces',serif;font-size:17px;font-weight:700;margin:0 0 2px;}
+  .sidebar-head .sub{font-size:11px;color:var(--ink-soft);}
+  .search-box{padding:10px 14px;border-bottom:1px solid var(--line);}
+  .search-box input{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font-size:12.5px;}
+  .hotel-list{flex:1;overflow-y:auto;padding:6px;}
+  .hotel-item{padding:9px 10px;border-radius:7px;cursor:pointer;margin-bottom:3px;}
+  .hotel-item:hover{background:var(--slate-soft);}
+  .hotel-item.active{background:var(--teal-soft);}
+  .hotel-item .hname{font-weight:600;font-size:13px;display:block;}
+  .hotel-item .hid{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-soft);}
+  .sidebar-foot{padding:12px;border-top:1px solid var(--line);}
+
+  .btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12.5px;border-radius:6px;border:1px solid var(--teal);background:var(--teal);color:#fff;padding:8px 14px;cursor:pointer;}
+  .btn.secondary{background:#fff;color:var(--teal);}
+  .btn.ghost{background:transparent;color:var(--ink-soft);border-color:var(--line);}
+  .btn.danger{background:#fff;color:var(--brick);border-color:var(--brick);}
+  .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+  .btn.wide{width:100%;}
+  .btn.sm{padding:5px 10px;font-size:11.5px;}
+
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .main-head{padding:14px 24px;border-bottom:1px solid var(--line);background:var(--card);display:flex;align-items:center;gap:12px;}
+  .main-head .hh-title{font-family:'Fraunces',serif;font-weight:700;font-size:19px;flex:1;}
+  .main-head .hh-title .hh-id{font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:11.5px;color:var(--ink-soft);margin-left:8px;}
+  .save-status{font-size:11px;color:var(--ink-soft);min-width:130px;text-align:right;}
+
+  .tabs{display:flex;gap:4px;overflow-x:auto;padding:10px 20px 0;background:var(--card);border-bottom:1px solid var(--line);}
+  .tab{font-family:'IBM Plex Mono',monospace;font-size:11px;white-space:nowrap;padding:8px 11px;border-radius:6px 6px 0 0;cursor:pointer;color:var(--ink-soft);border:1px solid transparent;}
+  .tab.active{background:var(--paper);color:var(--ink);border:1px solid var(--line);border-bottom-color:var(--paper);font-weight:600;}
+  .tab .tnum{color:var(--teal);}
+
+  .content{flex:1;overflow-y:auto;padding:22px 26px;}
+  .empty-state{color:var(--ink-soft);font-size:14px;padding:60px 20px;text-align:center;}
+
+  .section-top{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;}
+  .section-title{font-family:'Fraunces',serif;font-size:17px;font-weight:600;margin:0;flex:1;}
+
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;margin-bottom:8px;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field.full{grid-column:1/-1;}
+  .field label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    font-family:'IBM Plex Sans',sans-serif;border:1px solid var(--line);border-radius:6px;
+    padding:8px 10px;font-size:13px;background:#fff;color:var(--ink);width:100%;
+  }
+  textarea{resize:vertical;min-height:54px;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px;}
+
+  .group-block{margin-top:20px;}
+  .group-label{font-family:'Fraunces',serif;font-size:13.5px;font-weight:600;margin-bottom:8px;color:var(--ink);}
+
+  .rep-table{width:100%;border-collapse:collapse;margin-bottom:8px;}
+  .rep-table th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);text-align:left;padding:4px 7px;border-bottom:1px solid var(--line);}
+  .rep-table td{padding:4px 7px 8px;vertical-align:top;}
+  .rep-remove{background:none;border:none;color:var(--brick);cursor:pointer;font-size:15px;padding:4px;}
+
+  .tag-group{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px;align-items:center;}
+  .tag{font-size:12px;padding:6px 11px;border-radius:16px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink-soft);user-select:none;}
+  .tag.selected{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;}
+  .tag-add{display:flex;gap:6px;align-items:center;}
+  .tag-add input{width:150px;padding:6px 9px;font-size:12px;}
+
+  /* Manage panel */
+  .manage-toggle{font-size:11.5px;}
+  .manage-panel{background:var(--slate-soft);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:18px;}
+  .manage-note{font-size:11px;color:var(--ink-soft);margin-bottom:12px;}
+  .manage-group{margin-bottom:16px;}
+  .manage-group:last-child{margin-bottom:0;}
+  .manage-group-title{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
+  .manage-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #E7E3D6;font-size:12.5px;}
+  .manage-row:last-of-type{border-bottom:none;}
+  .manage-row .mlabel{flex:1;}
+  .manage-row .mtype{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--slate);}
+  .add-field-form{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center;}
+  .add-field-form input[type=text]{width:150px;padding:6px 9px;font-size:12px;}
+  .add-field-form select{width:auto;padding:6px 9px;font-size:12px;}
+
+  @media (max-width:800px){
+    .app{flex-direction:column;height:auto;}
+    .sidebar{width:100%;max-height:220px;}
+    .form-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="sidebar">
+    <div class="sidebar-head">
+      <h1>DMH Hotel Profiles</h1>
+      <div class="sub">Shared workspace — visible to the whole team</div>
+    </div>
+    <div class="search-box"><input type="text" id="searchInput" placeholder="Search by name or ID..."></div>
+    <div class="hotel-list" id="hotelList"></div>
+    <div class="sidebar-foot">
+      <button class="btn wide" id="newHotelBtn">+ New Hotel</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="main-head" id="mainHead" style="display:none;">
+      <div class="hh-title" id="hhTitle"></div>
+      <div class="save-status" id="saveStatus"></div>
+      <button class="btn danger" id="deleteBtn">Delete</button>
+      <button class="btn" id="saveBtn">Save</button>
+    </div>
+    <div class="tabs" id="tabs" style="display:none;"></div>
+    <div class="content" id="content">
+      <div class="empty-state">Select a hotel on the left, or create a new one.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ---------------------------------------------------------
+   DEFAULT SCHEMA
+   Every section is expressed generically as: fields[] (simple
+   inputs), tables[] (repeatable rows), tagGroups[] (pill tags).
+   Hiding a field/column/tag never deletes stored data — it only
+   removes it from view, so editing the schema is always safe.
+--------------------------------------------------------- */
+function defaultSchema(){
+  return {
+    sections: [
+      { id:"hotelData", num:"01", title:"Hotel Data",
+        fields:[
+          {key:"name", label:"Hotel Name", type:"text", full:true, hidden:false},
+          {key:"location", label:"Location (City, Country)", type:"text", hidden:false},
+          {key:"propertyType", label:"Property Type", type:"select", options:["City Hotel","Resort","Villa / Boutique / Luxury","Cruise"], hidden:false},
+          {key:"website", label:"Website", type:"text", hidden:false},
+          {key:"csm", label:"CSM", type:"text", hidden:false},
+          {key:"rooms", label:"Number of Rooms", type:"number", hidden:false},
+          {key:"stars", label:"Star Rating", type:"select", options:["1","2","3","4","5"], hidden:false},
+          {key:"gbp", label:"Google Business Profile", type:"text", hidden:false},
+          {key:"startDate", label:"Start Date", type:"date", hidden:false},
+          {key:"modelType", label:"Model Type", type:"text", hidden:false},
+          {key:"abv", label:"ABV", type:"number", hidden:false},
+          {key:"notes", label:"Notes", type:"textarea", full:true, hidden:false},
+        ], tables:[], tagGroups:[] },
+
+      { id:"budgets", num:"02", title:"Budgets",
+        fields:[
+          {key:"m1", label:"Month 1 Budget", type:"number", hidden:false},
+          {key:"m2", label:"Month 2 Budget", type:"number", hidden:false},
+          {key:"m3", label:"Month 3+ Budget", type:"number", hidden:false},
+          {key:"cap", label:"Budget Cap", type:"number", hidden:false},
+          {key:"growthPlan", label:"Growth Plan / Conditions", type:"textarea", full:true, hidden:false},
+        ], tables:[], tagGroups:[] },
+
+      { id:"sourceMarkets", num:"03", title:"Source Markets",
+        fields:[
+          {key:"languages", label:"Target Languages", type:"text", full:true, hidden:false},
+        ],
+        tables:[
+          { id:"markets", label:"Markets", addLabel:"+ Add market",
+            columns:[
+              {key:"country", label:"Country", type:"text", hidden:false},
+              {key:"share", label:"Share %", type:"number", hidden:false},
+              {key:"trend", label:"Trend", type:"select", options:["Growth","Stable","Decline"], hidden:false},
+              {key:"notes", label:"Notes / Limitations", type:"text", hidden:false},
+            ]}
+        ], tagGroups:[] },
+
+      { id:"limitations", num:"04", title:"Limitations",
+        fields:[
+          {key:"operational", label:"Operational", type:"textarea", full:true, hidden:false},
+          {key:"commercial", label:"Commercial", type:"textarea", full:true, hidden:false},
+          {key:"legal", label:"Legal", type:"textarea", full:true, hidden:false},
+          {key:"inventory", label:"Inventory / Availability", type:"textarea", full:true, hidden:false},
+          {key:"other", label:"Other", type:"textarea", full:true, hidden:false},
+        ], tables:[], tagGroups:[] },
+
+      { id:"access", num:"05", title:"Access",
+        fields:[],
+        tables:[
+          { id:"accessList", label:"Access", addLabel:"+ Add access item",
+            columns:[
+              {key:"system", label:"System", type:"text", hidden:false},
+              {key:"status", label:"Status", type:"select", options:["Yes","In progress","No","Not required"], hidden:false},
+              {key:"notes", label:"Notes", type:"text", hidden:false},
+            ]}
+        ], tagGroups:[] },
+
+      { id:"currentMarketing", num:"06", title:"Current Marketing",
+        fields:[
+          {key:"previousAgencies", label:"Previous Agencies", type:"select", options:["Yes","No","Other"], hidden:false},
+        ],
+        tables:[
+          { id:"notesList", label:"Notes", addLabel:"+ Add note",
+            columns:[ {key:"note", label:"Note", type:"text", hidden:false} ]}
+        ],
+        tagGroups:[
+          { key:"channels", label:"Channels (current / past)", extendable:true,
+            options:["SEO","Search Ads","Google Hotel Ads","Meta Ads","TikTok Ads","Metasearch","Email/CRM","Referral","Other"] }
+        ] },
+
+      { id:"seasonality", num:"07", title:"Seasonality",
+        fields:[
+          {key:"highSeason", label:"High Season", type:"text", hidden:false},
+          {key:"lowSeason", label:"Low Season", type:"text", hidden:false},
+          {key:"generalNotes", label:"General Notes", type:"textarea", full:true, hidden:false},
+        ],
+        tables:[
+          { id:"events", label:"Events", addLabel:"+ Add event",
+            columns:[
+              {key:"name", label:"Event", type:"text", hidden:false},
+              {key:"dates", label:"Dates", type:"text", hidden:false},
+              {key:"notes", label:"Notes", type:"text", hidden:false},
+            ]}
+        ], tagGroups:[] },
+
+      { id:"offers", num:"08", title:"Offers & Promotions",
+        fields:[
+          {key:"usp", label:"USP", type:"textarea", full:true, hidden:false},
+        ],
+        tables:[
+          { id:"standing", label:"Standing Offers", addLabel:"+ Add standing offer",
+            columns:[
+              {key:"name", label:"Name", type:"text", hidden:false},
+              {key:"promoCode", label:"Promo Code", type:"text", hidden:false},
+              {key:"link", label:"Link", type:"text", hidden:false},
+              {key:"conditions", label:"Conditions", type:"text", hidden:false},
+            ]},
+          { id:"campaign", label:"Campaign Offers", addLabel:"+ Add campaign offer",
+            columns:[
+              {key:"name", label:"Name", type:"text", hidden:false},
+              {key:"promoCode", label:"Promo Code", type:"text", hidden:false},
+              {key:"link", label:"Link", type:"text", hidden:false},
+              {key:"conditions", label:"Conditions", type:"text", hidden:false},
+              {key:"period", label:"Period", type:"text", hidden:false},
+              {key:"priority", label:"Priority", type:"select", options:["High","Medium","Low"], hidden:false},
+            ]},
+        ], tagGroups:[] },
+
+      { id:"targetMarkets", num:"09", title:"Target Markets & Segments",
+        fields:[
+          {key:"channelFitNotes", label:"Channel Fit Notes", type:"textarea", full:true, hidden:false},
+        ],
+        tables:[
+          { id:"markets", label:"Target Markets", addLabel:"+ Add market",
+            columns:[
+              {key:"market", label:"Market", type:"text", hidden:false},
+              {key:"priority", label:"Priority", type:"select", options:["High","Medium","Low"], hidden:false},
+              {key:"rationale", label:"Rationale", type:"text", hidden:false},
+            ]}
+        ],
+        tagGroups:[
+          { key:"segments", label:"Segments", extendable:true, options:[] }
+        ] },
+    ]
+  };
+}
+
+const DEFAULT_ACCESS_ROWS = ["GA","GTM","GSC","CMS","GBP","Google Ads Account","Facebook/Instagram Page"]
+  .map(sys => ({system:sys, status:"No", notes:""}));
+
+let SCHEMA = null;
+let hotelIndex = [];
+let currentHotel = null;
+let activeTab = null;
+let manageMode = false;
+
+const el = id => document.getElementById(id);
+
+/* ---------------- Storage ---------------- */
+async function loadSchema(){
+  try{
+    const res = await window.storage.get("dmh-schema", true);
+    SCHEMA = res && res.value ? JSON.parse(res.value) : defaultSchema();
+  } catch(e){ SCHEMA = defaultSchema(); }
+  if(!SCHEMA || !SCHEMA.sections) SCHEMA = defaultSchema();
+}
+async function saveSchema(){
+  try{ await window.storage.set("dmh-schema", JSON.stringify(SCHEMA), true); }catch(e){}
+}
+async function loadIndex(){
+  try{
+    const res = await window.storage.get("dmh-hotel-index", true);
+    hotelIndex = res && res.value ? JSON.parse(res.value) : [];
+  } catch(e){ hotelIndex = []; }
+}
+async function saveIndex(){ await window.storage.set("dmh-hotel-index", JSON.stringify(hotelIndex), true); }
+async function loadHotel(id){
+  try{
+    const res = await window.storage.get(`dmh-hotel:${id}`, true);
+    if(res && res.value) return JSON.parse(res.value);
+  } catch(e){}
+  return null;
+}
+async function saveHotel(){
+  if(!currentHotel) return;
+  el("saveStatus").textContent = "Saving...";
+  try{
+    await window.storage.set(`dmh-hotel:${currentHotel.id}`, JSON.stringify(currentHotel), true);
+    const idx = hotelIndex.findIndex(h=>h.id===currentHotel.id);
+    const name = getFieldValue("hotelData","name") || currentHotel.id;
+    if(idx>=0) hotelIndex[idx].name = name; else hotelIndex.push({id:currentHotel.id, name});
+    await saveIndex();
+    renderHotelList();
+    el("saveStatus").textContent = "Saved " + new Date().toLocaleTimeString('en-US');
+  } catch(e){
+    el("saveStatus").textContent = "Save failed";
+  }
+}
+
+/* ---------------- Data shape helpers ---------------- */
+function blankHotelRecord(id){
+  const rec = {id, sections:{}};
+  SCHEMA.sections.forEach(s=>{
+    rec.sections[s.id] = {fields:{}, tables:{}, tags:{}};
+    s.tables.forEach(t=>{
+      rec.sections[s.id].tables[t.id] = (s.id==="access" && t.id==="accessList")
+        ? JSON.parse(JSON.stringify(DEFAULT_ACCESS_ROWS))
+        : [];
+    });
+    s.tagGroups.forEach(tg=>{ rec.sections[s.id].tags[tg.key] = []; });
+  });
+  return rec;
+}
+function ensureSectionData(sectionDef){
+  if(!currentHotel.sections) currentHotel.sections = {};
+  if(!currentHotel.sections[sectionDef.id]) currentHotel.sections[sectionDef.id] = {fields:{}, tables:{}, tags:{}};
+  const sd = currentHotel.sections[sectionDef.id];
+  if(!sd.fields) sd.fields = {};
+  if(!sd.tables) sd.tables = {};
+  if(!sd.tags) sd.tags = {};
+  sectionDef.tables.forEach(t=>{ if(!sd.tables[t.id]) sd.tables[t.id] = []; });
+  sectionDef.tagGroups.forEach(tg=>{ if(!sd.tags[tg.key]) sd.tags[tg.key] = []; });
+  return sd;
+}
+function getFieldValue(sectionId, key){
+  return currentHotel?.sections?.[sectionId]?.fields?.[key] || "";
+}
+function slugify(str){
+  let s = str.toLowerCase().trim().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return s || ("field_" + Date.now());
+}
+function uniqueKey(base, existingKeys){
+  let key = base, i = 1;
+  while(existingKeys.includes(key)){ key = base + "_" + (++i); }
+  return key;
+}
+
+/* ---------------- Sidebar ---------------- */
+function renderHotelList(){
+  const q = (el("searchInput").value||"").toLowerCase();
+  const list = el("hotelList");
+  list.innerHTML = "";
+  hotelIndex
+    .filter(h => h.name.toLowerCase().includes(q) || h.id.toLowerCase().includes(q))
+    .sort((a,b)=> a.name.localeCompare(b.name))
+    .forEach(h=>{
+      const item = document.createElement("div");
+      item.className = "hotel-item" + (currentHotel && currentHotel.id===h.id ? " active" : "");
+      item.innerHTML = `<span class="hname">${h.name || "(untitled)"}</span><span class="hid">${h.id}</span>`;
+      item.addEventListener("click", ()=> selectHotel(h.id));
+      list.appendChild(item);
+    });
+}
+el("searchInput").addEventListener("input", renderHotelList);
+
+async function selectHotel(id){
+  const loaded = await loadHotel(id);
+  currentHotel = loaded || blankHotelRecord(id);
+  activeTab = SCHEMA.sections[0].id;
+  manageMode = false;
+  renderHotelList();
+  renderMain();
+}
+
+el("newHotelBtn").addEventListener("click", ()=>{
+  const name = prompt("New hotel name:");
+  if(!name) return;
+  const id = "HTL-" + Math.random().toString(36).slice(2,7).toUpperCase();
+  currentHotel = blankHotelRecord(id);
+  currentHotel.sections.hotelData.fields.name = name;
+  activeTab = SCHEMA.sections[0].id;
+  manageMode = false;
+  hotelIndex.push({id, name});
+  renderHotelList();
+  renderMain();
+});
+
+el("saveBtn").addEventListener("click", saveHotel);
+el("deleteBtn").addEventListener("click", async ()=>{
+  if(!currentHotel) return;
+  const name = getFieldValue("hotelData","name") || currentHotel.id;
+  if(!confirm(`Delete the profile for "${name}"?`)) return;
+  try{ await window.storage.delete(`dmh-hotel:${currentHotel.id}`, true); }catch(e){}
+  hotelIndex = hotelIndex.filter(h=>h.id!==currentHotel.id);
+  await saveIndex();
+  currentHotel = null;
+  renderHotelList();
+  el("mainHead").style.display="none";
+  el("tabs").style.display="none";
+  el("content").innerHTML = '<div class="empty-state">Select a hotel on the left, or create a new one.</div>';
+});
+
+/* ---------------- Main / Tabs ---------------- */
+function renderMain(){
+  if(!currentHotel) return;
+  el("mainHead").style.display = "flex";
+  el("tabs").style.display = "flex";
+  el("hhTitle").innerHTML = `${getFieldValue("hotelData","name") || "(untitled)"} <span class="hh-id">${currentHotel.id}</span>`;
+  el("saveStatus").textContent = "";
+  renderTabs();
+  renderSection();
+}
+function renderTabs(){
+  const tabsEl = el("tabs");
+  tabsEl.innerHTML = "";
+  SCHEMA.sections.forEach(s=>{
+    const t = document.createElement("div");
+    t.className = "tab" + (s.id===activeTab ? " active" : "");
+    t.innerHTML = `<span class="tnum">${s.num}</span> ${s.title}`;
+    t.addEventListener("click", ()=>{ activeTab = s.id; manageMode = false; renderTabs(); renderSection(); });
+    tabsEl.appendChild(t);
+  });
+}
+
+/* ---------------- Section rendering (generic engine) ---------------- */
+function renderSection(){
+  const s = SCHEMA.sections.find(x=>x.id===activeTab);
+  const sd = ensureSectionData(s);
+  const c = el("content");
+  c.innerHTML = "";
+
+  const top = document.createElement("div");
+  top.className = "section-top";
+  top.innerHTML = `<div class="section-title">${s.num}. ${s.title}</div>`;
+  const manageBtn = document.createElement("button");
+  manageBtn.className = "btn ghost sm manage-toggle";
+  manageBtn.textContent = manageMode ? "Done editing fields" : "Edit fields";
+  manageBtn.addEventListener("click", ()=>{ manageMode = !manageMode; renderSection(); });
+  top.appendChild(manageBtn);
+  c.appendChild(top);
+
+  if(manageMode){
+    c.appendChild(renderManagePanel(s));
+    return;
+  }
+
+  const visibleFields = s.fields.filter(f=>!f.hidden);
+  if(visibleFields.length){
+    const grid = document.createElement("div");
+    grid.className = "form-grid";
+    visibleFields.forEach(f=> grid.appendChild(makeFieldInput(sd.fields, f)));
+    c.appendChild(grid);
+  }
+
+  s.tables.forEach(t=>{
+    const wrap = document.createElement("div");
+    wrap.className = "group-block";
+    wrap.innerHTML = `<div class="group-label">${t.label}</div>`;
+    wrap.appendChild(renderTable(t, sd.tables[t.id]));
+    c.appendChild(wrap);
+  });
+
+  s.tagGroups.forEach(tg=>{
+    const wrap = document.createElement("div");
+    wrap.className = "group-block";
+    wrap.innerHTML = `<div class="group-label">${tg.label}</div>`;
+    wrap.appendChild(renderTagGroup(tg, sd.tags[tg.key]));
+    c.appendChild(wrap);
+  });
+}
+
+function makeFieldInput(dataObj, f){
+  const wrap = document.createElement("div");
+  wrap.className = "field" + (f.full ? " full" : "");
+  const label = document.createElement("label");
+  label.textContent = f.label;
+  wrap.appendChild(label);
+  let input;
+  if(f.type==="textarea"){
+    input = document.createElement("textarea");
+    input.value = dataObj[f.key] || "";
+  } else if(f.type==="select"){
+    input = document.createElement("select");
+    const blank = document.createElement("option"); blank.value=""; blank.textContent="—";
+    input.appendChild(blank);
+    (f.options||[]).forEach(o=>{
+      const opt = document.createElement("option"); opt.value=o; opt.textContent=o;
+      input.appendChild(opt);
+    });
+    input.value = dataObj[f.key] || "";
+  } else {
+    input = document.createElement("input");
+    input.type = f.type;
+    input.value = dataObj[f.key] || "";
+  }
+  input.addEventListener("input", ()=>{ dataObj[f.key] = input.value; });
+  if(f.type==="select") input.addEventListener("change", ()=>{ dataObj[f.key] = input.value; });
+  wrap.appendChild(input);
+  return wrap;
+}
+
+function renderTable(tableDef, rows){
+  const wrap = document.createElement("div");
+  const visibleCols = tableDef.columns.filter(c=>!c.hidden);
+  const table = document.createElement("table");
+  table.className = "rep-table";
+  const headRow = document.createElement("tr");
+  visibleCols.forEach(col=>{
+    const th = document.createElement("th");
+    th.textContent = col.label;
+    headRow.appendChild(th);
+  });
+  headRow.appendChild(document.createElement("th"));
+  table.appendChild(headRow);
+
+  rows.forEach((row,i)=>{
+    const tr = document.createElement("tr");
+    visibleCols.forEach(col=>{
+      const td = document.createElement("td");
+      let input;
+      if(col.type==="select"){
+        input = document.createElement("select");
+        const blank = document.createElement("option"); blank.value=""; blank.textContent="—";
+        input.appendChild(blank);
+        (col.options||[]).forEach(o=>{
+          const opt = document.createElement("option"); opt.value=o; opt.textContent=o;
+          if(row[col.key]===o) opt.selected = true;
+          input.appendChild(opt);
+        });
+      } else {
+        input = document.createElement("input");
+        input.type = col.type;
+        input.value = row[col.key] || "";
+      }
+      input.addEventListener("input", ()=>{ row[col.key] = input.value; });
+      if(col.type==="select") input.addEventListener("change", ()=>{ row[col.key] = input.value; });
+      td.appendChild(input);
+      tr.appendChild(td);
+    });
+    const tdRemove = document.createElement("td");
+    const btn = document.createElement("button");
+    btn.className = "rep-remove";
+    btn.textContent = "✕";
+    btn.addEventListener("click", ()=>{ rows.splice(i,1); renderSection(); });
+    tdRemove.appendChild(btn);
+    tr.appendChild(tdRemove);
+    table.appendChild(tr);
+  });
+  wrap.appendChild(table);
+
+  const addBtn = document.createElement("button");
+  addBtn.className = "btn secondary sm";
+  addBtn.textContent = tableDef.addLabel || "+ Add row";
+  addBtn.addEventListener("click", ()=>{
+    const newRow = {};
+    tableDef.columns.forEach(c=> newRow[c.key] = "");
+    rows.push(newRow);
+    renderSection();
+  });
+  wrap.appendChild(addBtn);
+  return wrap;
+}
+
+function renderTagGroup(tg, selectedArr){
+  const wrap = document.createElement("div");
+  const group = document.createElement("div");
+  group.className = "tag-group";
+  tg.options.filter(o=>!(tg.hiddenOptions||[]).includes(o)).forEach(opt=>{
+    const tag = document.createElement("div");
+    tag.className = "tag" + (selectedArr.includes(opt) ? " selected" : "");
+    tag.textContent = opt;
+    tag.addEventListener("click", ()=>{
+      const i = selectedArr.indexOf(opt);
+      if(i>=0) selectedArr.splice(i,1); else selectedArr.push(opt);
+      renderSection();
+    });
+    group.appendChild(tag);
+  });
+  wrap.appendChild(group);
+
+  if(tg.extendable){
+    const addWrap = document.createElement("div");
+    addWrap.className = "tag-add";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Add new tag...";
+    const btn = document.createElement("button");
+    btn.className = "btn secondary sm";
+    btn.textContent = "Add";
+    btn.addEventListener("click", async ()=>{
+      const val = input.value.trim();
+      if(!val) return;
+      if(!tg.options.includes(val)) tg.options.push(val);
+      if(!selectedArr.includes(val)) selectedArr.push(val);
+      await saveSchema();
+      renderSection();
+    });
+    addWrap.appendChild(input);
+    addWrap.appendChild(btn);
+    wrap.appendChild(addWrap);
+  }
+  return wrap;
+}
+
+/* ---------------- Manage Fields panel ---------------- */
+function renderManagePanel(s){
+  const panel = document.createElement("div");
+  panel.className = "manage-panel";
+  panel.innerHTML = `<div class="manage-note">Hiding a field, column, or tag never deletes data already saved for any hotel — it only removes it from view. Changes apply for the whole team.</div>`;
+
+  // Fields
+  if(s.fields.length || true){
+    const group = document.createElement("div");
+    group.className = "manage-group";
+    group.innerHTML = `<div class="manage-group-title">Fields</div>`;
+    s.fields.forEach(f=>{
+      const row = document.createElement("div");
+      row.className = "manage-row";
+      row.innerHTML = `
+        <input type="checkbox" ${!f.hidden ? "checked" : ""}>
+        <span class="mlabel">${f.label}</span>
+        <span class="mtype">${f.type}</span>`;
+      row.querySelector("input").addEventListener("change", async (e)=>{
+        f.hidden = !e.target.checked;
+        await saveSchema();
+      });
+      group.appendChild(row);
+    });
+    group.appendChild(makeAddFieldForm(async (newField)=>{
+      const existingKeys = s.fields.map(f=>f.key);
+      newField.key = uniqueKey(slugify(newField.label), existingKeys);
+      newField.hidden = false;
+      s.fields.push(newField);
+      await saveSchema();
+      renderSection();
+    }));
+    panel.appendChild(group);
+  }
+
+  // Tables
+  s.tables.forEach(t=>{
+    const group = document.createElement("div");
+    group.className = "manage-group";
+    group.innerHTML = `<div class="manage-group-title">Columns — ${t.label}</div>`;
+    t.columns.forEach(col=>{
+      const row = document.createElement("div");
+      row.className = "manage-row";
+      row.innerHTML = `
+        <input type="checkbox" ${!col.hidden ? "checked" : ""}>
+        <span class="mlabel">${col.label}</span>
+        <span class="mtype">${col.type}</span>`;
+      row.querySelector("input").addEventListener("change", async (e)=>{
+        col.hidden = !e.target.checked;
+        await saveSchema();
+      });
+      group.appendChild(row);
+    });
+    group.appendChild(makeAddFieldForm(async (newField)=>{
+      const existingKeys = t.columns.map(c=>c.key);
+      newField.key = uniqueKey(slugify(newField.label), existingKeys);
+      newField.hidden = false;
+      t.columns.push(newField);
+      await saveSchema();
+      renderSection();
+    }));
+    panel.appendChild(group);
+  });
+
+  // Tag groups
+  s.tagGroups.forEach(tg=>{
+    const group = document.createElement("div");
+    group.className = "manage-group";
+    group.innerHTML = `<div class="manage-group-title">Tags — ${tg.label}</div>`;
+    tg.options.forEach(opt=>{
+      const hidden = (tg.hiddenOptions||[]).includes(opt);
+      const row = document.createElement("div");
+      row.className = "manage-row";
+      row.innerHTML = `<input type="checkbox" ${!hidden ? "checked" : ""}><span class="mlabel">${opt}</span>`;
+      row.querySelector("input").addEventListener("change", async (e)=>{
+        tg.hiddenOptions = tg.hiddenOptions || [];
+        if(e.target.checked) tg.hiddenOptions = tg.hiddenOptions.filter(o=>o!==opt);
+        else if(!tg.hiddenOptions.includes(opt)) tg.hiddenOptions.push(opt);
+        await saveSchema();
+      });
+      group.appendChild(row);
+    });
+    panel.appendChild(group);
+  });
+
+  return panel;
+}
+
+function makeAddFieldForm(onAdd){
+  const form = document.createElement("div");
+  form.className = "add-field-form";
+  const labelInput = document.createElement("input");
+  labelInput.type = "text";
+  labelInput.placeholder = "New field label...";
+  const typeSelect = document.createElement("select");
+  ["text","number","textarea","date","select"].forEach(t=>{
+    const o = document.createElement("option"); o.value=t; o.textContent=t;
+    typeSelect.appendChild(o);
+  });
+  const optionsInput = document.createElement("input");
+  optionsInput.type = "text";
+  optionsInput.placeholder = "Options (comma-separated, for select)";
+  optionsInput.style.display = "none";
+  optionsInput.style.width = "220px";
+  typeSelect.addEventListener("change", ()=>{
+    optionsInput.style.display = typeSelect.value==="select" ? "inline-block" : "none";
+  });
+  const addBtn = document.createElement("button");
+  addBtn.className = "btn secondary sm";
+  addBtn.textContent = "+ Add field";
+  addBtn.addEventListener("click", ()=>{
+    const label = labelInput.value.trim();
+    if(!label) return;
+    const field = {label, type: typeSelect.value};
+    if(typeSelect.value==="select"){
+      field.options = optionsInput.value.split(",").map(s=>s.trim()).filter(Boolean);
+    }
+    onAdd(field);
+    labelInput.value = ""; optionsInput.value = "";
+  });
+  form.appendChild(labelInput);
+  form.appendChild(typeSelect);
+  form.appendChild(optionsInput);
+  form.appendChild(addBtn);
+  return form;
+}
+
+/* ---------------- Init ---------------- */
+(async function init(){
+  await loadSchema();
+  await loadIndex();
+  renderHotelList();
+})();
+</script>
+</body>
+</html>
