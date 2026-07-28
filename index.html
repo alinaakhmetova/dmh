@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DMH Hotel Profiles</title>
+<title>DMH Marketing Workspace</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
@@ -12,330 +12,409 @@
     --brick:#AE4A2E; --brick-soft:#F6E7E1;
     --mustard:#A9791B; --mustard-soft:#F5EBD3;
     --slate:#8C8A7E; --slate-soft:#EEECE3;
+    --purple:#5A4A8C; --purple-soft:#EAE6F5;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;}
-  .app{display:flex;height:100vh;overflow:hidden;}
-
-  /* Sidebar */
-  .sidebar{width:250px;flex-shrink:0;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;}
-  .sidebar-head{padding:16px 16px 10px;border-bottom:1px solid var(--line);}
-  .sidebar-head h1{font-family:'Fraunces',serif;font-size:17px;font-weight:700;margin:0 0 2px;}
-  .sidebar-head .sub{font-size:11px;color:var(--ink-soft);}
-  .search-box{padding:10px 14px;border-bottom:1px solid var(--line);}
-  .search-box input{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font-size:12.5px;}
-  .hotel-list{flex:1;overflow-y:auto;padding:6px;}
-  .hotel-item{padding:9px 10px;border-radius:7px;cursor:pointer;margin-bottom:3px;}
-  .hotel-item:hover{background:var(--slate-soft);}
-  .hotel-item.active{background:var(--teal-soft);}
-  .hotel-item .hname{font-weight:600;font-size:13px;display:block;}
-  .hotel-item .hid{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-soft);}
-  .sidebar-foot{padding:12px;border-top:1px solid var(--line);}
-
+  .shell{max-width:1160px;margin:0 auto;padding:20px 24px 70px;}
+  h1{font-family:'Fraunces',serif;font-size:21px;font-weight:700;margin:0 0 4px;}
+  .sub{font-size:12px;color:var(--ink-soft);margin-bottom:16px;}
+  .header-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    font-family:'IBM Plex Sans',sans-serif;border:1px solid var(--line);border-radius:6px;
+    padding:7px 9px;font-size:13px;background:#fff;color:var(--ink);
+  }
+  textarea{resize:vertical;min-height:44px;width:100%;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px;}
   .btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12.5px;border-radius:6px;border:1px solid var(--teal);background:var(--teal);color:#fff;padding:8px 14px;cursor:pointer;}
   .btn.secondary{background:#fff;color:var(--teal);}
   .btn.ghost{background:transparent;color:var(--ink-soft);border-color:var(--line);}
   .btn.danger{background:#fff;color:var(--brick);border-color:var(--brick);}
   .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
-  .btn.wide{width:100%;}
   .btn.sm{padding:5px 10px;font-size:11.5px;}
-
-  /* Main */
-  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
-  .main-head{padding:14px 24px;border-bottom:1px solid var(--line);background:var(--card);display:flex;align-items:center;gap:12px;}
-  .main-head .hh-title{font-family:'Fraunces',serif;font-weight:700;font-size:19px;flex:1;}
-  .main-head .hh-title .hh-id{font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:11.5px;color:var(--ink-soft);margin-left:8px;}
-  .save-status{font-size:11px;color:var(--ink-soft);min-width:130px;text-align:right;}
-
-  .tabs{display:flex;gap:4px;overflow-x:auto;padding:10px 20px 0;background:var(--card);border-bottom:1px solid var(--line);}
-  .tab{font-family:'IBM Plex Mono',monospace;font-size:11px;white-space:nowrap;padding:8px 11px;border-radius:6px 6px 0 0;cursor:pointer;color:var(--ink-soft);border:1px solid transparent;}
-  .tab.active{background:var(--paper);color:var(--ink);border:1px solid var(--line);border-bottom-color:var(--paper);font-weight:600;}
-  .tab .tnum{color:var(--teal);}
-
-  .content{flex:1;overflow-y:auto;padding:22px 26px;}
-  .empty-state{color:var(--ink-soft);font-size:14px;padding:60px 20px;text-align:center;}
-
-  .section-top{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;}
-  .section-title{font-family:'Fraunces',serif;font-size:17px;font-weight:600;margin:0;flex:1;}
-
+  .status-text{font-size:11px;color:var(--ink-soft);}
+  .nav{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--line);}
+  .nav-tab{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:13px;padding:9px 15px;cursor:pointer;color:var(--ink-soft);border-bottom:2px solid transparent;}
+  .nav-tab.active{color:var(--teal);border-bottom-color:var(--teal);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:16px;}
+  .card-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;margin:0 0 8px;}
+  .card-note{font-size:11.5px;color:var(--ink-soft);margin:-4px 0 12px;}
+  .empty-state{color:var(--ink-soft);padding:40px;text-align:center;}
+  .ptabs{display:flex;gap:4px;overflow-x:auto;margin-bottom:14px;}
+  .ptab{font-family:'IBM Plex Mono',monospace;font-size:11px;white-space:nowrap;padding:7px 10px;border-radius:6px;cursor:pointer;color:var(--ink-soft);border:1px solid var(--line);background:#fff;}
+  .ptab.active{background:var(--teal-soft);color:var(--teal);border-color:var(--teal);font-weight:600;}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;margin-bottom:8px;}
-  .field{display:flex;flex-direction:column;gap:4px;}
   .field.full{grid-column:1/-1;}
-  .field label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
-  input[type=text],input[type=number],input[type=date],select,textarea{
-    font-family:'IBM Plex Sans',sans-serif;border:1px solid var(--line);border-radius:6px;
-    padding:8px 10px;font-size:13px;background:#fff;color:var(--ink);width:100%;
-  }
-  textarea{resize:vertical;min-height:54px;}
-  input:focus,select:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px;}
-
-  .group-block{margin-top:20px;}
-  .group-label{font-family:'Fraunces',serif;font-size:13.5px;font-weight:600;margin-bottom:8px;color:var(--ink);}
-
-  .rep-table{width:100%;border-collapse:collapse;margin-bottom:8px;}
-  .rep-table th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);text-align:left;padding:4px 7px;border-bottom:1px solid var(--line);}
-  .rep-table td{padding:4px 7px 8px;vertical-align:top;}
+  .group-block{margin-top:18px;}
+  .group-label{font-family:'Fraunces',serif;font-size:13.5px;font-weight:600;margin-bottom:8px;}
+  table.rep{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12.5px;}
+  table.rep th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);text-align:left;padding:4px 7px;border-bottom:1px solid var(--line);}
+  table.rep td{padding:4px 7px 8px;vertical-align:top;}
   .rep-remove{background:none;border:none;color:var(--brick);cursor:pointer;font-size:15px;padding:4px;}
-
   .tag-group{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px;align-items:center;}
   .tag{font-size:12px;padding:6px 11px;border-radius:16px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink-soft);user-select:none;}
   .tag.selected{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;}
   .tag-add{display:flex;gap:6px;align-items:center;}
-  .tag-add input{width:150px;padding:6px 9px;font-size:12px;}
-
-  /* Manage panel */
-  .manage-toggle{font-size:11.5px;}
   .manage-panel{background:var(--slate-soft);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:18px;}
   .manage-note{font-size:11px;color:var(--ink-soft);margin-bottom:12px;}
   .manage-group{margin-bottom:16px;}
-  .manage-group:last-child{margin-bottom:0;}
   .manage-group-title{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
   .manage-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #E7E3D6;font-size:12.5px;}
-  .manage-row:last-of-type{border-bottom:none;}
   .manage-row .mlabel{flex:1;}
   .manage-row .mtype{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--slate);}
   .add-field-form{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center;}
-  .add-field-form input[type=text]{width:150px;padding:6px 9px;font-size:12px;}
-  .add-field-form select{width:auto;padding:6px 9px;font-size:12px;}
-
-  @media (max-width:800px){
-    .app{flex-direction:column;height:auto;}
-    .sidebar{width:100%;max-height:220px;}
-    .form-grid{grid-template-columns:1fr;}
-  }
+  .context-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12.5px;}
+  .ctx-item{background:var(--slate-soft);border-radius:7px;padding:8px 10px;}
+  .ctx-item .ctx-label{font-size:10px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:.05em;}
+  .ctx-item .ctx-val{font-weight:600;font-size:13px;margin-top:2px;}
+  details summary{cursor:pointer;font-size:12px;color:var(--ink-soft);font-weight:600;}
+  .hint-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12.5px;margin-top:8px;}
+  .hint-item{background:var(--slate-soft);border-radius:7px;padding:8px 10px;}
+  .hint-item b{color:var(--purple);}
+  .board{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-items:start;}
+  .board-col{background:var(--slate-soft);border-radius:8px;padding:8px;min-height:80px;}
+  .board-col-title{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin-bottom:8px;padding:0 2px;}
+  .p-card{background:#fff;border:1px solid var(--line);border-radius:7px;padding:8px 10px;margin-bottom:8px;cursor:pointer;}
+  .p-card-title{font-weight:600;font-size:12.5px;margin-bottom:3px;}
+  .p-card-meta{font-size:10.5px;color:var(--ink-soft);}
+  .p-card-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+  .p-tag{font-size:9.5px;padding:1px 7px;border-radius:9px;background:var(--purple-soft);color:var(--purple);}
+  .p-detail{background:var(--card);border:1px solid var(--teal);border-radius:8px;padding:14px 16px;margin-bottom:16px;}
+  .subtask-row{display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #EFEDE3;}
+  .subtask-row input[type=text]{flex:2;}
+  .subtask-row input[type=text].link{flex:1.5;}
+  .idea-item{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+  @media (max-width:900px){ .board{grid-template-columns:1fr 1fr;} }
+  @media (max-width:800px){ .form-grid{grid-template-columns:1fr;} .context-grid{grid-template-columns:1fr 1fr;} .hint-grid{grid-template-columns:1fr;} }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="shell">
+  <h1>DMH marketing workspace</h1>
+  <div class="sub">One shared workspace: hotel facts, strategy decisions, execution progress, and results — all reading the same records.</div>
 
-  <div class="sidebar">
-    <div class="sidebar-head">
-      <h1>DMH Hotel Profiles</h1>
-      <div class="sub">Shared workspace — visible to the whole team</div>
-    </div>
-    <div class="search-box"><input type="text" id="searchInput" placeholder="Search by name or ID..."></div>
-    <div class="hotel-list" id="hotelList"></div>
-    <div class="sidebar-foot">
-      <button class="btn wide" id="newHotelBtn">+ New Hotel</button>
+  <div class="header-card">
+    <div class="row">
+      <div class="field" style="min-width:240px;">
+        <label for="hotelSelect">Hotel</label>
+        <select id="hotelSelect"><option value="">Loading...</option></select>
+      </div>
+      <button class="btn secondary sm" id="newHotelBtn">+ New hotel</button>
+      <button class="btn danger sm" id="deleteHotelBtn">Delete hotel</button>
+      <span class="status-text" id="globalStatus"></span>
     </div>
   </div>
 
-  <div class="main">
-    <div class="main-head" id="mainHead" style="display:none;">
-      <div class="hh-title" id="hhTitle"></div>
-      <div class="save-status" id="saveStatus"></div>
-      <button class="btn danger" id="deleteBtn">Delete</button>
-      <button class="btn" id="saveBtn">Save</button>
-    </div>
-    <div class="tabs" id="tabs" style="display:none;"></div>
-    <div class="content" id="content">
-      <div class="empty-state">Select a hotel on the left, or create a new one.</div>
-    </div>
+  <div class="nav">
+    <div class="nav-tab active" data-tab="input">Hotel input</div>
+    <div class="nav-tab" data-tab="strategy">Strategy</div>
+    <div class="nav-tab" data-tab="progress">Progress</div>
+    <div class="nav-tab" data-tab="results">Results</div>
   </div>
 
+  <div id="tabInput"></div>
+  <div id="tabStrategy" style="display:none;"></div>
+  <div id="tabProgress" style="display:none;"></div>
+  <div id="tabResults" style="display:none;"></div>
 </div>
 
+<datalist id="sharedTagsList"></datalist>
+
 <script>
-/* ---------------------------------------------------------
-   DEFAULT SCHEMA
-   Every section is expressed generically as: fields[] (simple
-   inputs), tables[] (repeatable rows), tagGroups[] (pill tags).
-   Hiding a field/column/tag never deletes stored data — it only
-   removes it from view, so editing the schema is always safe.
---------------------------------------------------------- */
-function defaultSchema(){
-  return {
-    sections: [
-      { id:"hotelData", num:"01", title:"Hotel Data",
-        fields:[
-          {key:"name", label:"Hotel Name", type:"text", full:true, hidden:false},
-          {key:"location", label:"Location (City, Country)", type:"text", hidden:false},
-          {key:"propertyType", label:"Property Type", type:"select", options:["City Hotel","Resort","Villa / Boutique / Luxury","Cruise"], hidden:false},
-          {key:"website", label:"Website", type:"text", hidden:false},
-          {key:"csm", label:"CSM", type:"text", hidden:false},
-          {key:"rooms", label:"Number of Rooms", type:"number", hidden:false},
-          {key:"stars", label:"Star Rating", type:"select", options:["1","2","3","4","5"], hidden:false},
-          {key:"gbp", label:"Google Business Profile", type:"text", hidden:false},
-          {key:"startDate", label:"Start Date", type:"date", hidden:false},
-          {key:"modelType", label:"Model Type", type:"text", hidden:false},
-          {key:"abv", label:"ABV", type:"number", hidden:false},
-          {key:"notes", label:"Notes", type:"textarea", full:true, hidden:false},
-        ], tables:[], tagGroups:[] },
+const el = id => document.getElementById(id);
 
-      { id:"budgets", num:"02", title:"Budgets",
-        fields:[
-          {key:"m1", label:"Month 1 Budget", type:"number", hidden:false},
-          {key:"m2", label:"Month 2 Budget", type:"number", hidden:false},
-          {key:"m3", label:"Month 3+ Budget", type:"number", hidden:false},
-          {key:"cap", label:"Budget Cap", type:"number", hidden:false},
-          {key:"growthPlan", label:"Growth Plan / Conditions", type:"textarea", full:true, hidden:false},
-        ], tables:[], tagGroups:[] },
+let hotelIndex = [];
+let currentHotel = null;
+let activeTab = "input";
+let sharedTags = [];
+const DEFAULT_SHARED_TAGS = [
+  "SEO","AI Search / GEO","Google Search Ads","Google Hotel Ads","Bing / Yandex Search","Display Ads",
+  "Meta Ads","TikTok Ads","Email / CRM","Referral & Travel Listings","Google Business Profile",
+  "Website / CRO","Content & Localization","Offers & Promotions","Rate & Package Strategy",
+];
 
-      { id:"sourceMarkets", num:"03", title:"Source Markets",
-        fields:[
-          {key:"languages", label:"Target Languages", type:"text", full:true, hidden:false},
-        ],
-        tables:[
-          { id:"markets", label:"Markets", addLabel:"+ Add market",
-            columns:[
-              {key:"country", label:"Country", type:"text", hidden:false},
-              {key:"share", label:"Share %", type:"number", hidden:false},
-              {key:"trend", label:"Trend", type:"select", options:["Growth","Stable","Decline"], hidden:false},
-              {key:"notes", label:"Notes / Limitations", type:"text", hidden:false},
-            ]}
-        ], tagGroups:[] },
+async function loadHotelIndex(){
+  try{ const res = await window.storage.get("dmh-hotel-index", true); hotelIndex = res && res.value ? JSON.parse(res.value) : []; }
+  catch(e){ hotelIndex = []; }
+}
+async function saveHotelIndex(){ await window.storage.set("dmh-hotel-index", JSON.stringify(hotelIndex), true); }
+async function loadHotelRecordById(id){
+  try{ const res = await window.storage.get(`dmh-hotel:${id}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
+  return null;
+}
+async function saveHotelRecord(record){
+  await window.storage.set(`dmh-hotel:${record.id}`, JSON.stringify(record), true);
+  const idx = hotelIndex.findIndex(h=>h.id===record.id);
+  const name = record.sections.hotelData.fields.name || record.id;
+  if(idx>=0) hotelIndex[idx].name = name; else hotelIndex.push({id:record.id, name});
+  await saveHotelIndex();
+}
+function getField(hotel, sectionId, key){ return hotel?.sections?.[sectionId]?.fields?.[key] || ""; }
 
-      { id:"limitations", num:"04", title:"Limitations",
-        fields:[
-          {key:"operational", label:"Operational", type:"textarea", full:true, hidden:false},
-          {key:"commercial", label:"Commercial", type:"textarea", full:true, hidden:false},
-          {key:"legal", label:"Legal", type:"textarea", full:true, hidden:false},
-          {key:"inventory", label:"Inventory / Availability", type:"textarea", full:true, hidden:false},
-          {key:"other", label:"Other", type:"textarea", full:true, hidden:false},
-        ], tables:[], tagGroups:[] },
-
-      { id:"access", num:"05", title:"Access",
-        fields:[],
-        tables:[
-          { id:"accessList", label:"Access", addLabel:"+ Add access item",
-            columns:[
-              {key:"system", label:"System", type:"text", hidden:false},
-              {key:"status", label:"Status", type:"select", options:["Yes","In progress","No","Not required"], hidden:false},
-              {key:"notes", label:"Notes", type:"text", hidden:false},
-            ]}
-        ], tagGroups:[] },
-
-      { id:"currentMarketing", num:"06", title:"Current Marketing",
-        fields:[
-          {key:"previousAgencies", label:"Previous Agencies", type:"select", options:["Yes","No","Other"], hidden:false},
-        ],
-        tables:[
-          { id:"notesList", label:"Notes", addLabel:"+ Add note",
-            columns:[ {key:"note", label:"Note", type:"text", hidden:false} ]}
-        ],
-        tagGroups:[
-          { key:"channels", label:"Channels (current / past)", extendable:true,
-            options:["SEO","Search Ads","Google Hotel Ads","Meta Ads","TikTok Ads","Metasearch","Email/CRM","Referral","Other"] }
-        ] },
-
-      { id:"seasonality", num:"07", title:"Seasonality",
-        fields:[
-          {key:"highSeason", label:"High Season", type:"text", hidden:false},
-          {key:"lowSeason", label:"Low Season", type:"text", hidden:false},
-          {key:"generalNotes", label:"General Notes", type:"textarea", full:true, hidden:false},
-        ],
-        tables:[
-          { id:"events", label:"Events", addLabel:"+ Add event",
-            columns:[
-              {key:"name", label:"Event", type:"text", hidden:false},
-              {key:"dates", label:"Dates", type:"text", hidden:false},
-              {key:"notes", label:"Notes", type:"text", hidden:false},
-            ]}
-        ], tagGroups:[] },
-
-      { id:"offers", num:"08", title:"Offers & Promotions",
-        fields:[
-          {key:"usp", label:"USP", type:"textarea", full:true, hidden:false},
-        ],
-        tables:[
-          { id:"standing", label:"Standing Offers", addLabel:"+ Add standing offer",
-            columns:[
-              {key:"name", label:"Name", type:"text", hidden:false},
-              {key:"promoCode", label:"Promo Code", type:"text", hidden:false},
-              {key:"link", label:"Link", type:"text", hidden:false},
-              {key:"conditions", label:"Conditions", type:"text", hidden:false},
-            ]},
-          { id:"campaign", label:"Campaign Offers", addLabel:"+ Add campaign offer",
-            columns:[
-              {key:"name", label:"Name", type:"text", hidden:false},
-              {key:"promoCode", label:"Promo Code", type:"text", hidden:false},
-              {key:"link", label:"Link", type:"text", hidden:false},
-              {key:"conditions", label:"Conditions", type:"text", hidden:false},
-              {key:"period", label:"Period", type:"text", hidden:false},
-              {key:"priority", label:"Priority", type:"select", options:["High","Medium","Low"], hidden:false},
-            ]},
-        ], tagGroups:[] },
-
-      { id:"targetMarkets", num:"09", title:"Target Markets & Segments",
-        fields:[
-          {key:"channelFitNotes", label:"Channel Fit Notes", type:"textarea", full:true, hidden:false},
-        ],
-        tables:[
-          { id:"markets", label:"Target Markets", addLabel:"+ Add market",
-            columns:[
-              {key:"market", label:"Market", type:"text", hidden:false},
-              {key:"priority", label:"Priority", type:"select", options:["High","Medium","Low"], hidden:false},
-              {key:"rationale", label:"Rationale", type:"text", hidden:false},
-            ]}
-        ],
-        tagGroups:[
-          { key:"segments", label:"Segments", extendable:true, options:[] }
-        ] },
-    ]
-  };
+async function loadSharedTags(){
+  try{ const res = await window.storage.get("dmh-shared-tags", true); sharedTags = res && res.value ? JSON.parse(res.value) : null; }
+  catch(e){ sharedTags = null; }
+  if(!sharedTags){
+    sharedTags = DEFAULT_SHARED_TAGS.slice();
+    await window.storage.set("dmh-shared-tags", JSON.stringify(sharedTags), true);
+  }
+  const dl = el("sharedTagsList");
+  dl.innerHTML = sharedTags.map(t=>`<option value="${t}">`).join("");
+}
+async function addSharedTag(val){
+  if(!val || sharedTags.includes(val)) return;
+  sharedTags.push(val);
+  await window.storage.set("dmh-shared-tags", JSON.stringify(sharedTags), true);
+  const dl = el("sharedTagsList");
+  dl.innerHTML = sharedTags.map(t=>`<option value="${t}">`).join("");
 }
 
+async function renameSharedTag(oldTag, newTag){
+  newTag = newTag.trim();
+  if(!newTag || newTag===oldTag) return {changed:false, updatedRecords:0};
+  const dup = sharedTags.includes(newTag);
+  sharedTags = dup ? sharedTags.filter(t=>t!==oldTag) : sharedTags.map(t=> t===oldTag ? newTag : t);
+  await window.storage.set("dmh-shared-tags", JSON.stringify(sharedTags), true);
+  el("sharedTagsList").innerHTML = sharedTags.map(t=>`<option value="${t}">`).join("");
+
+  let updatedRecords = 0;
+  for(const h of hotelIndex){
+    let touched = false;
+    try{
+      const res = await window.storage.get(`dmh-progress:${h.id}`, true);
+      if(res && res.value){
+        const prog = JSON.parse(res.value);
+        (prog.cards||[]).forEach(c=>{
+          if(c.tags && c.tags.includes(oldTag)){ c.tags = [...new Set(c.tags.map(t=> t===oldTag?newTag:t))]; touched = true; }
+        });
+        if(touched) await window.storage.set(`dmh-progress:${h.id}`, JSON.stringify(prog), true);
+      }
+    } catch(e){}
+    let touched2 = false;
+    try{
+      const res = await window.storage.get(`dmh-strategy:${h.id}`, true);
+      if(res && res.value){
+        const strat = JSON.parse(res.value);
+        (strat.activities||[]).forEach(a=>{ if(a.activity===oldTag){ a.activity=newTag; touched2=true; } });
+        if(strat.targetMarkets && strat.targetMarkets.segments && strat.targetMarkets.segments.includes(oldTag)){
+          strat.targetMarkets.segments = [...new Set(strat.targetMarkets.segments.map(s=> s===oldTag?newTag:s))];
+          touched2 = true;
+        }
+        if(touched2) await window.storage.set(`dmh-strategy:${h.id}`, JSON.stringify(strat), true);
+      }
+    } catch(e){}
+    let touched3 = false;
+    try{
+      const res = await window.storage.get(`dmh-results:${h.id}`, true);
+      if(res && res.value){
+        const results = JSON.parse(res.value);
+        (results.periods||[]).forEach(p=>{ (p.rows||[]).forEach(r=>{ if(r.channel===oldTag){ r.channel=newTag; touched3=true; } }); });
+        if(touched3) await window.storage.set(`dmh-results:${h.id}`, JSON.stringify(results), true);
+      }
+    } catch(e){}
+    if(touched||touched2||touched3) updatedRecords++;
+  }
+  currentProgress = null; currentStrategy = null; currentResults = null;
+  return {changed:true, updatedRecords};
+}
+
+async function removeSharedTag(tag){
+  sharedTags = sharedTags.filter(t=>t!==tag);
+  await window.storage.set("dmh-shared-tags", JSON.stringify(sharedTags), true);
+  el("sharedTagsList").innerHTML = sharedTags.map(t=>`<option value="${t}">`).join("");
+}
+
+function populateHotelSelect(){
+  const sel = el("hotelSelect");
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Select a hotel...</option>';
+  hotelIndex.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(h=>{
+    const opt = document.createElement("option"); opt.value = h.id; opt.textContent = `${h.name} (${h.id})`; sel.appendChild(opt);
+  });
+  if(prev) sel.value = prev;
+}
+el("hotelSelect").addEventListener("change", async ()=>{
+  const id = el("hotelSelect").value;
+  currentHotel = id ? await loadHotelRecordById(id) : null;
+  renderActiveTab();
+});
+el("newHotelBtn").addEventListener("click", async ()=>{
+  const name = prompt("New hotel name:"); if(!name) return;
+  const id = "HTL-" + Math.random().toString(36).slice(2,7).toUpperCase();
+  currentHotel = blankHotelRecord(id);
+  currentHotel.sections.hotelData.fields.name = name;
+  await saveHotelRecord(currentHotel);
+  populateHotelSelect(); el("hotelSelect").value = id; renderActiveTab();
+});
+el("deleteHotelBtn").addEventListener("click", async ()=>{
+  if(!currentHotel) return;
+  const name = getField(currentHotel,"hotelData","name") || currentHotel.id;
+  if(!confirm(`Delete the profile for "${name}"? This removes it everywhere in this workspace.`)) return;
+  try{ await window.storage.delete(`dmh-hotel:${currentHotel.id}`, true); }catch(e){}
+  hotelIndex = hotelIndex.filter(h=>h.id!==currentHotel.id);
+  await saveHotelIndex(); currentHotel = null; populateHotelSelect(); el("hotelSelect").value = ""; renderActiveTab();
+});
+
+document.querySelectorAll(".nav-tab").forEach(tab=>{
+  tab.addEventListener("click", ()=>{
+    document.querySelectorAll(".nav-tab").forEach(t=>t.classList.remove("active"));
+    tab.classList.add("active"); activeTab = tab.dataset.tab;
+    ["input","strategy","progress","results"].forEach(t=>{
+      el("tab"+t.charAt(0).toUpperCase()+t.slice(1)).style.display = (t===activeTab) ? "block" : "none";
+    });
+    renderActiveTab();
+  });
+});
+function renderActiveTab(){
+  if(activeTab==="input") renderInputTab();
+  else if(activeTab==="strategy") renderStrategyTab();
+  else if(activeTab==="progress") renderProgressTab();
+  else if(activeTab==="results") renderResultsTab();
+}
+
+/* =========================================================
+   MODULE: HOTEL INPUT (facts only — 8 sections)
+========================================================= */
+function defaultSchema(){
+  return { sections: [
+    { id:"hotelData", num:"01", title:"Hotel Data",
+      fields:[
+        {key:"name", label:"Hotel Name", type:"text", full:true, hidden:false},
+        {key:"location", label:"Location (City, Country)", type:"text", hidden:false},
+        {key:"propertyType", label:"Property Type", type:"select", options:["City Hotel","Resort","Villa / Boutique / Luxury","Cruise"], hidden:false},
+        {key:"website", label:"Website", type:"text", hidden:false},
+        {key:"csm", label:"CSM", type:"text", hidden:false},
+        {key:"rooms", label:"Number of Rooms", type:"number", hidden:false},
+        {key:"stars", label:"Star Rating", type:"select", options:["1","2","3","4","5"], hidden:false},
+        {key:"gbp", label:"Google Business Profile", type:"text", hidden:false},
+        {key:"startDate", label:"Start Date", type:"date", hidden:false},
+        {key:"modelType", label:"Model Type", type:"text", hidden:false},
+        {key:"abv", label:"ABV", type:"number", hidden:false},
+        {key:"currentDirectRevenue", label:"Current Monthly Direct Revenue, $", type:"number", hidden:false},
+        {key:"onlineAvailability", label:"Online Availability, %", type:"number", hidden:false},
+        {key:"websiteTrafficBaseline", label:"Website Traffic (baseline, typical month)", type:"number", hidden:false},
+        {key:"beTrafficBaseline", label:"Booking Engine Traffic (baseline, typical month)", type:"number", hidden:false},
+        {key:"trafficBaselineNote", label:"Traffic Baseline Note (e.g. \"measured in low season\")", type:"text", full:true, hidden:false},
+        {key:"notes", label:"Notes", type:"textarea", full:true, hidden:false},
+      ], tables:[], tagGroups:[] },
+    { id:"budgets", num:"02", title:"Budgets",
+      fields:[
+        {key:"m1", label:"Month 1 Budget", type:"number", hidden:false},
+        {key:"m2", label:"Month 2 Budget", type:"number", hidden:false},
+        {key:"m3", label:"Month 3+ Budget", type:"number", hidden:false},
+        {key:"cap", label:"Budget Cap", type:"number", hidden:false},
+        {key:"growthPlan", label:"Growth Plan / Conditions", type:"textarea", full:true, hidden:false},
+      ], tables:[], tagGroups:[] },
+    { id:"sourceMarkets", num:"03", title:"Source Markets",
+      fields:[ {key:"languages", label:"Target Languages", type:"text", full:true, hidden:false} ],
+      tables:[{ id:"markets", label:"Markets", addLabel:"+ Add market",
+        columns:[
+          {key:"country", label:"Country", type:"text", hidden:false},
+          {key:"share", label:"Share %", type:"number", hidden:false},
+          {key:"trend", label:"Trend", type:"select", options:["Growth","Stable","Decline"], hidden:false},
+          {key:"notes", label:"Notes / Limitations", type:"text", hidden:false},
+        ]}], tagGroups:[] },
+    { id:"limitations", num:"04", title:"Limitations",
+      fields:[
+        {key:"operational", label:"Operational", type:"textarea", full:true, hidden:false},
+        {key:"commercial", label:"Commercial", type:"textarea", full:true, hidden:false},
+        {key:"legal", label:"Legal", type:"textarea", full:true, hidden:false},
+        {key:"inventory", label:"Inventory / Availability", type:"textarea", full:true, hidden:false},
+        {key:"other", label:"Other", type:"textarea", full:true, hidden:false},
+      ], tables:[], tagGroups:[] },
+    { id:"access", num:"05", title:"Access", fields:[],
+      tables:[{ id:"accessList", label:"Access", addLabel:"+ Add access item",
+        columns:[
+          {key:"system", label:"System", type:"text", hidden:false},
+          {key:"status", label:"Status", type:"select", options:["Yes","In progress","No","Not required"], hidden:false},
+          {key:"notes", label:"Notes", type:"text", hidden:false},
+        ]}], tagGroups:[] },
+    { id:"currentMarketing", num:"06", title:"Current Marketing",
+      fields:[ {key:"previousAgencies", label:"Previous Agencies", type:"select", options:["Yes","No","Other"], hidden:false} ],
+      tables:[{ id:"notesList", label:"Notes", addLabel:"+ Add note", columns:[{key:"note", label:"Note", type:"text", hidden:false}] }],
+      tagGroups:[{ key:"channels", label:"Channels (current / past)", extendable:true,
+        options:["SEO","Search Ads","Google Hotel Ads","Meta Ads","TikTok Ads","Email/CRM","Referral","Other"] }] },
+    { id:"seasonality", num:"07", title:"Seasonality",
+      fields:[
+        {key:"highSeason", label:"High Season", type:"text", hidden:false},
+        {key:"lowSeason", label:"Low Season", type:"text", hidden:false},
+        {key:"generalNotes", label:"General Notes", type:"textarea", full:true, hidden:false},
+      ],
+      tables:[{ id:"events", label:"Events", addLabel:"+ Add event",
+        columns:[
+          {key:"name", label:"Event", type:"text", hidden:false},
+          {key:"dates", label:"Dates", type:"text", hidden:false},
+          {key:"notes", label:"Notes", type:"text", hidden:false},
+        ]}], tagGroups:[] },
+    { id:"offers", num:"08", title:"Offers & Promotions",
+      fields:[ {key:"usp", label:"USP", type:"textarea", full:true, hidden:false} ],
+      tables:[
+        { id:"standing", label:"Standing Offers", addLabel:"+ Add standing offer",
+          columns:[
+            {key:"name", label:"Name", type:"text", hidden:false},
+            {key:"promoCode", label:"Promo Code", type:"text", hidden:false},
+            {key:"link", label:"Link", type:"text", hidden:false},
+            {key:"conditions", label:"Conditions", type:"text", hidden:false},
+          ]},
+        { id:"campaign", label:"Campaign Offers", addLabel:"+ Add campaign offer",
+          columns:[
+            {key:"name", label:"Name", type:"text", hidden:false},
+            {key:"promoCode", label:"Promo Code", type:"text", hidden:false},
+            {key:"link", label:"Link", type:"text", hidden:false},
+            {key:"conditions", label:"Conditions", type:"text", hidden:false},
+            {key:"period", label:"Period", type:"text", hidden:false},
+            {key:"priority", label:"Priority", type:"select", options:["High","Medium","Low"], hidden:false},
+          ]},
+      ], tagGroups:[] },
+  ]};
+}
 const DEFAULT_ACCESS_ROWS = ["GA","GTM","GSC","CMS","GBP","Google Ads Account","Facebook/Instagram Page"]
   .map(sys => ({system:sys, status:"No", notes:""}));
 
 let SCHEMA = null;
-let hotelIndex = [];
-let currentHotel = null;
-let activeTab = null;
-let manageMode = false;
+let profileActiveSection = null;
+let profileManageMode = false;
 
-const el = id => document.getElementById(id);
-
-/* ---------------- Storage ---------------- */
 async function loadSchema(){
-  try{
-    const res = await window.storage.get("dmh-schema", true);
-    SCHEMA = res && res.value ? JSON.parse(res.value) : defaultSchema();
-  } catch(e){ SCHEMA = defaultSchema(); }
+  try{ const res = await window.storage.get("dmh-schema", true); SCHEMA = res && res.value ? JSON.parse(res.value) : defaultSchema(); }
+  catch(e){ SCHEMA = defaultSchema(); }
   if(!SCHEMA || !SCHEMA.sections) SCHEMA = defaultSchema();
+  if(mergeSchemaDefaults(SCHEMA)) await saveSchema();
 }
-async function saveSchema(){
-  try{ await window.storage.set("dmh-schema", JSON.stringify(SCHEMA), true); }catch(e){}
+function mergeSchemaDefaults(schema){
+  const defaults = defaultSchema();
+  let changed = false;
+  defaults.sections.forEach(defSec=>{
+    let sec = schema.sections.find(s=>s.id===defSec.id);
+    if(!sec){ schema.sections.push(JSON.parse(JSON.stringify(defSec))); changed = true; return; }
+    defSec.fields.forEach(df=>{
+      if(!sec.fields.find(f=>f.key===df.key)){ sec.fields.push({...df}); changed = true; }
+    });
+    defSec.tables.forEach(dt=>{
+      let t = sec.tables.find(tt=>tt.id===dt.id);
+      if(!t){ sec.tables.push(JSON.parse(JSON.stringify(dt))); changed = true; return; }
+      dt.columns.forEach(dc=>{
+        if(!t.columns.find(c=>c.key===dc.key)){ t.columns.push({...dc}); changed = true; }
+      });
+    });
+    defSec.tagGroups.forEach(dtg=>{
+      if(!sec.tagGroups.find(g=>g.key===dtg.key)){ sec.tagGroups.push(JSON.parse(JSON.stringify(dtg))); changed = true; }
+    });
+  });
+  return changed;
 }
-async function loadIndex(){
-  try{
-    const res = await window.storage.get("dmh-hotel-index", true);
-    hotelIndex = res && res.value ? JSON.parse(res.value) : [];
-  } catch(e){ hotelIndex = []; }
-}
-async function saveIndex(){ await window.storage.set("dmh-hotel-index", JSON.stringify(hotelIndex), true); }
-async function loadHotel(id){
-  try{
-    const res = await window.storage.get(`dmh-hotel:${id}`, true);
-    if(res && res.value) return JSON.parse(res.value);
-  } catch(e){}
-  return null;
-}
-async function saveHotel(){
-  if(!currentHotel) return;
-  el("saveStatus").textContent = "Saving...";
-  try{
-    await window.storage.set(`dmh-hotel:${currentHotel.id}`, JSON.stringify(currentHotel), true);
-    const idx = hotelIndex.findIndex(h=>h.id===currentHotel.id);
-    const name = getFieldValue("hotelData","name") || currentHotel.id;
-    if(idx>=0) hotelIndex[idx].name = name; else hotelIndex.push({id:currentHotel.id, name});
-    await saveIndex();
-    renderHotelList();
-    el("saveStatus").textContent = "Saved " + new Date().toLocaleTimeString('en-US');
-  } catch(e){
-    el("saveStatus").textContent = "Save failed";
-  }
-}
+async function saveSchema(){ await window.storage.set("dmh-schema", JSON.stringify(SCHEMA), true); }
 
-/* ---------------- Data shape helpers ---------------- */
 function blankHotelRecord(id){
   const rec = {id, sections:{}};
   SCHEMA.sections.forEach(s=>{
     rec.sections[s.id] = {fields:{}, tables:{}, tags:{}};
     s.tables.forEach(t=>{
       rec.sections[s.id].tables[t.id] = (s.id==="access" && t.id==="accessList")
-        ? JSON.parse(JSON.stringify(DEFAULT_ACCESS_ROWS))
-        : [];
+        ? JSON.parse(JSON.stringify(DEFAULT_ACCESS_ROWS)) : [];
     });
     s.tagGroups.forEach(tg=>{ rec.sections[s.id].tags[tg.key] = []; });
   });
@@ -345,194 +424,100 @@ function ensureSectionData(sectionDef){
   if(!currentHotel.sections) currentHotel.sections = {};
   if(!currentHotel.sections[sectionDef.id]) currentHotel.sections[sectionDef.id] = {fields:{}, tables:{}, tags:{}};
   const sd = currentHotel.sections[sectionDef.id];
-  if(!sd.fields) sd.fields = {};
-  if(!sd.tables) sd.tables = {};
-  if(!sd.tags) sd.tags = {};
+  if(!sd.fields) sd.fields = {}; if(!sd.tables) sd.tables = {}; if(!sd.tags) sd.tags = {};
   sectionDef.tables.forEach(t=>{ if(!sd.tables[t.id]) sd.tables[t.id] = []; });
   sectionDef.tagGroups.forEach(tg=>{ if(!sd.tags[tg.key]) sd.tags[tg.key] = []; });
   return sd;
 }
-function getFieldValue(sectionId, key){
-  return currentHotel?.sections?.[sectionId]?.fields?.[key] || "";
-}
-function slugify(str){
-  let s = str.toLowerCase().trim().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-  return s || ("field_" + Date.now());
-}
-function uniqueKey(base, existingKeys){
-  let key = base, i = 1;
-  while(existingKeys.includes(key)){ key = base + "_" + (++i); }
-  return key;
-}
+function slugify(str){ let s = str.toLowerCase().trim().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,''); return s || ("field_"+Date.now()); }
+function uniqueKey(base, existingKeys){ let key = base, i = 1; while(existingKeys.includes(key)){ key = base+"_"+(++i); } return key; }
 
-/* ---------------- Sidebar ---------------- */
-function renderHotelList(){
-  const q = (el("searchInput").value||"").toLowerCase();
-  const list = el("hotelList");
-  list.innerHTML = "";
-  hotelIndex
-    .filter(h => h.name.toLowerCase().includes(q) || h.id.toLowerCase().includes(q))
-    .sort((a,b)=> a.name.localeCompare(b.name))
-    .forEach(h=>{
-      const item = document.createElement("div");
-      item.className = "hotel-item" + (currentHotel && currentHotel.id===h.id ? " active" : "");
-      item.innerHTML = `<span class="hname">${h.name || "(untitled)"}</span><span class="hid">${h.id}</span>`;
-      item.addEventListener("click", ()=> selectHotel(h.id));
-      list.appendChild(item);
-    });
-}
-el("searchInput").addEventListener("input", renderHotelList);
+function renderInputTab(){
+  const root = el("tabInput");
+  root.innerHTML = "";
+  if(!currentHotel){ root.innerHTML = '<div class="empty-state">Select a hotel above, or create a new one.</div>'; return; }
+  if(!profileActiveSection) profileActiveSection = SCHEMA.sections[0].id;
 
-async function selectHotel(id){
-  const loaded = await loadHotel(id);
-  currentHotel = loaded || blankHotelRecord(id);
-  activeTab = SCHEMA.sections[0].id;
-  manageMode = false;
-  renderHotelList();
-  renderMain();
-}
+  const saveRow = document.createElement("div"); saveRow.className = "row"; saveRow.style.marginBottom = "12px";
+  saveRow.innerHTML = `<button class="btn" id="profileSaveBtn">Save profile</button><span class="status-text" id="profileSaveStatus"></span>`;
+  root.appendChild(saveRow);
+  el("profileSaveBtn").addEventListener("click", async ()=>{
+    el("profileSaveStatus").textContent = "Saving...";
+    await saveHotelRecord(currentHotel); populateHotelSelect();
+    el("profileSaveStatus").textContent = "Saved " + new Date().toLocaleTimeString('en-US');
+  });
 
-el("newHotelBtn").addEventListener("click", ()=>{
-  const name = prompt("New hotel name:");
-  if(!name) return;
-  const id = "HTL-" + Math.random().toString(36).slice(2,7).toUpperCase();
-  currentHotel = blankHotelRecord(id);
-  currentHotel.sections.hotelData.fields.name = name;
-  activeTab = SCHEMA.sections[0].id;
-  manageMode = false;
-  hotelIndex.push({id, name});
-  renderHotelList();
-  renderMain();
-});
-
-el("saveBtn").addEventListener("click", saveHotel);
-el("deleteBtn").addEventListener("click", async ()=>{
-  if(!currentHotel) return;
-  const name = getFieldValue("hotelData","name") || currentHotel.id;
-  if(!confirm(`Delete the profile for "${name}"?`)) return;
-  try{ await window.storage.delete(`dmh-hotel:${currentHotel.id}`, true); }catch(e){}
-  hotelIndex = hotelIndex.filter(h=>h.id!==currentHotel.id);
-  await saveIndex();
-  currentHotel = null;
-  renderHotelList();
-  el("mainHead").style.display="none";
-  el("tabs").style.display="none";
-  el("content").innerHTML = '<div class="empty-state">Select a hotel on the left, or create a new one.</div>';
-});
-
-/* ---------------- Main / Tabs ---------------- */
-function renderMain(){
-  if(!currentHotel) return;
-  el("mainHead").style.display = "flex";
-  el("tabs").style.display = "flex";
-  el("hhTitle").innerHTML = `${getFieldValue("hotelData","name") || "(untitled)"} <span class="hh-id">${currentHotel.id}</span>`;
-  el("saveStatus").textContent = "";
-  renderTabs();
-  renderSection();
-}
-function renderTabs(){
-  const tabsEl = el("tabs");
-  tabsEl.innerHTML = "";
+  const ptabs = document.createElement("div"); ptabs.className = "ptabs";
   SCHEMA.sections.forEach(s=>{
     const t = document.createElement("div");
-    t.className = "tab" + (s.id===activeTab ? " active" : "");
-    t.innerHTML = `<span class="tnum">${s.num}</span> ${s.title}`;
-    t.addEventListener("click", ()=>{ activeTab = s.id; manageMode = false; renderTabs(); renderSection(); });
-    tabsEl.appendChild(t);
+    t.className = "ptab" + (s.id===profileActiveSection ? " active" : "");
+    t.textContent = `${s.num} ${s.title}`;
+    t.addEventListener("click", ()=>{ profileActiveSection = s.id; profileManageMode=false; renderInputTab(); });
+    ptabs.appendChild(t);
   });
-}
+  root.appendChild(ptabs);
 
-/* ---------------- Section rendering (generic engine) ---------------- */
-function renderSection(){
-  const s = SCHEMA.sections.find(x=>x.id===activeTab);
+  const s = SCHEMA.sections.find(x=>x.id===profileActiveSection);
   const sd = ensureSectionData(s);
-  const c = el("content");
-  c.innerHTML = "";
-
+  const card = document.createElement("div"); card.className = "card";
   const top = document.createElement("div");
-  top.className = "section-top";
-  top.innerHTML = `<div class="section-title">${s.num}. ${s.title}</div>`;
+  top.style.cssText = "display:flex;align-items:baseline;gap:10px;margin-bottom:14px;";
+  top.innerHTML = `<div class="card-title" style="flex:1;">${s.num}. ${s.title}</div>`;
   const manageBtn = document.createElement("button");
-  manageBtn.className = "btn ghost sm manage-toggle";
-  manageBtn.textContent = manageMode ? "Done editing fields" : "Edit fields";
-  manageBtn.addEventListener("click", ()=>{ manageMode = !manageMode; renderSection(); });
-  top.appendChild(manageBtn);
-  c.appendChild(top);
+  manageBtn.className = "btn ghost sm";
+  manageBtn.textContent = profileManageMode ? "Done editing fields" : "Edit fields";
+  manageBtn.addEventListener("click", ()=>{ profileManageMode = !profileManageMode; renderInputTab(); });
+  top.appendChild(manageBtn); card.appendChild(top);
 
-  if(manageMode){
-    c.appendChild(renderManagePanel(s));
-    return;
-  }
+  if(profileManageMode){ card.appendChild(renderManagePanel(s)); root.appendChild(card); return; }
 
   const visibleFields = s.fields.filter(f=>!f.hidden);
   if(visibleFields.length){
-    const grid = document.createElement("div");
-    grid.className = "form-grid";
+    const grid = document.createElement("div"); grid.className = "form-grid";
     visibleFields.forEach(f=> grid.appendChild(makeFieldInput(sd.fields, f)));
-    c.appendChild(grid);
+    card.appendChild(grid);
   }
-
   s.tables.forEach(t=>{
-    const wrap = document.createElement("div");
-    wrap.className = "group-block";
+    const wrap = document.createElement("div"); wrap.className = "group-block";
     wrap.innerHTML = `<div class="group-label">${t.label}</div>`;
-    wrap.appendChild(renderTable(t, sd.tables[t.id]));
-    c.appendChild(wrap);
+    wrap.appendChild(renderTable(t, sd.tables[t.id], renderInputTab));
+    card.appendChild(wrap);
   });
-
   s.tagGroups.forEach(tg=>{
-    const wrap = document.createElement("div");
-    wrap.className = "group-block";
+    const wrap = document.createElement("div"); wrap.className = "group-block";
     wrap.innerHTML = `<div class="group-label">${tg.label}</div>`;
-    wrap.appendChild(renderTagGroup(tg, sd.tags[tg.key]));
-    c.appendChild(wrap);
+    wrap.appendChild(renderTagGroup(tg, sd.tags[tg.key], renderInputTab, saveSchema));
+    card.appendChild(wrap);
   });
+  root.appendChild(card);
 }
 
 function makeFieldInput(dataObj, f){
-  const wrap = document.createElement("div");
-  wrap.className = "field" + (f.full ? " full" : "");
-  const label = document.createElement("label");
-  label.textContent = f.label;
-  wrap.appendChild(label);
+  const wrap = document.createElement("div"); wrap.className = "field" + (f.full ? " full" : "");
+  const label = document.createElement("label"); label.textContent = f.label; wrap.appendChild(label);
   let input;
-  if(f.type==="textarea"){
-    input = document.createElement("textarea");
-    input.value = dataObj[f.key] || "";
-  } else if(f.type==="select"){
+  if(f.type==="textarea"){ input = document.createElement("textarea"); input.value = dataObj[f.key] || ""; }
+  else if(f.type==="select"){
     input = document.createElement("select");
-    const blank = document.createElement("option"); blank.value=""; blank.textContent="—";
-    input.appendChild(blank);
-    (f.options||[]).forEach(o=>{
-      const opt = document.createElement("option"); opt.value=o; opt.textContent=o;
-      input.appendChild(opt);
-    });
+    const blank = document.createElement("option"); blank.value=""; blank.textContent="—"; input.appendChild(blank);
+    (f.options||[]).forEach(o=>{ const opt=document.createElement("option"); opt.value=o; opt.textContent=o; input.appendChild(opt); });
     input.value = dataObj[f.key] || "";
-  } else {
-    input = document.createElement("input");
-    input.type = f.type;
-    input.value = dataObj[f.key] || "";
-  }
+  } else { input = document.createElement("input"); input.type = f.type; input.value = dataObj[f.key] || ""; }
   input.addEventListener("input", ()=>{ dataObj[f.key] = input.value; });
   if(f.type==="select") input.addEventListener("change", ()=>{ dataObj[f.key] = input.value; });
-  wrap.appendChild(input);
-  return wrap;
+  wrap.appendChild(input); return wrap;
 }
 
-function renderTable(tableDef, rows){
+/* Generic repeatable table renderer — used across Hotel Input, Strategy, Results.
+   rerenderFn is called after add/remove so the caller's view refreshes. */
+function renderTable(tableDef, rows, rerenderFn){
   const wrap = document.createElement("div");
   const visibleCols = tableDef.columns.filter(c=>!c.hidden);
-  const table = document.createElement("table");
-  table.className = "rep-table";
+  const table = document.createElement("table"); table.className = "rep";
   const headRow = document.createElement("tr");
-  visibleCols.forEach(col=>{
-    const th = document.createElement("th");
-    th.textContent = col.label;
-    headRow.appendChild(th);
-  });
+  visibleCols.forEach(col=>{ const th=document.createElement("th"); th.textContent=col.label; headRow.appendChild(th); });
   headRow.appendChild(document.createElement("th"));
   table.appendChild(headRow);
-
   rows.forEach((row,i)=>{
     const tr = document.createElement("tr");
     visibleCols.forEach(col=>{
@@ -540,51 +525,36 @@ function renderTable(tableDef, rows){
       let input;
       if(col.type==="select"){
         input = document.createElement("select");
-        const blank = document.createElement("option"); blank.value=""; blank.textContent="—";
-        input.appendChild(blank);
-        (col.options||[]).forEach(o=>{
-          const opt = document.createElement("option"); opt.value=o; opt.textContent=o;
-          if(row[col.key]===o) opt.selected = true;
-          input.appendChild(opt);
-        });
+        const blank=document.createElement("option"); blank.value=""; blank.textContent="—"; input.appendChild(blank);
+        (col.options||[]).forEach(o=>{ const opt=document.createElement("option"); opt.value=o; opt.textContent=o; if(row[col.key]===o) opt.selected=true; input.appendChild(opt); });
       } else {
-        input = document.createElement("input");
-        input.type = col.type;
-        input.value = row[col.key] || "";
+        input = document.createElement("input"); input.type = col.type; input.value = row[col.key] || "";
+        if(col.datalist){ input.setAttribute("list", col.datalist); }
       }
       input.addEventListener("input", ()=>{ row[col.key] = input.value; });
       if(col.type==="select") input.addEventListener("change", ()=>{ row[col.key] = input.value; });
-      td.appendChild(input);
-      tr.appendChild(td);
+      td.appendChild(input); tr.appendChild(td);
     });
     const tdRemove = document.createElement("td");
-    const btn = document.createElement("button");
-    btn.className = "rep-remove";
-    btn.textContent = "✕";
-    btn.addEventListener("click", ()=>{ rows.splice(i,1); renderSection(); });
-    tdRemove.appendChild(btn);
-    tr.appendChild(tdRemove);
+    const btn = document.createElement("button"); btn.className="rep-remove"; btn.textContent="✕";
+    btn.addEventListener("click", ()=>{ rows.splice(i,1); rerenderFn(); });
+    tdRemove.appendChild(btn); tr.appendChild(tdRemove);
     table.appendChild(tr);
   });
   wrap.appendChild(table);
-
-  const addBtn = document.createElement("button");
-  addBtn.className = "btn secondary sm";
+  const addBtn = document.createElement("button"); addBtn.className = "btn secondary sm";
   addBtn.textContent = tableDef.addLabel || "+ Add row";
   addBtn.addEventListener("click", ()=>{
-    const newRow = {};
-    tableDef.columns.forEach(c=> newRow[c.key] = "");
-    rows.push(newRow);
-    renderSection();
+    const newRow = {}; tableDef.columns.forEach(c=> newRow[c.key]=""); rows.push(newRow); rerenderFn();
   });
   wrap.appendChild(addBtn);
   return wrap;
 }
 
-function renderTagGroup(tg, selectedArr){
+/* Generic tag-picker — extendable groups persist new options to a shared list via onNewOption. */
+function renderTagGroup(tg, selectedArr, rerenderFn, onSaveOptions){
   const wrap = document.createElement("div");
-  const group = document.createElement("div");
-  group.className = "tag-group";
+  const group = document.createElement("div"); group.className = "tag-group";
   tg.options.filter(o=>!(tg.hiddenOptions||[]).includes(o)).forEach(opt=>{
     const tag = document.createElement("div");
     tag.className = "tag" + (selectedArr.includes(opt) ? " selected" : "");
@@ -592,168 +562,675 @@ function renderTagGroup(tg, selectedArr){
     tag.addEventListener("click", ()=>{
       const i = selectedArr.indexOf(opt);
       if(i>=0) selectedArr.splice(i,1); else selectedArr.push(opt);
-      renderSection();
+      rerenderFn();
     });
     group.appendChild(tag);
   });
   wrap.appendChild(group);
-
   if(tg.extendable){
-    const addWrap = document.createElement("div");
-    addWrap.className = "tag-add";
-    const input = document.createElement("input");
-    input.type = "text";
-    input.placeholder = "Add new tag...";
-    const btn = document.createElement("button");
-    btn.className = "btn secondary sm";
-    btn.textContent = "Add";
+    const addWrap = document.createElement("div"); addWrap.className = "tag-add";
+    const input = document.createElement("input"); input.type="text"; input.placeholder="Add new tag...";
+    const btn = document.createElement("button"); btn.className="btn secondary sm"; btn.textContent="Add";
     btn.addEventListener("click", async ()=>{
-      const val = input.value.trim();
-      if(!val) return;
+      const val = input.value.trim(); if(!val) return;
       if(!tg.options.includes(val)) tg.options.push(val);
       if(!selectedArr.includes(val)) selectedArr.push(val);
-      await saveSchema();
-      renderSection();
+      if(onSaveOptions) await onSaveOptions();
+      rerenderFn();
     });
-    addWrap.appendChild(input);
-    addWrap.appendChild(btn);
-    wrap.appendChild(addWrap);
+    addWrap.appendChild(input); addWrap.appendChild(btn); wrap.appendChild(addWrap);
   }
   return wrap;
 }
 
-/* ---------------- Manage Fields panel ---------------- */
 function renderManagePanel(s){
-  const panel = document.createElement("div");
-  panel.className = "manage-panel";
+  const panel = document.createElement("div"); panel.className = "manage-panel";
   panel.innerHTML = `<div class="manage-note">Hiding a field, column, or tag never deletes data already saved for any hotel — it only removes it from view. Changes apply for the whole team.</div>`;
-
-  // Fields
-  if(s.fields.length || true){
-    const group = document.createElement("div");
-    group.className = "manage-group";
-    group.innerHTML = `<div class="manage-group-title">Fields</div>`;
-    s.fields.forEach(f=>{
-      const row = document.createElement("div");
-      row.className = "manage-row";
-      row.innerHTML = `
-        <input type="checkbox" ${!f.hidden ? "checked" : ""}>
-        <span class="mlabel">${f.label}</span>
-        <span class="mtype">${f.type}</span>`;
-      row.querySelector("input").addEventListener("change", async (e)=>{
-        f.hidden = !e.target.checked;
-        await saveSchema();
-      });
-      group.appendChild(row);
-    });
-    group.appendChild(makeAddFieldForm(async (newField)=>{
-      const existingKeys = s.fields.map(f=>f.key);
-      newField.key = uniqueKey(slugify(newField.label), existingKeys);
-      newField.hidden = false;
-      s.fields.push(newField);
-      await saveSchema();
-      renderSection();
-    }));
-    panel.appendChild(group);
-  }
-
-  // Tables
-  s.tables.forEach(t=>{
-    const group = document.createElement("div");
-    group.className = "manage-group";
-    group.innerHTML = `<div class="manage-group-title">Columns — ${t.label}</div>`;
-    t.columns.forEach(col=>{
-      const row = document.createElement("div");
-      row.className = "manage-row";
-      row.innerHTML = `
-        <input type="checkbox" ${!col.hidden ? "checked" : ""}>
-        <span class="mlabel">${col.label}</span>
-        <span class="mtype">${col.type}</span>`;
-      row.querySelector("input").addEventListener("change", async (e)=>{
-        col.hidden = !e.target.checked;
-        await saveSchema();
-      });
-      group.appendChild(row);
-    });
-    group.appendChild(makeAddFieldForm(async (newField)=>{
-      const existingKeys = t.columns.map(c=>c.key);
-      newField.key = uniqueKey(slugify(newField.label), existingKeys);
-      newField.hidden = false;
-      t.columns.push(newField);
-      await saveSchema();
-      renderSection();
-    }));
-    panel.appendChild(group);
+  const fgroup = document.createElement("div"); fgroup.className="manage-group";
+  fgroup.innerHTML = `<div class="manage-group-title">Fields</div>`;
+  s.fields.forEach(f=>{
+    const row = document.createElement("div"); row.className = "manage-row";
+    row.innerHTML = `<input type="checkbox" ${!f.hidden?"checked":""}><span class="mlabel">${f.label}</span><span class="mtype">${f.type}</span>`;
+    row.querySelector("input").addEventListener("change", async e=>{ f.hidden = !e.target.checked; await saveSchema(); });
+    fgroup.appendChild(row);
   });
-
-  // Tag groups
+  fgroup.appendChild(makeAddFieldForm(async newField=>{
+    newField.key = uniqueKey(slugify(newField.label), s.fields.map(f=>f.key));
+    newField.hidden = false; s.fields.push(newField); await saveSchema(); renderInputTab();
+  }));
+  panel.appendChild(fgroup);
+  s.tables.forEach(t=>{
+    const g = document.createElement("div"); g.className="manage-group";
+    g.innerHTML = `<div class="manage-group-title">Columns — ${t.label}</div>`;
+    t.columns.forEach(col=>{
+      const row = document.createElement("div"); row.className="manage-row";
+      row.innerHTML = `<input type="checkbox" ${!col.hidden?"checked":""}><span class="mlabel">${col.label}</span><span class="mtype">${col.type}</span>`;
+      row.querySelector("input").addEventListener("change", async e=>{ col.hidden = !e.target.checked; await saveSchema(); });
+      g.appendChild(row);
+    });
+    g.appendChild(makeAddFieldForm(async newField=>{
+      newField.key = uniqueKey(slugify(newField.label), t.columns.map(c=>c.key));
+      newField.hidden = false; t.columns.push(newField); await saveSchema(); renderInputTab();
+    }));
+    panel.appendChild(g);
+  });
   s.tagGroups.forEach(tg=>{
-    const group = document.createElement("div");
-    group.className = "manage-group";
-    group.innerHTML = `<div class="manage-group-title">Tags — ${tg.label}</div>`;
+    const g = document.createElement("div"); g.className="manage-group";
+    g.innerHTML = `<div class="manage-group-title">Tags — ${tg.label}</div>`;
     tg.options.forEach(opt=>{
       const hidden = (tg.hiddenOptions||[]).includes(opt);
-      const row = document.createElement("div");
-      row.className = "manage-row";
-      row.innerHTML = `<input type="checkbox" ${!hidden ? "checked" : ""}><span class="mlabel">${opt}</span>`;
-      row.querySelector("input").addEventListener("change", async (e)=>{
-        tg.hiddenOptions = tg.hiddenOptions || [];
+      const row = document.createElement("div"); row.className="manage-row";
+      row.innerHTML = `<input type="checkbox" ${!hidden?"checked":""}><span class="mlabel">${opt}</span>`;
+      row.querySelector("input").addEventListener("change", async e=>{
+        tg.hiddenOptions = tg.hiddenOptions||[];
         if(e.target.checked) tg.hiddenOptions = tg.hiddenOptions.filter(o=>o!==opt);
         else if(!tg.hiddenOptions.includes(opt)) tg.hiddenOptions.push(opt);
         await saveSchema();
       });
-      group.appendChild(row);
+      g.appendChild(row);
     });
-    panel.appendChild(group);
+    panel.appendChild(g);
   });
-
   return panel;
 }
-
 function makeAddFieldForm(onAdd){
-  const form = document.createElement("div");
-  form.className = "add-field-form";
-  const labelInput = document.createElement("input");
-  labelInput.type = "text";
-  labelInput.placeholder = "New field label...";
+  const form = document.createElement("div"); form.className = "add-field-form";
+  const labelInput = document.createElement("input"); labelInput.type="text"; labelInput.placeholder="New field label...";
   const typeSelect = document.createElement("select");
-  ["text","number","textarea","date","select"].forEach(t=>{
-    const o = document.createElement("option"); o.value=t; o.textContent=t;
-    typeSelect.appendChild(o);
-  });
-  const optionsInput = document.createElement("input");
-  optionsInput.type = "text";
-  optionsInput.placeholder = "Options (comma-separated, for select)";
-  optionsInput.style.display = "none";
-  optionsInput.style.width = "220px";
-  typeSelect.addEventListener("change", ()=>{
-    optionsInput.style.display = typeSelect.value==="select" ? "inline-block" : "none";
-  });
-  const addBtn = document.createElement("button");
-  addBtn.className = "btn secondary sm";
-  addBtn.textContent = "+ Add field";
+  ["text","number","textarea","date","select"].forEach(t=>{ const o=document.createElement("option"); o.value=t; o.textContent=t; typeSelect.appendChild(o); });
+  const optionsInput = document.createElement("input"); optionsInput.type="text"; optionsInput.placeholder="Options (comma-separated)"; optionsInput.style.display="none"; optionsInput.style.width="200px";
+  typeSelect.addEventListener("change", ()=>{ optionsInput.style.display = typeSelect.value==="select" ? "inline-block":"none"; });
+  const addBtn = document.createElement("button"); addBtn.className="btn secondary sm"; addBtn.textContent="+ Add field";
   addBtn.addEventListener("click", ()=>{
-    const label = labelInput.value.trim();
-    if(!label) return;
+    const label = labelInput.value.trim(); if(!label) return;
     const field = {label, type: typeSelect.value};
-    if(typeSelect.value==="select"){
-      field.options = optionsInput.value.split(",").map(s=>s.trim()).filter(Boolean);
-    }
-    onAdd(field);
-    labelInput.value = ""; optionsInput.value = "";
+    if(typeSelect.value==="select") field.options = optionsInput.value.split(",").map(s=>s.trim()).filter(Boolean);
+    onAdd(field); labelInput.value=""; optionsInput.value="";
   });
-  form.appendChild(labelInput);
-  form.appendChild(typeSelect);
-  form.appendChild(optionsInput);
-  form.appendChild(addBtn);
+  form.appendChild(labelInput); form.appendChild(typeSelect); form.appendChild(optionsInput); form.appendChild(addBtn);
   return form;
 }
 
-/* ---------------- Init ---------------- */
+/* =========================================================
+   MODULE: STRATEGY
+========================================================= */
+const LEVERS = ["Traffic","Conversion","Visibility","Offer","Distribution"];
+const POTENTIAL_OPTIONS = ["—","High","Medium","Low"];
+const PRIORITY_RANK_OPTIONS = ["-","1","2","3","4","5"];
+const ACTIVITY_PRIORITY_OPTIONS = ["High","Medium","Low"];
+const MONTH_OPTIONS = [["m1","M1"],["m2","M2"],["m3","M3+"]];
+const LEVER_HINTS = {
+  "Traffic":"GHA, Google Search, Bing/Yandex, Display, Meta prospecting, TikTok",
+  "Conversion":"Website/CRO, localization, offer optimization, guest path",
+  "Visibility":"SEO, AI Search, Google Business Profile, Display",
+  "Offer":"Seasonal offers, packages, promo codes",
+  "Distribution":"Referral/travel listings, local directories, partnerships",
+};
+
+function defaultStrategySettings(){ return { weights: { High:3, Medium:2, Low:1 } }; }
+function blankStrategy(){
+  return {
+    levers: LEVERS.map(l=>({lever:l, potential:"—", priority:"-"})),
+    targetMarkets: { rows: [], segments: [], channelFitNotes: "" },
+    activities: [], rationale: [],
+  };
+}
+let STRATEGY_SETTINGS = null;
+let currentStrategy = null;
+let strategyMonthKey = "m1";
+async function loadStrategySettings(){
+  try{ const res = await window.storage.get("dmh-strategy-settings", true); STRATEGY_SETTINGS = res && res.value ? JSON.parse(res.value) : defaultStrategySettings(); }
+  catch(e){ STRATEGY_SETTINGS = defaultStrategySettings(); }
+}
+async function saveStrategySettings(){ await window.storage.set("dmh-strategy-settings", JSON.stringify(STRATEGY_SETTINGS), true); }
+async function loadStrategy(hotelId){
+  try{ const res = await window.storage.get(`dmh-strategy:${hotelId}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
+  return null;
+}
+async function saveStrategy(){ if(!currentHotel) return; await window.storage.set(`dmh-strategy:${currentHotel.id}`, JSON.stringify(currentStrategy), true); }
+
+async function ensureStrategyLoaded(){
+  if(!currentStrategy || currentStrategy._hotelId !== currentHotel.id){
+    const loaded = await loadStrategy(currentHotel.id);
+    currentStrategy = loaded || blankStrategy();
+    if(!currentStrategy.targetMarkets) currentStrategy.targetMarkets = { rows: [], segments: [], channelFitNotes: "" };
+    currentStrategy._hotelId = currentHotel.id;
+  }
+}
+
+async function renderStrategyTab(){
+  const root = el("tabStrategy");
+  root.innerHTML = "";
+  if(!currentHotel){ root.innerHTML = '<div class="empty-state">Select a hotel above.</div>'; return; }
+  await ensureStrategyLoaded();
+
+  const saveRow = document.createElement("div"); saveRow.className = "row"; saveRow.style.marginBottom="12px";
+  saveRow.innerHTML = `<button class="btn secondary" id="stratSaveBtn">Save strategy</button><span class="status-text" id="stratSaveStatus"></span>`;
+  root.appendChild(saveRow);
+  el("stratSaveBtn").addEventListener("click", async ()=>{ el("stratSaveStatus").textContent="Saving..."; await saveStrategy(); el("stratSaveStatus").textContent="Saved "+new Date().toLocaleTimeString('en-US'); });
+
+  const monthKey = strategyMonthKey;
+  const budget = getField(currentHotel,"budgets",monthKey);
+
+  const leversCard = document.createElement("div"); leversCard.className = "card";
+  leversCard.innerHTML = `<div class="card-title">Growth levers</div>`;
+  const leversTable = document.createElement("table"); leversTable.className = "rep";
+  leversTable.innerHTML = `<tr><th>Growth lever</th><th style="width:160px;">Potential</th><th style="width:110px;">Priority</th></tr>`;
+  currentStrategy.levers.forEach(row=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${row.lever}</td>
+      <td><select data-lever="${row.lever}" data-field="potential">${POTENTIAL_OPTIONS.map(o=>`<option value="${o}" ${row.potential===o?"selected":""}>${o}</option>`).join("")}</select></td>
+      <td><select data-lever="${row.lever}" data-field="priority">${PRIORITY_RANK_OPTIONS.map(o=>`<option value="${o}" ${row.priority===o?"selected":""}>${o}</option>`).join("")}</select></td>`;
+    leversTable.appendChild(tr);
+  });
+  leversTable.querySelectorAll("select").forEach(sel=>{
+    sel.addEventListener("change", ()=>{ const row = currentStrategy.levers.find(r=>r.lever===sel.dataset.lever); row[sel.dataset.field]=sel.value; });
+  });
+  leversCard.appendChild(leversTable);
+  const saveLeversBtn = document.createElement("button"); saveLeversBtn.className = "btn secondary sm"; saveLeversBtn.style.marginTop="10px"; saveLeversBtn.textContent = "Save levers";
+  const saveLeversStatus = document.createElement("span"); saveLeversStatus.className = "status-text"; saveLeversStatus.style.marginLeft = "8px";
+  saveLeversBtn.addEventListener("click", async ()=>{ await saveStrategy(); saveLeversStatus.textContent = "Saved " + new Date().toLocaleTimeString('en-US'); });
+  leversCard.appendChild(saveLeversBtn);
+  leversCard.appendChild(saveLeversStatus);
+  const hintDetails = document.createElement("details");
+  hintDetails.innerHTML = `<summary>Lever → activity hints (reference only, not saved data)</summary>`;
+  const hintGrid = document.createElement("div"); hintGrid.className = "hint-grid";
+  LEVERS.forEach(l=>{ const d=document.createElement("div"); d.className="hint-item"; d.innerHTML = `<b>${l}</b> → ${LEVER_HINTS[l]}`; hintGrid.appendChild(d); });
+  hintDetails.appendChild(hintGrid);
+  leversCard.appendChild(hintDetails);
+  root.appendChild(leversCard);
+
+  const tmCard = document.createElement("div"); tmCard.className = "card";
+  tmCard.innerHTML = `<div class="card-title">Target markets & segments</div>`;
+  tmCard.appendChild(renderTable(
+    { columns:[
+        {key:"market", label:"Market", type:"text"},
+        {key:"priority", label:"Priority", type:"select", options:["High","Medium","Low"]},
+        {key:"rationale", label:"Rationale", type:"text"},
+      ], addLabel:"+ Add target market" },
+    currentStrategy.targetMarkets.rows,
+    ()=>renderStrategyTab()
+  ));
+  const segGroup = document.createElement("div"); segGroup.className = "group-block";
+  segGroup.innerHTML = `<div class="group-label">Segments</div>`;
+  segGroup.appendChild(renderTagGroup(
+    { key:"segments", label:"", extendable:true, options: sharedTags.length ? sharedTags : [] },
+    currentStrategy.targetMarkets.segments,
+    ()=>renderStrategyTab(),
+    async ()=>{ /* segments are free-form per hotel, not pushed to global shared tags */ }
+  ));
+  tmCard.appendChild(segGroup);
+  const cfWrap = document.createElement("div"); cfWrap.className = "form-grid"; cfWrap.style.marginTop="12px";
+  cfWrap.appendChild(makeFieldInput(currentStrategy.targetMarkets, {key:"channelFitNotes", label:"Channel fit notes", type:"textarea", full:true}));
+  tmCard.appendChild(cfWrap);
+  root.appendChild(tmCard);
+
+  const planCard = document.createElement("div"); planCard.className = "card";
+  planCard.innerHTML = `<div class="card-title">Activity plan</div>`;
+  const periodPicker = document.createElement("div"); periodPicker.className = "field"; periodPicker.style.marginBottom = "10px";
+  periodPicker.innerHTML = `<label>Budget period</label>
+    <select id="stratMonthSelect" style="width:140px;">
+      <option value="m1" ${monthKey==="m1"?"selected":""}>Month 1</option>
+      <option value="m2" ${monthKey==="m2"?"selected":""}>Month 2</option>
+      <option value="m3" ${monthKey==="m3"?"selected":""}>Month 3+</option>
+    </select>`;
+  planCard.appendChild(periodPicker);
+  planCard.appendChild(renderActivityPlan(monthKey, budget));
+  root.appendChild(planCard);
+  el("stratMonthSelect").addEventListener("change", ()=>{ strategyMonthKey = el("stratMonthSelect").value; renderStrategyTab(); });
+
+  const rationaleCard = document.createElement("div"); rationaleCard.className = "card";
+  rationaleCard.innerHTML = `<div class="card-title">Rationale</div>`;
+  rationaleCard.appendChild(renderTable(
+    { columns:[ {key:"activity", label:"Activity", type:"text"}, {key:"reason", label:"Reason", type:"text"} ], addLabel:"+ Add reason" },
+    currentStrategy.rationale, ()=>renderStrategyTab()
+  ));
+  root.appendChild(rationaleCard);
+}
+
+function renderActivityPlan(monthKey, budgetRaw){
+  const wrap = document.createElement("div");
+  const controls = document.createElement("div"); controls.className = "row"; controls.style.marginBottom="10px";
+  controls.innerHTML = `
+    <div class="field"><label>Budget for ${MONTH_OPTIONS.find(m=>m[0]===monthKey)[1]}, $</label><input type="number" id="planBudget" value="${parseFloat(budgetRaw)||0}" style="width:110px;"></div>
+    <details style="flex:1;"><summary>Priority weights (shared)</summary>
+      <div class="row" style="margin-top:8px;">
+        <div class="field"><label>High</label><input type="number" id="wHigh" value="${STRATEGY_SETTINGS.weights.High}" style="width:55px;"></div>
+        <div class="field"><label>Medium</label><input type="number" id="wMedium" value="${STRATEGY_SETTINGS.weights.Medium}" style="width:55px;"></div>
+        <div class="field"><label>Low</label><input type="number" id="wLow" value="${STRATEGY_SETTINGS.weights.Low}" style="width:55px;"></div>
+        <button class="btn secondary sm" id="saveWeightsBtn">Save weights</button>
+      </div>
+    </details>`;
+  wrap.appendChild(controls);
+  const tableWrap = document.createElement("div"); wrap.appendChild(tableWrap);
+  const addBtn = document.createElement("button"); addBtn.className = "btn secondary sm"; addBtn.style.marginTop="10px"; addBtn.textContent="+ Add activity";
+  addBtn.addEventListener("click", ()=>{ currentStrategy.activities.push({activity:"", priority:"Medium", month:monthKey, lever:"", noCost:false}); renderActivityTable(); });
+  wrap.appendChild(addBtn);
+
+  function renderActivityTable(){
+    tableWrap.innerHTML = "";
+    const budget = parseFloat(el("planBudget")?.value ?? budgetRaw) || 0;
+    const w = STRATEGY_SETTINGS.weights;
+    const rowsInMonth = currentStrategy.activities.filter(r=>r.month===monthKey && !r.noCost);
+    const totalWeight = rowsInMonth.reduce((s,r)=>s+(w[r.priority]||0),0) || 1;
+    const table = document.createElement("table"); table.className = "rep";
+    table.innerHTML = `<tr><th>Activity</th><th style="width:100px;">Priority</th><th style="width:75px;">Month</th><th style="width:120px;">Lever</th><th style="width:75px;">No cost</th><th style="width:100px;">Allocated</th><th></th></tr>`;
+    currentStrategy.activities.forEach((row,i)=>{
+      const tr = document.createElement("tr");
+      const inMonth = row.month===monthKey;
+      const allocated = (inMonth && !row.noCost) ? Math.round(budget*(w[row.priority]||0)/totalWeight) : null;
+      tr.innerHTML = `
+        <td><input type="text" list="sharedTagsList" value="${row.activity||""}" data-i="${i}" data-f="activity" placeholder="e.g. Google Hotel Ads"></td>
+        <td><select data-i="${i}" data-f="priority">${ACTIVITY_PRIORITY_OPTIONS.map(o=>`<option value="${o}" ${row.priority===o?"selected":""}>${o}</option>`).join("")}</select></td>
+        <td><select data-i="${i}" data-f="month">${MONTH_OPTIONS.map(m=>`<option value="${m[0]}" ${row.month===m[0]?"selected":""}>${m[1]}</option>`).join("")}</select></td>
+        <td><select data-i="${i}" data-f="lever"><option value="">—</option>${LEVERS.map(l=>`<option value="${l}" ${row.lever===l?"selected":""}>${l}</option>`).join("")}</select></td>
+        <td style="text-align:center;"><input type="checkbox" data-i="${i}" data-f="noCost" ${row.noCost?"checked":""}></td>
+        <td>${allocated!==null?"$"+allocated:(row.noCost?"no cost":(inMonth?"$0":"—"))}</td>
+        <td><button class="rep-remove" data-i="${i}">✕</button></td>`;
+      table.appendChild(tr);
+    });
+    tableWrap.appendChild(table);
+    table.querySelectorAll("input,select").forEach(inp=>{
+      const eventName = inp.type==="checkbox" ? "change" : (inp.tagName==="SELECT" ? "change" : "input");
+      inp.addEventListener(eventName, async ()=>{
+        const row = currentStrategy.activities[inp.dataset.i];
+        row[inp.dataset.f] = inp.type==="checkbox" ? inp.checked : inp.value;
+        if(inp.dataset.f==="activity" && inp.value.trim()) await addSharedTag(inp.value.trim());
+        renderActivityTable();
+      });
+    });
+    table.querySelectorAll(".rep-remove").forEach(btn=> btn.addEventListener("click", ()=>{ currentStrategy.activities.splice(btn.dataset.i,1); renderActivityTable(); }));
+  }
+  setTimeout(()=>{
+    el("planBudget").addEventListener("input", renderActivityTable);
+    el("saveWeightsBtn").addEventListener("click", async ()=>{
+      STRATEGY_SETTINGS.weights.High = +el("wHigh").value;
+      STRATEGY_SETTINGS.weights.Medium = +el("wMedium").value;
+      STRATEGY_SETTINGS.weights.Low = +el("wLow").value;
+      await saveStrategySettings(); renderActivityTable();
+    });
+    renderActivityTable();
+  },0);
+  return wrap;
+}
+
+/* =========================================================
+   MODULE: PROGRESS (flat cards, board by stage)
+========================================================= */
+const STAGES = ["Idea","Planned","In Preparation","Live","Done/Paused"];
+function blankProgress(){ return { cards: [], ideas: [], generalNotes: [] }; }
+let currentProgress = null;
+let progressExpanded = {};
+let progressFilterTag = "";
+
+async function loadProgress(hotelId){
+  try{ const res = await window.storage.get(`dmh-progress:${hotelId}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
+  return null;
+}
+async function saveProgress(){ if(!currentHotel) return; await window.storage.set(`dmh-progress:${currentHotel.id}`, JSON.stringify(currentProgress), true); }
+async function ensureProgressLoaded(){
+  if(!currentProgress || currentProgress._hotelId !== currentHotel.id){
+    const loaded = await loadProgress(currentHotel.id);
+    currentProgress = loaded || blankProgress();
+    if(!currentProgress.cards) currentProgress.cards = [];
+    if(!currentProgress.ideas) currentProgress.ideas = [];
+    if(!currentProgress.generalNotes) currentProgress.generalNotes = [];
+    currentProgress._hotelId = currentHotel.id;
+    progressExpanded = {};
+  }
+}
+
+async function renderProgressTab(){
+  const root = el("tabProgress");
+  root.innerHTML = "";
+  if(!currentHotel){ root.innerHTML = '<div class="empty-state">Select a hotel above.</div>'; return; }
+  await ensureProgressLoaded();
+
+  const topRow = document.createElement("div"); topRow.className = "card";
+  topRow.innerHTML = `<div class="row" style="align-items:flex-start;">
+    <div class="field" style="flex:1;"><label>Filter by tag (click to filter, or add a new one)</label>
+      <div id="progFilterTags" class="tag-group"></div>
+    </div>
+    <button class="btn" id="addCardBtn">+ Add card</button>
+    <span class="status-text" id="progSaveStatus"></span>
+  </div>`;
+  root.appendChild(topRow);
+
+  const filterTagsWrap = el("progFilterTags");
+  const allOption = document.createElement("div");
+  allOption.className = "tag" + (progressFilterTag==="" ? " selected" : "");
+  allOption.textContent = "All";
+  allOption.addEventListener("click", ()=>{ progressFilterTag = ""; renderProgressTab(); });
+  filterTagsWrap.appendChild(allOption);
+  sharedTags.forEach(t=>{
+    const tag = document.createElement("div");
+    tag.className = "tag" + (progressFilterTag===t ? " selected" : "");
+    tag.textContent = t;
+    tag.addEventListener("click", ()=>{ progressFilterTag = (progressFilterTag===t ? "" : t); renderProgressTab(); });
+    filterTagsWrap.appendChild(tag);
+  });
+  const addTagWrap = document.createElement("div"); addTagWrap.className = "tag-add"; addTagWrap.style.marginTop = "6px";
+  addTagWrap.innerHTML = `<input type="text" id="newFilterTagInput" placeholder="Add new tag..."><button class="btn secondary sm" id="addFilterTagBtn">Add</button>`;
+  el("progFilterTags").insertAdjacentElement("afterend", addTagWrap);
+  el("addFilterTagBtn").addEventListener("click", async ()=>{
+    const val = el("newFilterTagInput").value.trim();
+    if(!val) return;
+    await addSharedTag(val);
+    progressFilterTag = val;
+    renderProgressTab();
+  });
+
+  const manageTagsDetails = document.createElement("details"); manageTagsDetails.style.marginTop = "10px";
+  manageTagsDetails.innerHTML = `<summary>Manage tags (rename or remove — renaming updates every card, activity, and result already using it)</summary>`;
+  const manageTagsBody = document.createElement("div"); manageTagsBody.style.marginTop = "8px";
+  sharedTags.forEach(tag=>{
+    const row = document.createElement("div"); row.className = "manage-row";
+    row.innerHTML = `<input type="text" value="${tag}" style="flex:1;">
+      <button class="btn secondary sm rename-tag">Rename</button>
+      <button class="btn danger sm remove-tag">Remove</button>`;
+    row.querySelector(".rename-tag").addEventListener("click", async ()=>{
+      const newVal = row.querySelector("input").value.trim();
+      manageTagsStatus.textContent = "Updating...";
+      const result = await renameSharedTag(tag, newVal);
+      if(progressFilterTag === tag) progressFilterTag = newVal;
+      manageTagsStatus.textContent = result.changed ? `Renamed — updated ${result.updatedRecords} hotel record(s).` : "No change.";
+      await ensureProgressLoaded();
+      renderProgressTab();
+    });
+    row.querySelector(".remove-tag").addEventListener("click", async ()=>{
+      if(!confirm(`Remove "${tag}" from the shared tag list? Cards or entries that already used it will keep it as-is — this only removes it from the picker.`)) return;
+      await removeSharedTag(tag);
+      if(progressFilterTag === tag) progressFilterTag = "";
+      renderProgressTab();
+    });
+    manageTagsBody.appendChild(row);
+  });
+  const manageTagsStatus = document.createElement("div"); manageTagsStatus.className = "status-text"; manageTagsStatus.style.marginTop = "6px";
+  manageTagsDetails.appendChild(manageTagsBody);
+  manageTagsDetails.appendChild(manageTagsStatus);
+  topRow.querySelector(".row").insertAdjacentElement("afterend", manageTagsDetails);
+
+  el("addCardBtn").addEventListener("click", async ()=>{
+    try{
+      const c = {id:"card-"+Date.now(), title:"New activity", tags: progressFilterTag ? [progressFilterTag] : [], period:"", stage:"Idea", subtasks:[], notes:""};
+      currentProgress.cards.push(c);
+      await saveProgress();
+      progressExpanded[c.id] = true;
+      el("progSaveStatus").textContent = "";
+      renderProgressTab();
+    } catch(err){
+      el("progSaveStatus").textContent = "Error adding card: " + err.message;
+    }
+  });
+
+  const board = document.createElement("div"); board.className = "board";
+  STAGES.forEach(stage=>{
+    const col = document.createElement("div"); col.className = "board-col";
+    col.innerHTML = `<div class="board-col-title">${stage}</div>`;
+    const cardsInStage = currentProgress.cards.filter(c=> c.stage===stage && (!progressFilterTag || (c.tags||[]).includes(progressFilterTag)));
+    cardsInStage.forEach(c=>{
+      const cardEl = document.createElement("div"); cardEl.className = "p-card";
+      cardEl.innerHTML = `
+        <div class="p-card-title">${c.title||"(untitled)"}</div>
+        <div class="p-card-meta">${c.period||"no period set"}</div>
+        <div class="p-card-tags">${(c.tags||[]).map(t=>`<span class="p-tag">${t}</span>`).join("")}</div>`;
+      cardEl.addEventListener("click", ()=>{ progressExpanded[c.id] = !progressExpanded[c.id]; renderProgressTab(); });
+      col.appendChild(cardEl);
+    });
+    board.appendChild(col);
+  });
+  root.appendChild(board);
+
+  const expandedCards = currentProgress.cards.filter(c=>progressExpanded[c.id]);
+  expandedCards.forEach(c=> root.appendChild(renderCardDetail(c)));
+
+  const ideasCard = document.createElement("div"); ideasCard.className = "card";
+  ideasCard.innerHTML = `<div class="card-title">Future ideas</div>`;
+  currentProgress.ideas.forEach((idea,i)=>{
+    const row = document.createElement("div"); row.className = "idea-item";
+    row.innerHTML = `<input type="text" value="${idea.text||""}" data-i="${i}" style="flex:2;">
+      <input type="text" list="sharedTagsList" value="${idea.tags||""}" data-i="${i}" data-f="tags" placeholder="tags, comma-separated" style="flex:1;">
+      <button class="btn secondary sm move-idea" data-i="${i}">Move to plan</button>
+      <button class="rep-remove" data-i="${i}" data-del="1">✕</button>`;
+    ideasCard.appendChild(row);
+  });
+  const addIdeaBtn = document.createElement("button"); addIdeaBtn.className = "btn secondary sm"; addIdeaBtn.style.marginTop="8px";
+  addIdeaBtn.textContent = "+ Add idea";
+  addIdeaBtn.addEventListener("click", async ()=>{ currentProgress.ideas.push({text:"", tags:""}); await saveProgress(); renderProgressTab(); });
+  ideasCard.appendChild(addIdeaBtn);
+  root.appendChild(ideasCard);
+
+  ideasCard.querySelectorAll("input[type=text]").forEach(inp=>{
+    inp.addEventListener("input", async ()=>{
+      const i = inp.dataset.i;
+      if(inp.dataset.f==="tags") currentProgress.ideas[i].tags = inp.value; else currentProgress.ideas[i].text = inp.value;
+    });
+  });
+  ideasCard.querySelectorAll(".move-idea").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const idea = currentProgress.ideas[btn.dataset.i];
+      const tags = (idea.tags||"").split(",").map(s=>s.trim()).filter(Boolean);
+      for(const t of tags) await addSharedTag(t);
+      currentProgress.cards.push({id:"card-"+Date.now(), title:idea.text||"(from idea)", tags, period:"", stage:"Planned", subtasks:[], notes:""});
+      currentProgress.ideas.splice(btn.dataset.i,1);
+      await saveProgress(); renderProgressTab();
+    });
+  });
+  ideasCard.querySelectorAll(".rep-remove").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{ currentProgress.ideas.splice(btn.dataset.i,1); await saveProgress(); renderProgressTab(); });
+  });
+
+  const notesCard = document.createElement("div"); notesCard.className = "card";
+  notesCard.innerHTML = `<div class="card-title">General notes & links</div>`;
+  notesCard.appendChild(renderTable(
+    { columns:[
+        {key:"note", label:"What was done", type:"text"},
+        {key:"link", label:"Link (screenshot, doc, page)", type:"text"},
+        {key:"date", label:"Date", type:"date"},
+      ], addLabel:"+ Add note" },
+    currentProgress.generalNotes,
+    async ()=>{ await saveProgress(); renderProgressTab(); }
+  ));
+  const saveNotesBtn = document.createElement("button"); saveNotesBtn.className = "btn secondary sm"; saveNotesBtn.style.marginTop="8px"; saveNotesBtn.textContent = "Save notes";
+  saveNotesBtn.addEventListener("click", saveProgress);
+  notesCard.appendChild(saveNotesBtn);
+  root.appendChild(notesCard);
+}
+
+function renderCardDetail(c){
+  const wrap = document.createElement("div"); wrap.className = "p-detail";
+  wrap.innerHTML = `<div class="row">
+    <div class="field" style="flex:2;"><label>Title</label><input type="text" list="sharedTagsList" id="cd-title-${c.id}" value="${c.title||""}"></div>
+    <div class="field"><label>Period</label><input type="text" id="cd-period-${c.id}" value="${c.period||""}" placeholder="e.g. Jul 2026"></div>
+    <div class="field"><label>Stage</label><select id="cd-stage-${c.id}">${STAGES.map(s=>`<option value="${s}" ${c.stage===s?"selected":""}>${s}</option>`).join("")}</select></div>
+    <button class="btn danger sm" id="cd-delete-${c.id}">Delete card</button>
+  </div>`;
+  const tagGroupWrap = document.createElement("div"); tagGroupWrap.className = "group-block"; tagGroupWrap.innerHTML = `<div class="group-label">Tags</div>`;
+  tagGroupWrap.appendChild(renderTagGroup(
+    { key:"tags", label:"", extendable:true, options: sharedTags },
+    c.tags,
+    ()=>renderProgressTab(),
+    async ()=>{}
+  ));
+  wrap.appendChild(tagGroupWrap);
+
+  const subWrap = document.createElement("div"); subWrap.className = "group-block"; subWrap.innerHTML = `<div class="group-label">Subtasks</div>`;
+  c.subtasks.forEach((st,i)=>{
+    const row = document.createElement("div"); row.className = "subtask-row";
+    row.innerHTML = `<input type="checkbox" data-i="${i}" data-f="done" ${st.done?"checked":""}>
+      <input type="text" class="task" data-i="${i}" data-f="text" value="${st.text||""}" placeholder="subtask...">
+      <input type="text" class="link" data-i="${i}" data-f="link" value="${st.link||""}" placeholder="link (optional)">
+      <button class="rep-remove" data-i="${i}">✕</button>`;
+    subWrap.appendChild(row);
+  });
+  const addSubBtn = document.createElement("button"); addSubBtn.className = "btn secondary sm"; addSubBtn.style.marginTop="6px"; addSubBtn.textContent = "+ Add subtask";
+  addSubBtn.addEventListener("click", async ()=>{ c.subtasks.push({text:"",done:false,link:""}); await saveProgress(); renderProgressTab(); });
+  subWrap.appendChild(addSubBtn);
+  wrap.appendChild(subWrap);
+
+  const notesWrap = document.createElement("div"); notesWrap.className = "group-block"; notesWrap.innerHTML = `<div class="group-label">Notes</div>`;
+  const notesArea = document.createElement("textarea"); notesArea.value = c.notes||"";
+  notesArea.addEventListener("input", ()=>{ c.notes = notesArea.value; });
+  notesWrap.appendChild(notesArea);
+  wrap.appendChild(notesWrap);
+
+  const saveBtnRow = document.createElement("div"); saveBtnRow.className = "row"; saveBtnRow.style.marginTop="10px";
+  saveBtnRow.innerHTML = `<button class="btn secondary sm cd-save">Save card</button>`;
+  wrap.appendChild(saveBtnRow);
+
+  setTimeout(()=>{
+    document.getElementById(`cd-title-${c.id}`).addEventListener("input", async e=>{ c.title = e.target.value; await addSharedTag(e.target.value.trim()); });
+    document.getElementById(`cd-period-${c.id}`).addEventListener("input", e=>{ c.period = e.target.value; });
+    document.getElementById(`cd-stage-${c.id}`).addEventListener("change", async e=>{ c.stage = e.target.value; await saveProgress(); renderProgressTab(); });
+    document.getElementById(`cd-delete-${c.id}`).addEventListener("click", async ()=>{
+      if(!confirm("Delete this card?")) return;
+      currentProgress.cards = currentProgress.cards.filter(x=>x.id!==c.id);
+      await saveProgress(); renderProgressTab();
+    });
+    wrap.querySelectorAll(".subtask-row input").forEach(inp=>{
+      const evt = inp.type==="checkbox" ? "change" : "input";
+      inp.addEventListener(evt, ()=>{ c.subtasks[inp.dataset.i][inp.dataset.f] = inp.type==="checkbox" ? inp.checked : inp.value; });
+    });
+    wrap.querySelectorAll(".subtask-row .rep-remove").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{ c.subtasks.splice(btn.dataset.i,1); await saveProgress(); renderProgressTab(); });
+    });
+    wrap.querySelector(".cd-save").addEventListener("click", async ()=>{ await saveProgress(); });
+  },0);
+
+  return wrap;
+}
+
+/* =========================================================
+   MODULE: RESULTS
+========================================================= */
+function blankResults(){ return { periods: [] }; }
+let currentResults = null;
+let activePeriodLabel = null;
+
+async function loadResults(hotelId){
+  try{ const res = await window.storage.get(`dmh-results:${hotelId}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
+  return null;
+}
+async function saveResults(){ if(!currentHotel) return; await window.storage.set(`dmh-results:${currentHotel.id}`, JSON.stringify(currentResults), true); }
+async function ensureResultsLoaded(){
+  if(!currentResults || currentResults._hotelId !== currentHotel.id){
+    const loaded = await loadResults(currentHotel.id);
+    currentResults = loaded || blankResults();
+    currentResults._hotelId = currentHotel.id;
+    activePeriodLabel = currentResults.periods.length ? currentResults.periods[0].period : null;
+  }
+}
+function blankPeriod(label){ return { period: label, rows: [], seasonalNote: "", seasonalDeviationPct: "", visibilityMetrics: [] }; }
+
+async function renderResultsTab(){
+  const root = el("tabResults");
+  root.innerHTML = "";
+  if(!currentHotel){ root.innerHTML = '<div class="empty-state">Select a hotel above.</div>'; return; }
+  await ensureResultsLoaded();
+
+  const topCard = document.createElement("div"); topCard.className = "card";
+  topCard.innerHTML = `<div class="row">
+    <div class="field" style="min-width:180px;"><label>Period</label>
+      <select id="periodSelect"><option value="">Select...</option>${currentResults.periods.map(p=>`<option value="${p.period}" ${activePeriodLabel===p.period?"selected":""}>${p.period}</option>`).join("")}</select></div>
+    <div class="field"><label>New period label</label><input type="text" id="newPeriodInput" placeholder="e.g. Jul 2026" style="width:140px;"></div>
+    <button class="btn secondary sm" id="createPeriodBtn">Create / select</button>
+    <span class="status-text" id="resultsStatus"></span>
+  </div>`;
+  root.appendChild(topCard);
+  el("periodSelect").addEventListener("change", ()=>{ activePeriodLabel = el("periodSelect").value || null; renderResultsTab(); });
+  el("createPeriodBtn").addEventListener("click", async ()=>{
+    const label = el("newPeriodInput").value.trim();
+    if(!label) return;
+    if(!currentResults.periods.find(p=>p.period===label)) currentResults.periods.push(blankPeriod(label));
+    activePeriodLabel = label;
+    await saveResults();
+    renderResultsTab();
+  });
+
+  if(!activePeriodLabel){ root.innerHTML += '<div class="empty-state">Create or select a period above.</div>'; return; }
+  const periodObj = currentResults.periods.find(p=>p.period===activePeriodLabel);
+  if(!periodObj) return;
+
+  const rowsCard = document.createElement("div"); rowsCard.className = "card";
+  rowsCard.innerHTML = `<div class="card-title">Channel / activity results — ${periodObj.period}</div>`;
+  const table = document.createElement("table"); table.className = "rep";
+  table.innerHTML = `<tr><th>Channel / activity</th><th>Spend</th><th>Traffic</th><th>Bookings</th><th>Revenue</th><th>CVR</th><th>ROAS</th><th></th></tr>`;
+  periodObj.rows.forEach((row,i)=>{
+    const cvr = (row.traffic>0) ? (row.bookings/row.traffic*100).toFixed(1)+"%" : "—";
+    const roas = (row.spend>0) ? (row.revenue/row.spend).toFixed(2) : "—";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input type="text" list="sharedTagsList" value="${row.channel||""}" data-i="${i}" data-f="channel"></td>
+      <td><input type="number" value="${row.spend||""}" data-i="${i}" data-f="spend" style="width:80px;"></td>
+      <td><input type="number" value="${row.traffic||""}" data-i="${i}" data-f="traffic" style="width:80px;"></td>
+      <td><input type="number" value="${row.bookings||""}" data-i="${i}" data-f="bookings" style="width:80px;"></td>
+      <td><input type="number" value="${row.revenue||""}" data-i="${i}" data-f="revenue" style="width:90px;"></td>
+      <td>${cvr}</td><td>${roas}</td>
+      <td><button class="rep-remove" data-i="${i}">✕</button></td>`;
+    table.appendChild(tr);
+  });
+  rowsCard.appendChild(table);
+  const addRowBtn = document.createElement("button"); addRowBtn.className = "btn secondary sm"; addRowBtn.textContent = "+ Add row";
+  addRowBtn.addEventListener("click", ()=>{ periodObj.rows.push({channel:"",spend:0,traffic:0,bookings:0,revenue:0}); renderResultsTab(); });
+  rowsCard.appendChild(addRowBtn);
+  root.appendChild(rowsCard);
+  table.querySelectorAll("input").forEach(inp=>{
+    inp.addEventListener("input", async ()=>{
+      const f = inp.dataset.f, i = inp.dataset.i;
+      periodObj.rows[i][f] = (f==="channel") ? inp.value : parseFloat(inp.value)||0;
+      if(f==="channel" && inp.value.trim()) await addSharedTag(inp.value.trim());
+    });
+  });
+  table.querySelectorAll(".rep-remove").forEach(btn=> btn.addEventListener("click", ()=>{ periodObj.rows.splice(btn.dataset.i,1); renderResultsTab(); }));
+
+  const totals = periodObj.rows.reduce((acc,r)=>({
+    spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
+  }), {spend:0,traffic:0,bookings:0,revenue:0});
+  const blendedROAS = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
+  const summaryCard = document.createElement("div"); summaryCard.className = "card";
+  summaryCard.innerHTML = `<div class="card-title">Summary — ${periodObj.period}</div>`;
+  const grid = document.createElement("div"); grid.className = "context-grid";
+  grid.innerHTML = `
+    <div class="ctx-item"><div class="ctx-label">Total spend</div><div class="ctx-val">$${totals.spend}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Total traffic</div><div class="ctx-val">${totals.traffic}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Total bookings</div><div class="ctx-val">${totals.bookings}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Blended ROAS</div><div class="ctx-val">${blendedROAS}</div></div>`;
+  summaryCard.appendChild(grid);
+  root.appendChild(summaryCard);
+
+  const seasonCard = document.createElement("div"); seasonCard.className = "card";
+  seasonCard.innerHTML = `<div class="card-title">Seasonal context</div>`;
+  const sGrid = document.createElement("div"); sGrid.className = "form-grid";
+  sGrid.appendChild(makeFieldInput(periodObj, {key:"seasonalNote", label:"Note", type:"textarea", full:true}));
+  sGrid.appendChild(makeFieldInput(periodObj, {key:"seasonalDeviationPct", label:"Expected deviation from average, %", type:"number"}));
+  seasonCard.appendChild(sGrid);
+  root.appendChild(seasonCard);
+
+  const visCard = document.createElement("div"); visCard.className = "card";
+  visCard.innerHTML = `<div class="card-title">Visibility metrics (not tied to spend)</div>`;
+  visCard.appendChild(renderTable(
+    { columns:[ {key:"name", label:"Metric", type:"text"}, {key:"value", label:"Value", type:"text"} ], addLabel:"+ Add metric" },
+    periodObj.visibilityMetrics, ()=>renderResultsTab()
+  ));
+  root.appendChild(visCard);
+
+  const savePeriodBtn = document.createElement("button"); savePeriodBtn.className = "btn"; savePeriodBtn.textContent = "Save period";
+  savePeriodBtn.addEventListener("click", async ()=>{ await saveResults(); el("resultsStatus").textContent = "Saved " + new Date().toLocaleTimeString('en-US'); });
+  root.appendChild(savePeriodBtn);
+}
+
+/* =========================================================
+   INIT
+========================================================= */
 (async function init(){
+  el("globalStatus").textContent = "Loading workspace...";
   await loadSchema();
-  await loadIndex();
-  renderHotelList();
+  await loadStrategySettings();
+  await loadHotelIndex();
+  await loadSharedTags();
+  populateHotelSelect();
+  el("globalStatus").textContent = "";
+  renderActiveTab();
 })();
 </script>
 </body>
