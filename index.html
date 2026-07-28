@@ -925,12 +925,18 @@ function renderActivityPlan(monthKey, budgetRaw){
       table.appendChild(tr);
     });
     tableWrap.appendChild(table);
-    table.querySelectorAll("input,select").forEach(inp=>{
-      const eventName = inp.type==="checkbox" ? "change" : (inp.tagName==="SELECT" ? "change" : "input");
-      inp.addEventListener(eventName, async ()=>{
+    table.querySelectorAll("input[type=text]").forEach(inp=>{
+      inp.addEventListener("input", ()=>{ currentStrategy.activities[inp.dataset.i][inp.dataset.f] = inp.value; });
+      inp.addEventListener("blur", async ()=>{
+        if(inp.value.trim()) await addSharedTag(inp.value.trim());
+        renderActivityTable();
+      });
+    });
+    table.querySelectorAll("select, input[type=checkbox]").forEach(inp=>{
+      const eventName = inp.type==="checkbox" ? "change" : "change";
+      inp.addEventListener(eventName, ()=>{
         const row = currentStrategy.activities[inp.dataset.i];
         row[inp.dataset.f] = inp.type==="checkbox" ? inp.checked : inp.value;
-        if(inp.dataset.f==="activity" && inp.value.trim()) await addSharedTag(inp.value.trim());
         renderActivityTable();
       });
     });
@@ -1135,7 +1141,7 @@ async function renderProgressTab(){
 function renderCardDetail(c){
   const wrap = document.createElement("div"); wrap.className = "p-detail";
   wrap.innerHTML = `<div class="row">
-    <div class="field" style="flex:2;"><label>Title</label><input type="text" list="sharedTagsList" id="cd-title-${c.id}" value="${c.title||""}"></div>
+    <div class="field" style="flex:2;"><label>Title</label><input type="text" id="cd-title-${c.id}" value="${c.title||""}"></div>
     <div class="field"><label>Period</label><input type="text" id="cd-period-${c.id}" value="${c.period||""}" placeholder="e.g. Jul 2026"></div>
     <div class="field"><label>Stage</label><select id="cd-stage-${c.id}">${STAGES.map(s=>`<option value="${s}" ${c.stage===s?"selected":""}>${s}</option>`).join("")}</select></div>
     <button class="btn danger sm" id="cd-delete-${c.id}">Delete card</button>
@@ -1174,7 +1180,8 @@ function renderCardDetail(c){
   wrap.appendChild(saveBtnRow);
 
   setTimeout(()=>{
-    document.getElementById(`cd-title-${c.id}`).addEventListener("input", async e=>{ c.title = e.target.value; await addSharedTag(e.target.value.trim()); });
+    document.getElementById(`cd-title-${c.id}`).addEventListener("input", e=>{ c.title = e.target.value; });
+    // Title is a free-form card name, not a tag — it no longer feeds the shared tag list.
     document.getElementById(`cd-period-${c.id}`).addEventListener("input", e=>{ c.period = e.target.value; });
     document.getElementById(`cd-stage-${c.id}`).addEventListener("change", async e=>{ c.stage = e.target.value; await saveProgress(); renderProgressTab(); });
     document.getElementById(`cd-delete-${c.id}`).addEventListener("click", async ()=>{
@@ -1270,11 +1277,13 @@ async function renderResultsTab(){
   rowsCard.appendChild(addRowBtn);
   root.appendChild(rowsCard);
   table.querySelectorAll("input").forEach(inp=>{
-    inp.addEventListener("input", async ()=>{
+    inp.addEventListener("input", ()=>{
       const f = inp.dataset.f, i = inp.dataset.i;
       periodObj.rows[i][f] = (f==="channel") ? inp.value : parseFloat(inp.value)||0;
-      if(f==="channel" && inp.value.trim()) await addSharedTag(inp.value.trim());
     });
+    if(inp.dataset.f==="channel"){
+      inp.addEventListener("blur", async ()=>{ if(inp.value.trim()) await addSharedTag(inp.value.trim()); });
+    }
   });
   table.querySelectorAll(".rep-remove").forEach(btn=> btn.addEventListener("click", ()=>{ periodObj.rows.splice(btn.dataset.i,1); renderResultsTab(); }));
 
