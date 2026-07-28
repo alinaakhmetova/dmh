@@ -1208,6 +1208,7 @@ function renderCardDetail(c){
 function blankResults(){ return { periods: [] }; }
 let currentResults = null;
 let activePeriodLabel = null;
+let selectedSummaryPeriods = new Set();
 
 async function loadResults(hotelId){
   try{ const res = await stGet(`dmh-results:${hotelId}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
@@ -1220,6 +1221,7 @@ async function ensureResultsLoaded(){
     currentResults = loaded || blankResults();
     currentResults._hotelId = currentHotel.id;
     activePeriodLabel = currentResults.periods.length ? currentResults.periods[0].period : null;
+    selectedSummaryPeriods = new Set();
   }
 }
 function blankPeriod(label){ return { period: label, rows: [], seasonalNote: "", seasonalDeviationPct: "", visibilityMetrics: [] }; }
@@ -1249,9 +1251,16 @@ async function renderResultsTab(){
     renderResultsTab();
   });
 
-  if(!activePeriodLabel){ root.innerHTML += '<div class="empty-state">Create or select a period above.</div>'; return; }
+  if(!activePeriodLabel){
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = "Create or select a period above.";
+    root.appendChild(empty);
+    renderMultiPeriodSummary(root);
+    return;
+  }
   const periodObj = currentResults.periods.find(p=>p.period===activePeriodLabel);
-  if(!periodObj) return;
+  if(!periodObj){ renderMultiPeriodSummary(root); return; }
 
   const rowsCard = document.createElement("div"); rowsCard.className = "card";
   rowsCard.innerHTML = `<div class="card-title">Channel / activity results — ${periodObj.period}</div>`;
@@ -1325,6 +1334,77 @@ async function renderResultsTab(){
     catch(err){ el("resultsStatus").textContent = "⚠ Save failed: " + err.message; }
   });
   root.appendChild(savePeriodBtn);
+
+  renderMultiPeriodSummary(root);
+}
+
+function renderMultiPeriodSummary(root){
+  const pickerCard = document.createElement("div"); pickerCard.className = "card";
+  pickerCard.innerHTML = `<div class="card-title">Multi-period summary</div>`;
+  const checksWrap = document.createElement("div"); checksWrap.className = "tag-group";
+  if(currentResults.periods.length === 0){
+    checksWrap.innerHTML = `<span style="color:var(--ink-soft);font-size:12.5px;">No periods yet.</span>`;
+  }
+  currentResults.periods.forEach(p=>{
+    const label = document.createElement("label");
+    label.style.cssText = "display:flex;align-items:center;gap:6px;font-size:12.5px;background:var(--slate-soft);padding:5px 10px;border-radius:14px;cursor:pointer;";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = selectedSummaryPeriods.has(p.period);
+    cb.addEventListener("change", ()=>{
+      if(cb.checked) selectedSummaryPeriods.add(p.period); else selectedSummaryPeriods.delete(p.period);
+      renderResultsTab();
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(" " + p.period));
+    checksWrap.appendChild(label);
+  });
+  pickerCard.appendChild(checksWrap);
+  root.appendChild(pickerCard);
+
+  if(selectedSummaryPeriods.size === 0) return;
+
+  const selectedPeriods = currentResults.periods.filter(p=>selectedSummaryPeriods.has(p.period));
+  const allRows = selectedPeriods.flatMap(p=>p.rows);
+
+  const totals = allRows.reduce((acc,r)=>({
+    spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
+  }), {spend:0,traffic:0,bookings:0,revenue:0});
+  const blended = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
+
+  const summaryCard = document.createElement("div"); summaryCard.className = "card";
+  summaryCard.innerHTML = `<div class="card-title">Totals across ${selectedPeriods.length} selected period(s)</div>`;
+  const grid = document.createElement("div"); grid.className = "context-grid";
+  grid.innerHTML = `
+    <div class="ctx-item"><div class="ctx-label">Total spend</div><div class="ctx-val">$${totals.spend}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Total traffic</div><div class="ctx-val">${totals.traffic}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Total bookings</div><div class="ctx-val">${totals.bookings}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Blended ROAS</div><div class="ctx-val">${blended}</div></div>`;
+  summaryCard.appendChild(grid);
+  root.appendChild(summaryCard);
+
+  const byChannel = {};
+  allRows.forEach(r=>{
+    const ch = r.channel && r.channel.trim() ? r.channel.trim() : "(no channel)";
+    if(!byChannel[ch]) byChannel[ch] = {spend:0,traffic:0,bookings:0,revenue:0};
+    byChannel[ch].spend += (r.spend||0);
+    byChannel[ch].traffic += (r.traffic||0);
+    byChannel[ch].bookings += (r.bookings||0);
+    byChannel[ch].revenue += (r.revenue||0);
+  });
+  const channelCard = document.createElement("div"); channelCard.className = "card";
+  channelCard.innerHTML = `<div class="card-title">By channel — across selected periods</div>`;
+  const table = document.createElement("table"); table.className = "rep";
+  table.innerHTML = `<tr><th>Channel / activity</th><th>Spend</th><th>Traffic</th><th>Bookings</th><th>Revenue</th><th>CVR</th><th>ROAS</th></tr>`;
+  Object.keys(byChannel).sort((a,b)=> byChannel[b].revenue - byChannel[a].revenue).forEach(ch=>{
+    const c = byChannel[ch];
+    const cvr = c.traffic>0 ? (c.bookings/c.traffic*100).toFixed(1)+"%" : "—";
+    const roas = c.spend>0 ? (c.revenue/c.spend).toFixed(2) : "—";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${ch}</td><td>$${c.spend}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td><td>${cvr}</td><td>${roas}</td>`;
+    table.appendChild(tr);
+  });
+  channelCard.appendChild(table);
+  root.appendChild(channelCard);
 }
 
 /* =========================================================
