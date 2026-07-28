@@ -126,6 +126,66 @@
 <script>
 const el = id => document.getElementById(id);
 
+/* =========================================================
+   STORAGE BACKEND — Google Sheets via Apps Script Web App
+   Paste your deployed /exec URL below (see google_apps_script_backend.gs).
+   Until you do, the tool will show a clear setup message instead of
+   silently failing.
+========================================================= */
+const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwlcuJk3QlthiF3ERpUCtxr_C-WYyIVcBS-jk2nIt4Do5ydPYpgDrEXreL-r_-1l9JUkw/exec";
+
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=> reject(new Error(`Timed out waiting for ${label} (no response after ${ms/1000}s)`)), ms))
+  ]);
+}
+
+function checkBackendConfigured(){
+  if(!SHEETS_WEBAPP_URL || SHEETS_WEBAPP_URL.indexOf("PASTE_YOUR") === 0){
+    throw new Error("Google Sheets backend is not configured yet — paste your deployed Apps Script URL into SHEETS_WEBAPP_URL near the top of the script.");
+  }
+}
+
+async function stGet(key, shared){
+  checkBackendConfigured();
+  const res = await withTimeout(
+    fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}`),
+    12000, `loading "${key}"`
+  );
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return { key: data.key, value: data.value, shared: true };
+}
+
+async function stSet(key, value, shared){
+  checkBackendConfigured();
+  const res = await withTimeout(
+    fetch(SHEETS_WEBAPP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids CORS preflight
+      body: JSON.stringify({ action: "set", key, value })
+    }),
+    12000, `saving "${key}"`
+  );
+  const data = await res.json();
+  return { key: data.key, value: data.value, shared: true };
+}
+
+async function stDelete(key, shared){
+  checkBackendConfigured();
+  const res = await withTimeout(
+    fetch(SHEETS_WEBAPP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "delete", key })
+    }),
+    12000, `deleting "${key}"`
+  );
+  const data = await res.json();
+  return { key: data.key, deleted: true, shared: true };
+}
+
 let hotelIndex = [];
 let currentHotel = null;
 let activeTab = "input";
@@ -136,17 +196,18 @@ const DEFAULT_SHARED_TAGS = [
   "Website / CRO","Content & Localization","Offers & Promotions","Rate & Package Strategy",
 ];
 
+let loadHotelIndexWarning = null;
 async function loadHotelIndex(){
-  try{ const res = await window.storage.get("dmh-hotel-index", true); hotelIndex = res && res.value ? JSON.parse(res.value) : []; }
-  catch(e){ hotelIndex = []; }
+  try{ const res = await stGet("dmh-hotel-index", true); hotelIndex = res && res.value ? JSON.parse(res.value) : []; }
+  catch(e){ hotelIndex = []; if(e.message !== "not found") loadHotelIndexWarning = "hotel list didn't load: " + e.message; }
 }
-async function saveHotelIndex(){ await window.storage.set("dmh-hotel-index", JSON.stringify(hotelIndex), true); }
+async function saveHotelIndex(){ await stSet("dmh-hotel-index", JSON.stringify(hotelIndex), true); }
 async function loadHotelRecordById(id){
-  try{ const res = await window.storage.get(`dmh-hotel:${id}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
+  try{ const res = await stGet(`dmh-hotel:${id}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
   return null;
 }
 async function saveHotelRecord(record){
-  await window.storage.set(`dmh-hotel:${record.id}`, JSON.stringify(record), true);
+  await stSet(`dmh-hotel:${record.id}`, JSON.stringify(record), true);
   const idx = hotelIndex.findIndex(h=>h.id===record.id);
   const name = record.sections.hotelData.fields.name || record.id;
   if(idx>=0) hotelIndex[idx].name = name; else hotelIndex.push({id:record.id, name});
@@ -154,12 +215,21 @@ async function saveHotelRecord(record){
 }
 function getField(hotel, sectionId, key){ return hotel?.sections?.[sectionId]?.fields?.[key] || ""; }
 
+let loadSharedTagsWarning = null;
 async function loadSharedTags(){
-  try{ const res = await window.storage.get("dmh-shared-tags", true); sharedTags = res && res.value ? JSON.parse(res.value) : null; }
-  catch(e){ sharedTags = null; }
+  let notFound = false;
+  try{
+    const res = await stGet("dmh-shared-tags", true);
+    sharedTags = res && res.value ? JSON.parse(res.value) : null;
+    if(!sharedTags) notFound = true;
+  } catch(e){
+    sharedTags = null;
+    if(e.message !== "not found") loadSharedTagsWarning = "tags didn't load: " + e.message;
+    else notFound = true; // "not found" style errors mean this key genuinely doesn't exist yet
+  }
   if(!sharedTags){
     sharedTags = DEFAULT_SHARED_TAGS.slice();
-    await window.storage.set("dmh-shared-tags", JSON.stringify(sharedTags), true);
+    if(notFound){ try{ await stSet("dmh-shared-tags", JSON.stringify(sharedTags), true); } catch(e){} }
   }
   const dl = el("sharedTagsList");
   dl.innerHTML = sharedTags.map(t=>`<option value="${t}">`).join("");
@@ -167,7 +237,7 @@ async function loadSharedTags(){
 async function addSharedTag(val){
   if(!val || sharedTags.includes(val)) return;
   sharedTags.push(val);
-  await window.storage.set("dmh-shared-tags", JSON.stringify(sharedTags), true);
+  await stSet("dmh-shared-tags", JSON.stringify(sharedTags), true);
   const dl = el("sharedTagsList");
   dl.innerHTML = sharedTags.map(t=>`<option value="${t}">`).join("");
 }
@@ -177,25 +247,25 @@ async function renameSharedTag(oldTag, newTag){
   if(!newTag || newTag===oldTag) return {changed:false, updatedRecords:0};
   const dup = sharedTags.includes(newTag);
   sharedTags = dup ? sharedTags.filter(t=>t!==oldTag) : sharedTags.map(t=> t===oldTag ? newTag : t);
-  await window.storage.set("dmh-shared-tags", JSON.stringify(sharedTags), true);
+  await stSet("dmh-shared-tags", JSON.stringify(sharedTags), true);
   el("sharedTagsList").innerHTML = sharedTags.map(t=>`<option value="${t}">`).join("");
 
   let updatedRecords = 0;
   for(const h of hotelIndex){
     let touched = false;
     try{
-      const res = await window.storage.get(`dmh-progress:${h.id}`, true);
+      const res = await stGet(`dmh-progress:${h.id}`, true);
       if(res && res.value){
         const prog = JSON.parse(res.value);
         (prog.cards||[]).forEach(c=>{
           if(c.tags && c.tags.includes(oldTag)){ c.tags = [...new Set(c.tags.map(t=> t===oldTag?newTag:t))]; touched = true; }
         });
-        if(touched) await window.storage.set(`dmh-progress:${h.id}`, JSON.stringify(prog), true);
+        if(touched) await stSet(`dmh-progress:${h.id}`, JSON.stringify(prog), true);
       }
     } catch(e){}
     let touched2 = false;
     try{
-      const res = await window.storage.get(`dmh-strategy:${h.id}`, true);
+      const res = await stGet(`dmh-strategy:${h.id}`, true);
       if(res && res.value){
         const strat = JSON.parse(res.value);
         (strat.activities||[]).forEach(a=>{ if(a.activity===oldTag){ a.activity=newTag; touched2=true; } });
@@ -203,16 +273,16 @@ async function renameSharedTag(oldTag, newTag){
           strat.targetMarkets.segments = [...new Set(strat.targetMarkets.segments.map(s=> s===oldTag?newTag:s))];
           touched2 = true;
         }
-        if(touched2) await window.storage.set(`dmh-strategy:${h.id}`, JSON.stringify(strat), true);
+        if(touched2) await stSet(`dmh-strategy:${h.id}`, JSON.stringify(strat), true);
       }
     } catch(e){}
     let touched3 = false;
     try{
-      const res = await window.storage.get(`dmh-results:${h.id}`, true);
+      const res = await stGet(`dmh-results:${h.id}`, true);
       if(res && res.value){
         const results = JSON.parse(res.value);
         (results.periods||[]).forEach(p=>{ (p.rows||[]).forEach(r=>{ if(r.channel===oldTag){ r.channel=newTag; touched3=true; } }); });
-        if(touched3) await window.storage.set(`dmh-results:${h.id}`, JSON.stringify(results), true);
+        if(touched3) await stSet(`dmh-results:${h.id}`, JSON.stringify(results), true);
       }
     } catch(e){}
     if(touched||touched2||touched3) updatedRecords++;
@@ -223,7 +293,7 @@ async function renameSharedTag(oldTag, newTag){
 
 async function removeSharedTag(tag){
   sharedTags = sharedTags.filter(t=>t!==tag);
-  await window.storage.set("dmh-shared-tags", JSON.stringify(sharedTags), true);
+  await stSet("dmh-shared-tags", JSON.stringify(sharedTags), true);
   el("sharedTagsList").innerHTML = sharedTags.map(t=>`<option value="${t}">`).join("");
 }
 
@@ -238,7 +308,13 @@ function populateHotelSelect(){
 }
 el("hotelSelect").addEventListener("change", async ()=>{
   const id = el("hotelSelect").value;
-  currentHotel = id ? await loadHotelRecordById(id) : null;
+  el("globalStatus").textContent = id ? "Loading hotel..." : "";
+  try{
+    currentHotel = id ? await loadHotelRecordById(id) : null;
+    el("globalStatus").textContent = "";
+  } catch(err){
+    el("globalStatus").textContent = "⚠ Could not load this hotel: " + err.message;
+  }
   renderActiveTab();
 });
 el("newHotelBtn").addEventListener("click", async ()=>{
@@ -246,14 +322,20 @@ el("newHotelBtn").addEventListener("click", async ()=>{
   const id = "HTL-" + Math.random().toString(36).slice(2,7).toUpperCase();
   currentHotel = blankHotelRecord(id);
   currentHotel.sections.hotelData.fields.name = name;
-  await saveHotelRecord(currentHotel);
-  populateHotelSelect(); el("hotelSelect").value = id; renderActiveTab();
+  el("globalStatus").textContent = "Saving new hotel...";
+  try{
+    await saveHotelRecord(currentHotel);
+    el("globalStatus").textContent = "";
+    populateHotelSelect(); el("hotelSelect").value = id; renderActiveTab();
+  } catch(err){
+    el("globalStatus").textContent = "⚠ Could not save new hotel: " + err.message;
+  }
 });
 el("deleteHotelBtn").addEventListener("click", async ()=>{
   if(!currentHotel) return;
   const name = getField(currentHotel,"hotelData","name") || currentHotel.id;
   if(!confirm(`Delete the profile for "${name}"? This removes it everywhere in this workspace.`)) return;
-  try{ await window.storage.delete(`dmh-hotel:${currentHotel.id}`, true); }catch(e){}
+  try{ await stDelete(`dmh-hotel:${currentHotel.id}`, true); }catch(e){}
   hotelIndex = hotelIndex.filter(h=>h.id!==currentHotel.id);
   await saveHotelIndex(); currentHotel = null; populateHotelSelect(); el("hotelSelect").value = ""; renderActiveTab();
 });
@@ -378,11 +460,12 @@ let SCHEMA = null;
 let profileActiveSection = null;
 let profileManageMode = false;
 
+let loadSchemaWarning = null;
 async function loadSchema(){
-  try{ const res = await window.storage.get("dmh-schema", true); SCHEMA = res && res.value ? JSON.parse(res.value) : defaultSchema(); }
-  catch(e){ SCHEMA = defaultSchema(); }
+  try{ const res = await stGet("dmh-schema", true); SCHEMA = res && res.value ? JSON.parse(res.value) : defaultSchema(); }
+  catch(e){ SCHEMA = defaultSchema(); if(e.message !== "not found") loadSchemaWarning = "field setup didn't load: " + e.message; }
   if(!SCHEMA || !SCHEMA.sections) SCHEMA = defaultSchema();
-  if(mergeSchemaDefaults(SCHEMA)) await saveSchema();
+  try{ if(mergeSchemaDefaults(SCHEMA)) await saveSchema(); } catch(e){}
 }
 function mergeSchemaDefaults(schema){
   const defaults = defaultSchema();
@@ -406,7 +489,7 @@ function mergeSchemaDefaults(schema){
   });
   return changed;
 }
-async function saveSchema(){ await window.storage.set("dmh-schema", JSON.stringify(SCHEMA), true); }
+async function saveSchema(){ await stSet("dmh-schema", JSON.stringify(SCHEMA), true); }
 
 function blankHotelRecord(id){
   const rec = {id, sections:{}};
@@ -443,8 +526,12 @@ function renderInputTab(){
   root.appendChild(saveRow);
   el("profileSaveBtn").addEventListener("click", async ()=>{
     el("profileSaveStatus").textContent = "Saving...";
-    await saveHotelRecord(currentHotel); populateHotelSelect();
-    el("profileSaveStatus").textContent = "Saved " + new Date().toLocaleTimeString('en-US');
+    try{
+      await saveHotelRecord(currentHotel); populateHotelSelect();
+      el("profileSaveStatus").textContent = "Saved " + new Date().toLocaleTimeString('en-US');
+    } catch(err){
+      el("profileSaveStatus").textContent = "⚠ Save failed: " + err.message;
+    }
   });
 
   const ptabs = document.createElement("div"); ptabs.className = "ptabs";
@@ -679,15 +766,15 @@ let STRATEGY_SETTINGS = null;
 let currentStrategy = null;
 let strategyMonthKey = "m1";
 async function loadStrategySettings(){
-  try{ const res = await window.storage.get("dmh-strategy-settings", true); STRATEGY_SETTINGS = res && res.value ? JSON.parse(res.value) : defaultStrategySettings(); }
+  try{ const res = await stGet("dmh-strategy-settings", true); STRATEGY_SETTINGS = res && res.value ? JSON.parse(res.value) : defaultStrategySettings(); }
   catch(e){ STRATEGY_SETTINGS = defaultStrategySettings(); }
 }
-async function saveStrategySettings(){ await window.storage.set("dmh-strategy-settings", JSON.stringify(STRATEGY_SETTINGS), true); }
+async function saveStrategySettings(){ await stSet("dmh-strategy-settings", JSON.stringify(STRATEGY_SETTINGS), true); }
 async function loadStrategy(hotelId){
-  try{ const res = await window.storage.get(`dmh-strategy:${hotelId}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
+  try{ const res = await stGet(`dmh-strategy:${hotelId}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
   return null;
 }
-async function saveStrategy(){ if(!currentHotel) return; await window.storage.set(`dmh-strategy:${currentHotel.id}`, JSON.stringify(currentStrategy), true); }
+async function saveStrategy(){ if(!currentHotel) return; await stSet(`dmh-strategy:${currentHotel.id}`, JSON.stringify(currentStrategy), true); }
 
 async function ensureStrategyLoaded(){
   if(!currentStrategy || currentStrategy._hotelId !== currentHotel.id){
@@ -707,7 +794,11 @@ async function renderStrategyTab(){
   const saveRow = document.createElement("div"); saveRow.className = "row"; saveRow.style.marginBottom="12px";
   saveRow.innerHTML = `<button class="btn secondary" id="stratSaveBtn">Save strategy</button><span class="status-text" id="stratSaveStatus"></span>`;
   root.appendChild(saveRow);
-  el("stratSaveBtn").addEventListener("click", async ()=>{ el("stratSaveStatus").textContent="Saving..."; await saveStrategy(); el("stratSaveStatus").textContent="Saved "+new Date().toLocaleTimeString('en-US'); });
+  el("stratSaveBtn").addEventListener("click", async ()=>{
+    el("stratSaveStatus").textContent="Saving...";
+    try{ await saveStrategy(); el("stratSaveStatus").textContent="Saved "+new Date().toLocaleTimeString('en-US'); }
+    catch(err){ el("stratSaveStatus").textContent = "⚠ Save failed: " + err.message; }
+  });
 
   const monthKey = strategyMonthKey;
   const budget = getField(currentHotel,"budgets",monthKey);
@@ -729,7 +820,11 @@ async function renderStrategyTab(){
   leversCard.appendChild(leversTable);
   const saveLeversBtn = document.createElement("button"); saveLeversBtn.className = "btn secondary sm"; saveLeversBtn.style.marginTop="10px"; saveLeversBtn.textContent = "Save levers";
   const saveLeversStatus = document.createElement("span"); saveLeversStatus.className = "status-text"; saveLeversStatus.style.marginLeft = "8px";
-  saveLeversBtn.addEventListener("click", async ()=>{ await saveStrategy(); saveLeversStatus.textContent = "Saved " + new Date().toLocaleTimeString('en-US'); });
+  saveLeversBtn.addEventListener("click", async ()=>{
+    saveLeversStatus.textContent = "Saving...";
+    try{ await saveStrategy(); saveLeversStatus.textContent = "Saved " + new Date().toLocaleTimeString('en-US'); }
+    catch(err){ saveLeversStatus.textContent = "⚠ Save failed: " + err.message; }
+  });
   leversCard.appendChild(saveLeversBtn);
   leversCard.appendChild(saveLeversStatus);
   const hintDetails = document.createElement("details");
@@ -864,10 +959,10 @@ let progressExpanded = {};
 let progressFilterTag = "";
 
 async function loadProgress(hotelId){
-  try{ const res = await window.storage.get(`dmh-progress:${hotelId}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
+  try{ const res = await stGet(`dmh-progress:${hotelId}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
   return null;
 }
-async function saveProgress(){ if(!currentHotel) return; await window.storage.set(`dmh-progress:${currentHotel.id}`, JSON.stringify(currentProgress), true); }
+async function saveProgress(){ if(!currentHotel) return; await stSet(`dmh-progress:${currentHotel.id}`, JSON.stringify(currentProgress), true); }
 async function ensureProgressLoaded(){
   if(!currentProgress || currentProgress._hotelId !== currentHotel.id){
     const loaded = await loadProgress(currentHotel.id);
@@ -1108,10 +1203,10 @@ let currentResults = null;
 let activePeriodLabel = null;
 
 async function loadResults(hotelId){
-  try{ const res = await window.storage.get(`dmh-results:${hotelId}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
+  try{ const res = await stGet(`dmh-results:${hotelId}`, true); if(res && res.value) return JSON.parse(res.value); } catch(e){}
   return null;
 }
-async function saveResults(){ if(!currentHotel) return; await window.storage.set(`dmh-results:${currentHotel.id}`, JSON.stringify(currentResults), true); }
+async function saveResults(){ if(!currentHotel) return; await stSet(`dmh-results:${currentHotel.id}`, JSON.stringify(currentResults), true); }
 async function ensureResultsLoaded(){
   if(!currentResults || currentResults._hotelId !== currentHotel.id){
     const loaded = await loadResults(currentHotel.id);
@@ -1215,7 +1310,11 @@ async function renderResultsTab(){
   root.appendChild(visCard);
 
   const savePeriodBtn = document.createElement("button"); savePeriodBtn.className = "btn"; savePeriodBtn.textContent = "Save period";
-  savePeriodBtn.addEventListener("click", async ()=>{ await saveResults(); el("resultsStatus").textContent = "Saved " + new Date().toLocaleTimeString('en-US'); });
+  savePeriodBtn.addEventListener("click", async ()=>{
+    el("resultsStatus").textContent = "Saving...";
+    try{ await saveResults(); el("resultsStatus").textContent = "Saved " + new Date().toLocaleTimeString('en-US'); }
+    catch(err){ el("resultsStatus").textContent = "⚠ Save failed: " + err.message; }
+  });
   root.appendChild(savePeriodBtn);
 }
 
@@ -1224,13 +1323,16 @@ async function renderResultsTab(){
 ========================================================= */
 (async function init(){
   el("globalStatus").textContent = "Loading workspace...";
-  await loadSchema();
-  await loadStrategySettings();
-  await loadHotelIndex();
-  await loadSharedTags();
-  populateHotelSelect();
-  el("globalStatus").textContent = "";
-  renderActiveTab();
+  try{
+    await Promise.all([loadSchema(), loadStrategySettings(), loadHotelIndex(), loadSharedTags()]);
+    populateHotelSelect();
+    const warnings = [loadSchemaWarning, loadHotelIndexWarning, loadSharedTagsWarning].filter(Boolean);
+    el("globalStatus").textContent = warnings.length ? "⚠ " + warnings.join(" · ") : "";
+    renderActiveTab();
+  } catch(err){
+    el("hotelSelect").innerHTML = '<option value="">(failed to load)</option>';
+    el("globalStatus").innerHTML = `⚠ Could not load the workspace: ${err.message} — <button class="btn secondary sm" onclick="location.reload()">Retry</button>`;
+  }
 })();
 </script>
 </body>
