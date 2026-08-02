@@ -7,10 +7,18 @@
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
   :root{
-    --paper:#F5F4EF; --card:#FFFFFF; --ink:#1C2620; --ink-soft:#5B6660;
-    --line:#E1DDCE; --teal:#0E6E55; --teal-soft:#E4EFE9;
-    --mustard:#A9791B; --mustard-soft:#F5EBD3;
-    --slate:#8C8A7E; --slate-soft:#EEECE3;
+    --brand:#4D1774;        /* Exely primary — deep purple */
+    --brand-dark:#2E0D45;   /* darkest purple — main text */
+    --accent:#F65925;       /* Exely accent — orange */
+    --accent2:#C022FF;      /* Exely secondary — magenta */
+    --paper:#EEECF4;        /* light lavender background */
+    --card:#FFFFFF;
+    --ink:#2E0D45;
+    --ink-soft:#7A6690;
+    --line:#DDD5E8;
+    --brand-soft:#F1E9F7;
+    --accent-soft:#FDE7DE;
+    --slate-soft:#F4F2F8;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;}
@@ -21,41 +29,52 @@
   .field{display:flex;flex-direction:column;gap:4px;}
   .field label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
   select, input[type=text]{font-family:'IBM Plex Sans',sans-serif;border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-size:13px;}
-  .btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12.5px;border-radius:6px;border:1px solid var(--teal);background:var(--teal);color:#fff;padding:8px 14px;cursor:pointer;}
-  .btn.secondary{background:#fff;color:var(--teal);}
+  .btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12.5px;border-radius:6px;border:1px solid var(--brand);background:var(--brand);color:#fff;padding:8px 14px;cursor:pointer;}
+  .btn.secondary{background:#fff;color:var(--brand);}
+  .btn.accent{background:var(--accent);border-color:var(--accent);}
   .status-text{font-size:11.5px;color:var(--ink-soft);}
   .tag-group{display:flex;flex-wrap:wrap;gap:7px;}
   .tag{font-size:12px;padding:6px 11px;border-radius:16px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink-soft);}
-  .tag.selected{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;}
+  .tag.selected{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600;}
   .toggle-row{display:flex;align-items:center;gap:8px;font-size:12.5px;}
 
   /* Report */
-  .report{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:36px 40px;}
-  .report-header{border-bottom:2px solid var(--teal);padding-bottom:16px;margin-bottom:24px;}
-  .report-title{font-family:'Fraunces',serif;font-size:26px;font-weight:700;margin:0 0 4px;}
-  .report-sub{font-size:13px;color:var(--ink-soft);}
-  .section{margin-bottom:28px;}
-  .section-title{font-family:'Fraunces',serif;font-size:17px;font-weight:600;margin:0 0 12px;color:var(--teal);}
-  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px;}
-  .kpi{background:var(--slate-soft);border-radius:8px;padding:12px 14px;}
+  .report{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 0 40px;overflow:hidden;box-shadow:0 1px 3px rgba(46,13,69,.06);}
+  .report-header{background:linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);color:#fff;padding:30px 40px 26px;}
+  .report-kicker{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.85;margin-bottom:8px;}
+  .report-title{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin:0 0 4px;color:#fff;}
+  .report-sub{font-size:13px;opacity:.9;}
+  .report-body{padding:32px 40px 0;}
+  .section{margin-bottom:30px;}
+  .section-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin:0 0 14px;color:var(--brand);position:relative;padding-left:14px;}
+  .section-title::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:4px;background:var(--accent);border-radius:3px;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;}
+  .kpi{background:var(--slate-soft);border-radius:10px;padding:14px 16px;border:1px solid var(--line);}
   .kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
-  .kpi-val{font-family:'Fraunces',serif;font-size:22px;font-weight:700;margin-top:3px;color:var(--ink);}
-  .kpi-val.accent{color:var(--teal);}
+  .kpi-val{font-family:'Fraunces',serif;font-size:24px;font-weight:700;margin-top:4px;color:var(--brand);}
+  .kpi-val.accent{color:var(--accent);}
   table.rtable{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px;}
-  table.rtable th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);}
-  table.rtable td{padding:7px 8px;border-bottom:1px solid #EFEDE3;}
-  .activity-item{padding:10px 0;border-bottom:1px solid #EFEDE3;}
-  .activity-title{font-weight:600;font-size:13.5px;}
-  .activity-meta{font-size:11px;color:var(--ink-soft);margin-top:2px;}
-  .activity-note{font-size:12.5px;margin-top:4px;color:var(--ink);}
-  .season-note{background:var(--mustard-soft);color:var(--mustard);border-radius:8px;padding:10px 14px;font-size:12.5px;}
+  table.rtable th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);text-align:left;padding:7px 8px;border-bottom:2px solid var(--brand-soft);}
+  table.rtable td{padding:8px;border-bottom:1px solid var(--slate-soft);}
+
+  .activity-card{background:var(--slate-soft);border-radius:10px;padding:16px 18px;margin-bottom:12px;}
+  .activity-title{font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:var(--brand-dark);}
+  .activity-meta{font-size:11px;color:var(--ink-soft);margin-top:3px;}
+  .activity-meta .pill{display:inline-block;background:var(--brand-soft);color:var(--brand);font-weight:600;border-radius:9px;padding:1px 8px;margin-right:4px;font-size:10.5px;}
+  .activity-result{background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:6px;padding:8px 12px;margin-top:10px;font-size:12.5px;}
+  .activity-result .result-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);font-weight:700;margin-bottom:2px;}
+  .activity-media{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;}
+  .activity-media img{max-width:220px;max-height:150px;border-radius:8px;border:1px solid var(--line);object-fit:cover;}
+  .activity-media a.file-link{font-size:12px;color:var(--brand);text-decoration:none;background:var(--brand-soft);padding:6px 10px;border-radius:6px;display:inline-block;}
+
+  .season-note{background:var(--accent-soft);color:#8A3A18;border-radius:8px;padding:10px 14px;font-size:12.5px;}
   .empty-note{color:var(--ink-soft);font-size:12.5px;font-style:italic;}
-  .report-footer{font-size:11px;color:var(--ink-soft);margin-top:30px;border-top:1px solid var(--line);padding-top:12px;}
 
   @media print{
     body{background:#fff;}
     .controls, .no-print{display:none !important;}
-    .report{border:none;padding:0;box-shadow:none;}
+    .report{border:none;padding:0;box-shadow:none;border-radius:0;}
+    .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
 </style>
@@ -80,7 +99,7 @@
       </div>
       <div class="field">
         <label>Costs</label>
-        <div class="toggle-row"><input type="checkbox" id="showSpendToggle"> <label for="showSpendToggle" style="text-transform:none;font-weight:400;">Show spend &amp; ROAS to the hotel</label></div>
+        <div class="toggle-row"><input type="checkbox" id="showSpendToggle"> <label for="showSpendToggle" style="text-transform:none;font-weight:400;">Show spend &amp; ROAS</label></div>
       </div>
     </div>
   </div>
@@ -188,9 +207,12 @@ function renderReport(){
   const periodLabel = periods.length ? periods.map(p=>p.period).join(", ") : "no period selected";
   report.innerHTML += `
     <div class="report-header">
+      <div class="report-kicker">Exely Digital Marketing Hub</div>
       <div class="report-title">${getField("hotelData","name") || currentHotel.id}</div>
-      <div class="report-sub">Direct booking growth report · ${periodLabel} · Prepared ${new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'})}</div>
+      <div class="report-sub">${periodLabel}</div>
     </div>`;
+  const bodyWrap = document.createElement("div"); bodyWrap.className = "report-body";
+  report.appendChild(bodyWrap);
 
   // Results section
   const resultsSection = document.createElement("div"); resultsSection.className = "section";
@@ -224,7 +246,7 @@ function renderReport(){
   } else {
     resultsSection.innerHTML += `<div class="empty-note">No results logged for the selected period(s).</div>`;
   }
-  report.appendChild(resultsSection);
+  bodyWrap.appendChild(resultsSection);
 
   // Visibility metrics
   if(allVisMetrics.length){
@@ -234,7 +256,7 @@ function renderReport(){
     table.innerHTML = `<tr><th>Metric</th><th>Value</th></tr>` +
       allVisMetrics.map(m=>`<tr><td>${m.name||""}</td><td>${m.value||""}</td></tr>`).join("");
     visSection.appendChild(table);
-    report.appendChild(visSection);
+    bodyWrap.appendChild(visSection);
   }
 
   // What we did — from Progress cards in the selected periods
@@ -242,33 +264,69 @@ function renderReport(){
     selectedPeriods.has(c.period) && (c.stage==="Done/Paused" || c.stage==="Live")
   );
   const activitySection = document.createElement("div"); activitySection.className = "section";
-  activitySection.innerHTML = `<div class="section-title">What we did</div>`;
+  activitySection.innerHTML = `<div class="section-title">What we did — and what it means for you</div>`;
   if(doneCards.length){
     doneCards.forEach(c=>{
-      const item = document.createElement("div"); item.className = "activity-item";
+      const item = document.createElement("div"); item.className = "activity-card";
+      const tagPills = (c.tags||[]).map(t=>`<span class="pill">${t}</span>`).join("");
       item.innerHTML = `
         <div class="activity-title">${c.title||"(untitled)"}</div>
-        <div class="activity-meta">${(c.tags||[]).join(", ")} ${c.period?("· "+c.period):""} ${c.stage==="Live"?"· ongoing":"· completed"}</div>
-        ${c.notes ? `<div class="activity-note">${c.notes}</div>` : ""}
+        <div class="activity-meta">${tagPills} ${c.period?("· "+c.period):""} ${c.stage==="Live"?"· ongoing":"· completed"}</div>
+        ${c.notes ? `<div class="activity-result"><div class="result-label">Result</div>${c.notes}</div>` : ""}
       `;
+      const linkedSubtasks = (c.subtasks||[]).filter(s=>s.link && s.link.trim());
+      if(linkedSubtasks.length){
+        const media = document.createElement("div"); media.className = "activity-media";
+        linkedSubtasks.forEach(s=>{
+          if(isImageUrl(s.link)){
+            const img = document.createElement("img"); img.src = s.link; img.alt = s.text || "attachment";
+            media.appendChild(img);
+          } else {
+            const a = document.createElement("a"); a.className = "file-link"; a.href = s.link; a.target = "_blank"; a.textContent = "🔗 " + (s.text || "View");
+            media.appendChild(a);
+          }
+        });
+        item.appendChild(media);
+      }
       activitySection.appendChild(item);
     });
   } else {
     activitySection.innerHTML += `<div class="empty-note">No activities logged for the selected period(s) yet.</div>`;
   }
-  report.appendChild(activitySection);
+  bodyWrap.appendChild(activitySection);
+
+  // Supporting materials — general notes & links (screenshots, docs) attached in Progress
+  const generalNotes = (currentProgress.generalNotes || []).filter(n=>n.link && n.link.trim());
+  if(generalNotes.length){
+    const materialsSection = document.createElement("div"); materialsSection.className = "section";
+    materialsSection.innerHTML = `<div class="section-title">Supporting materials</div>`;
+    const media = document.createElement("div"); media.className = "activity-media";
+    generalNotes.forEach(n=>{
+      if(isImageUrl(n.link)){
+        const img = document.createElement("img"); img.src = n.link; img.alt = n.note || "attachment";
+        media.appendChild(img);
+      } else {
+        const a = document.createElement("a"); a.className = "file-link"; a.href = n.link; a.target = "_blank"; a.textContent = "🔗 " + (n.note || "View");
+        media.appendChild(a);
+      }
+    });
+    materialsSection.appendChild(media);
+    bodyWrap.appendChild(materialsSection);
+  }
 
   // Seasonal context
   if(seasonalNotes.length){
     const seasonSection = document.createElement("div"); seasonSection.className = "section";
     seasonSection.innerHTML = `<div class="section-title">Season context</div>` +
       seasonalNotes.map(n=>`<div class="season-note" style="margin-bottom:8px;">${n}</div>`).join("");
-    report.appendChild(seasonSection);
+    bodyWrap.appendChild(seasonSection);
   }
 
-  report.innerHTML += `<div class="report-footer">Prepared as part of the Digital Marketing Hub direct-booking growth program.</div>`;
-
   root.appendChild(report);
+}
+
+function isImageUrl(url){
+  return /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url.trim());
 }
 
 el("loadBtn").addEventListener("click", ()=>{
