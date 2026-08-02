@@ -1263,15 +1263,16 @@ async function renderResultsTab(){
   if(!periodObj){ renderMultiPeriodSummary(root); return; }
 
   const rowsCard = document.createElement("div"); rowsCard.className = "card";
-  rowsCard.innerHTML = `<div class="card-title">Channel / activity results — ${periodObj.period}</div>`;
+  rowsCard.innerHTML = `<div class="card-title">Campaign / activity results — ${periodObj.period}</div><div class="card-note">Campaign is the specific name (matches your Progress cards). Channel is the category used for roll-ups below.</div>`;
   const table = document.createElement("table"); table.className = "rep";
-  table.innerHTML = `<tr><th>Channel / activity</th><th>Spend</th><th>Traffic</th><th>Bookings</th><th>Revenue</th><th>CVR</th><th>ROAS</th><th></th></tr>`;
+  table.innerHTML = `<tr><th>Campaign</th><th>Channel</th><th>Spend</th><th>Traffic</th><th>Bookings</th><th>Revenue</th><th>CVR</th><th>ROAS</th><th></th></tr>`;
   periodObj.rows.forEach((row,i)=>{
     const cvr = (row.traffic>0) ? (row.bookings/row.traffic*100).toFixed(1)+"%" : "—";
     const roas = (row.spend>0) ? (row.revenue/row.spend).toFixed(2) : "—";
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><input type="text" list="sharedTagsList" value="${row.channel||""}" data-i="${i}" data-f="channel"></td>
+      <td><input type="text" value="${row.campaign||""}" data-i="${i}" data-f="campaign" placeholder="e.g. Winter Offer"></td>
+      <td><input type="text" list="sharedTagsList" value="${row.channel||""}" data-i="${i}" data-f="channel" placeholder="e.g. Google Hotel Ads"></td>
       <td><input type="number" value="${row.spend||""}" data-i="${i}" data-f="spend" style="width:80px;"></td>
       <td><input type="number" value="${row.traffic||""}" data-i="${i}" data-f="traffic" style="width:80px;"></td>
       <td><input type="number" value="${row.bookings||""}" data-i="${i}" data-f="bookings" style="width:80px;"></td>
@@ -1282,13 +1283,13 @@ async function renderResultsTab(){
   });
   rowsCard.appendChild(table);
   const addRowBtn = document.createElement("button"); addRowBtn.className = "btn secondary sm"; addRowBtn.textContent = "+ Add row";
-  addRowBtn.addEventListener("click", ()=>{ periodObj.rows.push({channel:"",spend:0,traffic:0,bookings:0,revenue:0}); renderResultsTab(); });
+  addRowBtn.addEventListener("click", ()=>{ periodObj.rows.push({campaign:"",channel:"",spend:0,traffic:0,bookings:0,revenue:0}); renderResultsTab(); });
   rowsCard.appendChild(addRowBtn);
   root.appendChild(rowsCard);
   table.querySelectorAll("input").forEach(inp=>{
     inp.addEventListener("input", ()=>{
       const f = inp.dataset.f, i = inp.dataset.i;
-      periodObj.rows[i][f] = (f==="channel") ? inp.value : parseFloat(inp.value)||0;
+      periodObj.rows[i][f] = (f==="campaign"||f==="channel") ? inp.value : parseFloat(inp.value)||0;
     });
     if(inp.dataset.f==="channel"){
       inp.addEventListener("blur", async ()=>{ if(inp.value.trim()) await addSharedTag(inp.value.trim()); });
@@ -1310,6 +1311,11 @@ async function renderResultsTab(){
     <div class="ctx-item"><div class="ctx-label">Blended ROAS</div><div class="ctx-val">${blendedROAS}</div></div>`;
   summaryCard.appendChild(grid);
   root.appendChild(summaryCard);
+
+  const channelRollupCard = document.createElement("div"); channelRollupCard.className = "card";
+  channelRollupCard.innerHTML = `<div class="card-title">By channel — ${periodObj.period}</div><div class="card-note">Rolls up all campaigns above by their Channel field.</div>`;
+  channelRollupCard.appendChild(buildChannelBreakdownTable(computeChannelBreakdown(periodObj.rows)));
+  root.appendChild(channelRollupCard);
 
   const seasonCard = document.createElement("div"); seasonCard.className = "card";
   seasonCard.innerHTML = `<div class="card-title">Seasonal context</div>`;
@@ -1337,6 +1343,42 @@ async function renderResultsTab(){
 
   renderMultiPeriodSummary(root);
 }
+
+function computeBreakdown(rows, keyField){
+  const map = {};
+  rows.forEach(r=>{
+    const key = r[keyField] && r[keyField].trim() ? r[keyField].trim() : `(no ${keyField})`;
+    if(!map[key]) map[key] = {spend:0,traffic:0,bookings:0,revenue:0};
+    map[key].spend += (r.spend||0);
+    map[key].traffic += (r.traffic||0);
+    map[key].bookings += (r.bookings||0);
+    map[key].revenue += (r.revenue||0);
+  });
+  return map;
+}
+function computeChannelBreakdown(rows){ return computeBreakdown(rows, "channel"); }
+function computeCampaignBreakdown(rows){ return computeBreakdown(rows, "campaign"); }
+function buildBreakdownTable(map, firstColLabel){
+  const table = document.createElement("table"); table.className = "rep";
+  table.innerHTML = `<tr><th>${firstColLabel}</th><th>Spend</th><th>Traffic</th><th>Bookings</th><th>Revenue</th><th>CVR</th><th>ROAS</th></tr>`;
+  const keys = Object.keys(map);
+  if(keys.length === 0){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="7" style="color:var(--ink-soft);">No rows yet.</td>`;
+    table.appendChild(tr);
+    return table;
+  }
+  keys.sort((a,b)=> map[b].revenue - map[a].revenue).forEach(key=>{
+    const c = map[key];
+    const cvr = c.traffic>0 ? (c.bookings/c.traffic*100).toFixed(1)+"%" : "—";
+    const roas = c.spend>0 ? (c.revenue/c.spend).toFixed(2) : "—";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${key}</td><td>$${c.spend}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td><td>${cvr}</td><td>${roas}</td>`;
+    table.appendChild(tr);
+  });
+  return table;
+}
+function buildChannelBreakdownTable(map){ return buildBreakdownTable(map, "Channel"); }
 
 function renderMultiPeriodSummary(root){
   const pickerCard = document.createElement("div"); pickerCard.className = "card";
@@ -1372,7 +1414,7 @@ function renderMultiPeriodSummary(root){
   const blended = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
 
   const summaryCard = document.createElement("div"); summaryCard.className = "card";
-  summaryCard.innerHTML = `<div class="card-title">Totals across ${selectedPeriods.length} selected period(s)</div>`;
+  summaryCard.innerHTML = `<div class="card-title">Overall totals across ${selectedPeriods.length} selected period(s)</div>`;
   const grid = document.createElement("div"); grid.className = "context-grid";
   grid.innerHTML = `
     <div class="ctx-item"><div class="ctx-label">Total spend</div><div class="ctx-val">$${totals.spend}</div></div>
@@ -1382,29 +1424,15 @@ function renderMultiPeriodSummary(root){
   summaryCard.appendChild(grid);
   root.appendChild(summaryCard);
 
-  const byChannel = {};
-  allRows.forEach(r=>{
-    const ch = r.channel && r.channel.trim() ? r.channel.trim() : "(no channel)";
-    if(!byChannel[ch]) byChannel[ch] = {spend:0,traffic:0,bookings:0,revenue:0};
-    byChannel[ch].spend += (r.spend||0);
-    byChannel[ch].traffic += (r.traffic||0);
-    byChannel[ch].bookings += (r.bookings||0);
-    byChannel[ch].revenue += (r.revenue||0);
-  });
   const channelCard = document.createElement("div"); channelCard.className = "card";
   channelCard.innerHTML = `<div class="card-title">By channel — across selected periods</div>`;
-  const table = document.createElement("table"); table.className = "rep";
-  table.innerHTML = `<tr><th>Channel / activity</th><th>Spend</th><th>Traffic</th><th>Bookings</th><th>Revenue</th><th>CVR</th><th>ROAS</th></tr>`;
-  Object.keys(byChannel).sort((a,b)=> byChannel[b].revenue - byChannel[a].revenue).forEach(ch=>{
-    const c = byChannel[ch];
-    const cvr = c.traffic>0 ? (c.bookings/c.traffic*100).toFixed(1)+"%" : "—";
-    const roas = c.spend>0 ? (c.revenue/c.spend).toFixed(2) : "—";
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${ch}</td><td>$${c.spend}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td><td>${cvr}</td><td>${roas}</td>`;
-    table.appendChild(tr);
-  });
-  channelCard.appendChild(table);
+  channelCard.appendChild(buildChannelBreakdownTable(computeChannelBreakdown(allRows)));
   root.appendChild(channelCard);
+
+  const campaignCard = document.createElement("div"); campaignCard.className = "card";
+  campaignCard.innerHTML = `<div class="card-title">By campaign — across selected periods</div><div class="card-note">Useful for a campaign that ran across more than one month.</div>`;
+  campaignCard.appendChild(buildBreakdownTable(computeCampaignBreakdown(allRows), "Campaign"));
+  root.appendChild(campaignCard);
 }
 
 /* =========================================================
