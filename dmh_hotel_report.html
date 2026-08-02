@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DMH Hotel Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --paper:#F5F4EF; --card:#FFFFFF; --ink:#1C2620; --ink-soft:#5B6660;
+    --line:#E1DDCE; --teal:#0E6E55; --teal-soft:#E4EFE9;
+    --mustard:#A9791B; --mustard-soft:#F5EBD3;
+    --slate:#8C8A7E; --slate-soft:#EEECE3;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;}
+  .shell{max-width:860px;margin:0 auto;padding:22px 26px 60px;}
+
+  .controls{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:20px;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
+  select, input[type=text]{font-family:'IBM Plex Sans',sans-serif;border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-size:13px;}
+  .btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12.5px;border-radius:6px;border:1px solid var(--teal);background:var(--teal);color:#fff;padding:8px 14px;cursor:pointer;}
+  .btn.secondary{background:#fff;color:var(--teal);}
+  .status-text{font-size:11.5px;color:var(--ink-soft);}
+  .tag-group{display:flex;flex-wrap:wrap;gap:7px;}
+  .tag{font-size:12px;padding:6px 11px;border-radius:16px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink-soft);}
+  .tag.selected{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;}
+  .toggle-row{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+
+  /* Report */
+  .report{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:36px 40px;}
+  .report-header{border-bottom:2px solid var(--teal);padding-bottom:16px;margin-bottom:24px;}
+  .report-title{font-family:'Fraunces',serif;font-size:26px;font-weight:700;margin:0 0 4px;}
+  .report-sub{font-size:13px;color:var(--ink-soft);}
+  .section{margin-bottom:28px;}
+  .section-title{font-family:'Fraunces',serif;font-size:17px;font-weight:600;margin:0 0 12px;color:var(--teal);}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px;}
+  .kpi{background:var(--slate-soft);border-radius:8px;padding:12px 14px;}
+  .kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
+  .kpi-val{font-family:'Fraunces',serif;font-size:22px;font-weight:700;margin-top:3px;color:var(--ink);}
+  .kpi-val.accent{color:var(--teal);}
+  table.rtable{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px;}
+  table.rtable th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);}
+  table.rtable td{padding:7px 8px;border-bottom:1px solid #EFEDE3;}
+  .activity-item{padding:10px 0;border-bottom:1px solid #EFEDE3;}
+  .activity-title{font-weight:600;font-size:13.5px;}
+  .activity-meta{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+  .activity-note{font-size:12.5px;margin-top:4px;color:var(--ink);}
+  .season-note{background:var(--mustard-soft);color:var(--mustard);border-radius:8px;padding:10px 14px;font-size:12.5px;}
+  .empty-note{color:var(--ink-soft);font-size:12.5px;font-style:italic;}
+  .report-footer{font-size:11px;color:var(--ink-soft);margin-top:30px;border-top:1px solid var(--line);padding-top:12px;}
+
+  @media print{
+    body{background:#fff;}
+    .controls, .no-print{display:none !important;}
+    .report{border:none;padding:0;box-shadow:none;}
+    .shell{max-width:100%;padding:0;}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="controls no-print">
+    <div class="row">
+      <div class="field" style="min-width:220px;">
+        <label>Hotel</label>
+        <select id="hotelSelect"><option value="">Loading...</option></select>
+      </div>
+      <button class="btn secondary" id="loadBtn">Load data</button>
+      <button class="btn" id="printBtn">Print / Export</button>
+      <span class="status-text" id="statusText"></span>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <div class="field" style="flex:1;">
+        <label>Periods to include</label>
+        <div class="tag-group" id="periodPicker"></div>
+      </div>
+      <div class="field">
+        <label>Costs</label>
+        <div class="toggle-row"><input type="checkbox" id="showSpendToggle"> <label for="showSpendToggle" style="text-transform:none;font-weight:400;">Show spend &amp; ROAS to the hotel</label></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="reportRoot"></div>
+
+</div>
+
+<script>
+const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxKHZNNI6QlVeyv9Q982-ErEYSXkIdD6vTt0Lpq5z2YMCA_-cR1KROjWjM_p_tzolDSVw/exec";
+const el = id => document.getElementById(id);
+
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=> reject(new Error(`Timed out waiting for ${label} (no response after ${ms/1000}s)`)), ms))
+  ]);
+}
+function checkBackendConfigured(){
+  if(!SHEETS_WEBAPP_URL || SHEETS_WEBAPP_URL.indexOf("PASTE_YOUR") === 0){
+    throw new Error("Backend not configured — paste the same Apps Script URL used in the main workspace into SHEETS_WEBAPP_URL near the top of this file.");
+  }
+}
+async function stGet(key){
+  checkBackendConfigured();
+  const res = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}`), 12000, `loading "${key}"`);
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return data.value;
+}
+
+let hotelIndex = [];
+let currentHotel = null;
+let currentResults = null;
+let currentProgress = null;
+let selectedPeriods = new Set();
+
+async function loadHotelIndex(){
+  try{ hotelIndex = JSON.parse(await stGet("dmh-hotel-index")); } catch(e){ hotelIndex = []; }
+}
+function populateHotelSelect(){
+  const sel = el("hotelSelect");
+  sel.innerHTML = '<option value="">Select a hotel...</option>';
+  hotelIndex.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(h=>{
+    const opt = document.createElement("option"); opt.value = h.id; opt.textContent = h.name; sel.appendChild(opt);
+  });
+}
+
+async function loadAllForHotel(id){
+  el("statusText").textContent = "Loading...";
+  try{
+    currentHotel = JSON.parse(await stGet(`dmh-hotel:${id}`));
+  } catch(e){ currentHotel = null; }
+  try{
+    currentResults = JSON.parse(await stGet(`dmh-results:${id}`));
+  } catch(e){ currentResults = { periods: [] }; }
+  try{
+    currentProgress = JSON.parse(await stGet(`dmh-progress:${id}`));
+  } catch(e){ currentProgress = { cards: [] }; }
+  selectedPeriods = new Set((currentResults.periods||[]).map(p=>p.period));
+  el("statusText").textContent = "Loaded " + new Date().toLocaleTimeString('en-US');
+  renderPeriodPicker();
+  renderReport();
+}
+
+function getField(sectionId, key){ return currentHotel?.sections?.[sectionId]?.fields?.[key] || ""; }
+
+function renderPeriodPicker(){
+  const wrap = el("periodPicker");
+  wrap.innerHTML = "";
+  const periods = currentResults?.periods || [];
+  if(periods.length === 0){ wrap.innerHTML = '<span class="status-text">No periods logged for this hotel.</span>'; return; }
+  periods.forEach(p=>{
+    const tag = document.createElement("div");
+    tag.className = "tag" + (selectedPeriods.has(p.period) ? " selected" : "");
+    tag.textContent = p.period;
+    tag.addEventListener("click", ()=>{
+      if(selectedPeriods.has(p.period)) selectedPeriods.delete(p.period); else selectedPeriods.add(p.period);
+      renderPeriodPicker();
+      renderReport();
+    });
+    wrap.appendChild(tag);
+  });
+}
+
+function renderReport(){
+  const root = el("reportRoot");
+  root.innerHTML = "";
+  if(!currentHotel){ root.innerHTML = '<div class="empty-note">Select a hotel and click Load data.</div>'; return; }
+
+  const showSpend = el("showSpendToggle").checked;
+  const periods = (currentResults.periods||[]).filter(p=>selectedPeriods.has(p.period));
+  const allRows = periods.flatMap(p=>p.rows||[]);
+  const allVisMetrics = periods.flatMap(p=>p.visibilityMetrics||[]);
+  const seasonalNotes = periods.map(p=>p.seasonalNote).filter(Boolean);
+
+  const totals = allRows.reduce((acc,r)=>({
+    spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
+  }), {spend:0,traffic:0,bookings:0,revenue:0});
+  const roas = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
+
+  const report = document.createElement("div");
+  report.className = "report";
+
+  const periodLabel = periods.length ? periods.map(p=>p.period).join(", ") : "no period selected";
+  report.innerHTML += `
+    <div class="report-header">
+      <div class="report-title">${getField("hotelData","name") || currentHotel.id}</div>
+      <div class="report-sub">Direct booking growth report · ${periodLabel} · Prepared ${new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'})}</div>
+    </div>`;
+
+  // Results section
+  const resultsSection = document.createElement("div"); resultsSection.className = "section";
+  const kpiGrid = document.createElement("div"); kpiGrid.className = "kpi-grid";
+  kpiGrid.innerHTML = `
+    <div class="kpi"><div class="kpi-label">Traffic</div><div class="kpi-val">${totals.traffic}</div></div>
+    <div class="kpi"><div class="kpi-label">Bookings</div><div class="kpi-val accent">${totals.bookings}</div></div>
+    <div class="kpi"><div class="kpi-label">Direct revenue</div><div class="kpi-val accent">$${totals.revenue}</div></div>
+    ${showSpend ? `<div class="kpi"><div class="kpi-label">Marketing spend</div><div class="kpi-val">$${totals.spend}</div></div>
+    <div class="kpi"><div class="kpi-label">Return on spend</div><div class="kpi-val accent">${roas}×</div></div>` : ""}
+  `;
+  resultsSection.innerHTML = `<div class="section-title">Results</div>`;
+  resultsSection.appendChild(kpiGrid);
+
+  if(allRows.length){
+    const byChannel = {};
+    allRows.forEach(r=>{
+      const ch = r.channel && r.channel.trim() ? r.channel.trim() : "Other";
+      if(!byChannel[ch]) byChannel[ch] = {traffic:0,bookings:0,revenue:0,spend:0};
+      byChannel[ch].traffic += r.traffic||0; byChannel[ch].bookings += r.bookings||0;
+      byChannel[ch].revenue += r.revenue||0; byChannel[ch].spend += r.spend||0;
+    });
+    const table = document.createElement("table"); table.className = "rtable";
+    table.innerHTML = `<tr><th>Channel</th><th>Traffic</th><th>Bookings</th><th>Revenue</th>${showSpend?"<th>Spend</th><th>ROAS</th>":""}</tr>` +
+      Object.keys(byChannel).sort((a,b)=>byChannel[b].revenue-byChannel[a].revenue).map(ch=>{
+        const c = byChannel[ch];
+        const r = c.spend>0 ? (c.revenue/c.spend).toFixed(2)+"×" : "—";
+        return `<tr><td>${ch}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td>${showSpend?`<td>$${c.spend}</td><td>${r}</td>`:""}</tr>`;
+      }).join("");
+    resultsSection.appendChild(table);
+  } else {
+    resultsSection.innerHTML += `<div class="empty-note">No results logged for the selected period(s).</div>`;
+  }
+  report.appendChild(resultsSection);
+
+  // Visibility metrics
+  if(allVisMetrics.length){
+    const visSection = document.createElement("div"); visSection.className = "section";
+    visSection.innerHTML = `<div class="section-title">Visibility</div>`;
+    const table = document.createElement("table"); table.className = "rtable";
+    table.innerHTML = `<tr><th>Metric</th><th>Value</th></tr>` +
+      allVisMetrics.map(m=>`<tr><td>${m.name||""}</td><td>${m.value||""}</td></tr>`).join("");
+    visSection.appendChild(table);
+    report.appendChild(visSection);
+  }
+
+  // What we did — from Progress cards in the selected periods
+  const doneCards = (currentProgress.cards||[]).filter(c=>
+    selectedPeriods.has(c.period) && (c.stage==="Done/Paused" || c.stage==="Live")
+  );
+  const activitySection = document.createElement("div"); activitySection.className = "section";
+  activitySection.innerHTML = `<div class="section-title">What we did</div>`;
+  if(doneCards.length){
+    doneCards.forEach(c=>{
+      const item = document.createElement("div"); item.className = "activity-item";
+      item.innerHTML = `
+        <div class="activity-title">${c.title||"(untitled)"}</div>
+        <div class="activity-meta">${(c.tags||[]).join(", ")} ${c.period?("· "+c.period):""} ${c.stage==="Live"?"· ongoing":"· completed"}</div>
+        ${c.notes ? `<div class="activity-note">${c.notes}</div>` : ""}
+      `;
+      activitySection.appendChild(item);
+    });
+  } else {
+    activitySection.innerHTML += `<div class="empty-note">No activities logged for the selected period(s) yet.</div>`;
+  }
+  report.appendChild(activitySection);
+
+  // Seasonal context
+  if(seasonalNotes.length){
+    const seasonSection = document.createElement("div"); seasonSection.className = "section";
+    seasonSection.innerHTML = `<div class="section-title">Season context</div>` +
+      seasonalNotes.map(n=>`<div class="season-note" style="margin-bottom:8px;">${n}</div>`).join("");
+    report.appendChild(seasonSection);
+  }
+
+  report.innerHTML += `<div class="report-footer">Prepared as part of the Digital Marketing Hub direct-booking growth program.</div>`;
+
+  root.appendChild(report);
+}
+
+el("loadBtn").addEventListener("click", ()=>{
+  const id = el("hotelSelect").value;
+  if(!id) return;
+  loadAllForHotel(id);
+});
+el("showSpendToggle").addEventListener("change", renderReport);
+el("printBtn").addEventListener("click", ()=> window.print());
+
+(async function init(){
+  el("statusText").textContent = "Loading hotel list...";
+  try{ await loadHotelIndex(); populateHotelSelect(); el("statusText").textContent = ""; }
+  catch(e){ el("statusText").textContent = "⚠ " + e.message; }
+})();
+</script>
+</body>
+</html>
