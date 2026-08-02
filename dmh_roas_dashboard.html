@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DMH ROAS Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --paper:#F5F4EF; --card:#FFFFFF; --ink:#1C2620; --ink-soft:#5B6660;
+    --line:#E1DDCE; --teal:#0E6E55; --teal-soft:#E4EFE9;
+    --brick:#AE4A2E; --brick-soft:#F6E7E1;
+    --mustard:#A9791B; --mustard-soft:#F5EBD3;
+    --slate:#8C8A7E; --slate-soft:#EEECE3;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;}
+  .shell{max-width:1080px;margin:0 auto;padding:22px 26px 60px;}
+  h1{font-family:'Fraunces',serif;font-size:22px;font-weight:700;margin:0 0 4px;}
+  .sub{font-size:12px;color:var(--ink-soft);margin-bottom:18px;}
+  .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+  input[type=text]{font-family:'IBM Plex Sans',sans-serif;border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:13px;}
+  .btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12.5px;border-radius:6px;border:1px solid var(--teal);background:var(--teal);color:#fff;padding:8px 14px;cursor:pointer;}
+  .btn.secondary{background:#fff;color:var(--teal);}
+  .status-text{font-size:11.5px;color:var(--ink-soft);}
+
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px;}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+  .kpi-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
+  .kpi-val{font-family:'Fraunces',serif;font-size:24px;font-weight:700;margin-top:4px;}
+  .kpi-val.on{color:var(--teal);}
+  .kpi-val.building{color:var(--mustard);}
+  .kpi-val.below{color:var(--brick);}
+
+  .hotel-card{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:12px;overflow:hidden;}
+  .hotel-head{display:flex;align-items:center;gap:14px;padding:14px 18px;cursor:pointer;}
+  .hotel-head:hover{background:var(--slate-soft);}
+  .hotel-name{font-family:'Fraunces',serif;font-weight:600;font-size:15px;flex:1;}
+  .hotel-meta{font-size:11.5px;color:var(--ink-soft);}
+  .roas-badge{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:16px;padding:4px 12px;border-radius:8px;min-width:70px;text-align:center;}
+  .roas-badge.on{background:var(--teal-soft);color:var(--teal);}
+  .roas-badge.building{background:var(--mustard-soft);color:var(--mustard);}
+  .roas-badge.below{background:var(--brick-soft);color:var(--brick);}
+  .roas-badge.none{background:var(--slate-soft);color:var(--slate);}
+  .status-pill{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:10px;white-space:nowrap;}
+  .status-pill.on{background:var(--teal-soft);color:var(--teal);}
+  .status-pill.building{background:var(--mustard-soft);color:var(--mustard);}
+  .status-pill.below{background:var(--brick-soft);color:var(--brick);}
+  .status-pill.none{background:var(--slate-soft);color:var(--slate);}
+  .chevron{color:var(--ink-soft);font-size:12px;transition:transform .15s;}
+  .chevron.open{transform:rotate(90deg);}
+
+  .hotel-detail{border-top:1px solid var(--line);padding:14px 18px;background:var(--paper);}
+  table.roas-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:6px;}
+  table.roas-table th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);}
+  table.roas-table td{padding:5px 8px;border-bottom:1px solid #EFEDE3;}
+  .detail-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin:10px 0 6px;}
+
+  .empty-state{color:var(--ink-soft);padding:50px 20px;text-align:center;}
+  .target-line{font-size:11.5px;color:var(--ink-soft);margin-bottom:14px;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <h1>DMH ROAS dashboard</h1>
+  <div class="sub">Read-only overview across every hotel — anyone on any team can check where things stand. Full detail and editing lives in the main DMH workspace.</div>
+
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="Search hotel...">
+    <button class="btn secondary" id="refreshBtn">Refresh</button>
+    <span class="status-text" id="statusText"></span>
+  </div>
+
+  <div class="target-line">Target: blended ROAS ≥ 8 · <span style="color:var(--teal);">●</span> on target (≥8) &nbsp; <span style="color:var(--mustard);">●</span> building (4–8) &nbsp; <span style="color:var(--brick);">●</span> below target (&lt;4) &nbsp; <span style="color:var(--slate);">●</span> no data yet</div>
+
+  <div class="kpi-row" id="kpiRow"></div>
+  <div id="hotelList"></div>
+</div>
+
+<script>
+const SHEETS_WEBAPP_URL = https://script.google.com/macros/s/AKfycbxKHZNNI6QlVeyv9Q982-ErEYSXkIdD6vTt0Lpq5z2YMCA_-cR1KROjWjM_p_tzolDSVw/exec";
+const el = id => document.getElementById(id);
+
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=> reject(new Error(`Timed out waiting for ${label} (no response after ${ms/1000}s)`)), ms))
+  ]);
+}
+function checkBackendConfigured(){
+  if(!SHEETS_WEBAPP_URL || SHEETS_WEBAPP_URL.indexOf("PASTE_YOUR") === 0){
+    throw new Error("Backend not configured — paste the same Apps Script URL used in the main workspace into SHEETS_WEBAPP_URL near the top of this file.");
+  }
+}
+async function stGet(key){
+  checkBackendConfigured();
+  const res = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}`), 12000, `loading "${key}"`);
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return data.value;
+}
+
+let hotelIndex = [];
+let hotelData = {}; // id -> { name, propertyType, results }
+let expanded = {};
+
+function roasStatus(roas){
+  if(roas === null) return "none";
+  if(roas >= 8) return "on";
+  if(roas >= 4) return "building";
+  return "below";
+}
+function roasLabel(roas){ return roas === null ? "—" : roas.toFixed(2); }
+
+async function loadHotelRecord(id){
+  try{ return JSON.parse(await stGet(`dmh-hotel:${id}`)); } catch(e){ return null; }
+}
+async function loadResults(id){
+  try{ return JSON.parse(await stGet(`dmh-results:${id}`)); } catch(e){ return null; }
+}
+
+function computeBlended(rows){
+  const totals = rows.reduce((acc,r)=>({spend:acc.spend+(r.spend||0), revenue:acc.revenue+(r.revenue||0)}), {spend:0, revenue:0});
+  return totals.spend > 0 ? totals.revenue / totals.spend : null;
+}
+
+async function loadAll(){
+  el("statusText").textContent = "Loading...";
+  hotelData = {};
+  try{
+    hotelIndex = JSON.parse(await stGet("dmh-hotel-index"));
+  } catch(e){
+    hotelIndex = [];
+    el("statusText").textContent = "⚠ " + e.message;
+    render();
+    return;
+  }
+
+  await Promise.all(hotelIndex.map(async h=>{
+    const [record, results] = await Promise.all([loadHotelRecord(h.id), loadResults(h.id)]);
+    const propertyType = record?.sections?.hotelData?.fields?.propertyType || "—";
+    const periods = (results?.periods || []).map(p=>({
+      period: p.period,
+      roas: computeBlended(p.rows || []),
+      rows: p.rows || [],
+    }));
+    hotelData[h.id] = { name: h.name || h.id, propertyType, periods };
+  }));
+
+  el("statusText").textContent = "Updated " + new Date().toLocaleTimeString('en-US');
+  render();
+}
+
+function render(){
+  renderKPIs();
+  renderHotelList();
+}
+
+function renderKPIs(){
+  const kpiRow = el("kpiRow");
+  const entries = Object.values(hotelData);
+  const latestRoasList = entries.map(h => h.periods.length ? h.periods[h.periods.length-1].roas : null).filter(r=>r!==null);
+  const avg = latestRoasList.length ? (latestRoasList.reduce((a,b)=>a+b,0)/latestRoasList.length) : null;
+  const onCount = entries.filter(h=>{ const r = h.periods.length ? h.periods[h.periods.length-1].roas : null; return roasStatus(r)==="on"; }).length;
+  const belowCount = entries.filter(h=>{ const r = h.periods.length ? h.periods[h.periods.length-1].roas : null; return roasStatus(r)==="below"; }).length;
+
+  const latestTotals = entries.reduce((acc,h)=>{
+    const latest = h.periods.length ? h.periods[h.periods.length-1] : null;
+    if(!latest) return acc;
+    const t = latest.rows.reduce((a,r)=>({spend:a.spend+(r.spend||0), revenue:a.revenue+(r.revenue||0)}), {spend:0,revenue:0});
+    return { spend: acc.spend + t.spend, revenue: acc.revenue + t.revenue };
+  }, {spend:0, revenue:0});
+
+  kpiRow.innerHTML = `
+    <div class="kpi"><div class="kpi-label">Hotels tracked</div><div class="kpi-val">${entries.length}</div></div>
+    <div class="kpi"><div class="kpi-label">Portfolio avg ROAS (latest period)</div><div class="kpi-val ${roasStatus(avg)}">${roasLabel(avg)}</div></div>
+    <div class="kpi"><div class="kpi-label">On target (≥8)</div><div class="kpi-val on">${onCount}</div></div>
+    <div class="kpi"><div class="kpi-label">Below target (&lt;4)</div><div class="kpi-val below">${belowCount}</div></div>
+    <div class="kpi"><div class="kpi-label">Total spend (latest period, all hotels)</div><div class="kpi-val">$${latestTotals.spend}</div></div>
+    <div class="kpi"><div class="kpi-label">Total revenue (latest period, all hotels)</div><div class="kpi-val on">$${latestTotals.revenue}</div></div>
+  `;
+}
+
+function renderHotelList(){
+  const list = el("hotelList");
+  const q = (el("searchInput").value || "").toLowerCase();
+  list.innerHTML = "";
+
+  const entries = Object.entries(hotelData).filter(([id,h]) => h.name.toLowerCase().includes(q));
+  if(entries.length === 0){
+    list.innerHTML = '<div class="empty-state">No hotels match, or none tracked yet.</div>';
+    return;
+  }
+
+  entries.sort((a,b)=> a[1].name.localeCompare(b[1].name)).forEach(([id, h])=>{
+    const latest = h.periods.length ? h.periods[h.periods.length-1] : null;
+    const status = roasStatus(latest ? latest.roas : null);
+    const isOpen = !!expanded[id];
+    const latestTotals = latest ? latest.rows.reduce((a,r)=>({spend:a.spend+(r.spend||0), revenue:a.revenue+(r.revenue||0)}), {spend:0,revenue:0}) : null;
+
+    const card = document.createElement("div");
+    card.className = "hotel-card";
+    card.innerHTML = `
+      <div class="hotel-head" data-id="${id}">
+        <span class="chevron ${isOpen?"open":""}">▸</span>
+        <div class="hotel-name">${h.name}</div>
+        <div class="hotel-meta">${h.propertyType} · ${h.periods.length} period(s) tracked</div>
+        ${latestTotals ? `<div class="hotel-meta">Spend $${latestTotals.spend} · Revenue $${latestTotals.revenue}</div>` : ""}
+        <span class="status-pill ${status}">${latest ? latest.period : "no data"}</span>
+        <span class="roas-badge ${status}">${roasLabel(latest ? latest.roas : null)}</span>
+      </div>
+    `;
+    card.querySelector(".hotel-head").addEventListener("click", ()=>{
+      expanded[id] = !expanded[id];
+      renderHotelList();
+    });
+
+    if(isOpen){
+      const detail = document.createElement("div");
+      detail.className = "hotel-detail";
+      if(h.periods.length === 0){
+        detail.innerHTML = `<div class="empty-state" style="padding:14px;">No periods logged yet for this hotel.</div>`;
+      } else {
+        const periodsTable = document.createElement("table");
+        periodsTable.className = "roas-table";
+        periodsTable.innerHTML = `<tr><th>Period</th><th>Blended ROAS</th><th>Status</th></tr>` +
+          h.periods.map(p=>{
+            const s = roasStatus(p.roas);
+            return `<tr><td>${p.period}</td><td>${roasLabel(p.roas)}</td><td><span class="status-pill ${s}">${s==="on"?"On target":s==="building"?"Building":s==="below"?"Below target":"No spend"}</span></td></tr>`;
+          }).join("");
+        detail.innerHTML = `<div class="detail-label">ROAS by period</div>`;
+        detail.appendChild(periodsTable);
+
+        const byChannelWrap = document.createElement("div");
+        byChannelWrap.innerHTML = `<div class="detail-label">By channel — latest period (${latest.period})</div>`;
+        const chTable = document.createElement("table");
+        chTable.className = "roas-table";
+        chTable.innerHTML = `<tr><th>Channel</th><th>Spend</th><th>Revenue</th><th>ROAS</th></tr>` +
+          (latest.rows.length ? latest.rows.map(r=>{
+            const roas = (r.spend>0) ? (r.revenue/r.spend).toFixed(2) : "—";
+            return `<tr><td>${r.channel||"(no channel)"}</td><td>$${r.spend||0}</td><td>$${r.revenue||0}</td><td>${roas}</td></tr>`;
+          }).join("") : `<tr><td colspan="4" style="color:var(--ink-soft);">No channel rows for this period.</td></tr>`);
+        byChannelWrap.appendChild(chTable);
+        detail.appendChild(byChannelWrap);
+      }
+      card.appendChild(detail);
+    }
+
+    list.appendChild(card);
+  });
+}
+
+el("searchInput").addEventListener("input", renderHotelList);
+el("refreshBtn").addEventListener("click", loadAll);
+
+loadAll();
+</script>
+</body>
+</html>
