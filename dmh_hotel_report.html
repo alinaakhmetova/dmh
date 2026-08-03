@@ -48,6 +48,24 @@
   .section{margin-bottom:30px;}
   .section-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin:0 0 14px;color:var(--brand);position:relative;padding-left:14px;}
   .section-title::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:4px;background:var(--accent);border-radius:3px;}
+  .glance-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:8px;}
+  .glance-item{background:var(--brand-soft);border-radius:12px;padding:16px 18px;text-align:center;}
+  .glance-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--brand);font-weight:600;margin-bottom:6px;}
+  .glance-val{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--brand-dark);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
+  .delta-badge{font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;padding:3px 10px;border-radius:8px;vertical-align:middle;}
+  .delta-badge.delta-up{background:var(--accent-soft);color:#8A3A18;}
+  .delta-badge.delta-down{background:#E9E4EE;color:var(--ink-soft);}
+  .kpi .delta-badge{font-size:11px;padding:1px 6px;border-radius:6px;margin-left:4px;}
+  .compare-chart{margin-bottom:26px;}
+  .compare-row{display:grid;grid-template-columns:80px 1fr 40px;align-items:center;gap:10px;margin-bottom:10px;font-size:12px;}
+  .compare-bars{display:flex;flex-direction:column;gap:3px;}
+  .compare-bar-track{background:var(--slate-soft);border-radius:4px;height:14px;overflow:hidden;position:relative;}
+  .compare-bar-fill{height:100%;border-radius:4px;}
+  .compare-bar-fill.prev{background:var(--line);}
+  .compare-bar-fill.curr{background:var(--brand);}
+  .compare-legend{display:flex;gap:16px;font-size:11px;color:var(--ink-soft);margin-bottom:10px;}
+  .compare-legend span{display:flex;align-items:center;gap:5px;}
+  .legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
   .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;}
   .kpi{background:var(--slate-soft);border-radius:10px;padding:14px 16px;border:1px solid var(--line);}
   .kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
@@ -69,6 +87,10 @@
 
   .season-note{background:var(--accent-soft);color:#8A3A18;border-radius:8px;padding:10px 14px;font-size:12.5px;}
   .empty-note{color:var(--ink-soft);font-size:12.5px;font-style:italic;}
+
+  @media (max-width:600px){
+    .glance-strip{grid-template-columns:1fr;}
+  }
 
   @media print{
     body{background:#fff;}
@@ -201,6 +223,30 @@ function renderReport(){
   }), {spend:0,traffic:0,bookings:0,revenue:0});
   const roas = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
 
+  // Compare against the period right before the earliest selected one, so the
+  // reader sees "up/down vs last time" instead of only a flat snapshot.
+  const allPeriods = currentResults.periods || [];
+  const selectedIndexes = periods.map(p => allPeriods.findIndex(x=>x.period===p.period)).filter(i=>i>=0);
+  const earliestSelectedIndex = selectedIndexes.length ? Math.min(...selectedIndexes) : -1;
+  const previousPeriod = earliestSelectedIndex > 0 ? allPeriods[earliestSelectedIndex-1] : null;
+  const prevTotals = previousPeriod ? (previousPeriod.rows||[]).reduce((acc,r)=>({
+    spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
+  }), {spend:0,traffic:0,bookings:0,revenue:0}) : null;
+
+  function pctDelta(curr, prev){
+    if(prev===null || prev===undefined || prev===0) return null;
+    return ((curr-prev)/prev*100);
+  }
+  function deltaBadge(curr, prev, goodWhenUp=true){
+    const d = pctDelta(curr, prev);
+    if(d === null) return "";
+    const up = d >= 0;
+    const positive = goodWhenUp ? up : !up;
+    const cls = positive ? "delta-up" : "delta-down";
+    const arrow = up ? "▲" : "▼";
+    return `<span class="delta-badge ${cls}">${arrow} ${Math.abs(d).toFixed(0)}%</span>`;
+  }
+
   const report = document.createElement("div");
   report.className = "report";
 
@@ -214,17 +260,57 @@ function renderReport(){
   const bodyWrap = document.createElement("div"); bodyWrap.className = "report-body";
   report.appendChild(bodyWrap);
 
+  // Activities completed this period — moved up so it can join the glance strip
+  const doneCards = (currentProgress.cards||[]).filter(c=>
+    selectedPeriods.has(c.period) && (c.stage==="Done/Paused" || c.stage==="Live")
+  );
+  const prevActivitiesCount = previousPeriod
+    ? (currentProgress.cards||[]).filter(c=> c.period===previousPeriod.period && (c.stage==="Done/Paused" || c.stage==="Live")).length
+    : null;
+
+  // At a glance — three co-equal figures, so a dip in one doesn't read as
+  // "everything failed." Revenue here is only what's attributed to tracked
+  // marketing activity, not the hotel's total direct revenue.
+  const glance = document.createElement("div"); glance.className = "glance-strip";
+  glance.innerHTML = `
+    <div class="glance-item">
+      <div class="glance-label">Revenue from tracked campaigns</div>
+      <div class="glance-val">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div>
+    </div>
+    <div class="glance-item">
+      <div class="glance-label">Traffic reached</div>
+      <div class="glance-val">${totals.traffic} ${deltaBadge(totals.traffic, prevTotals?.traffic)}</div>
+    </div>
+    <div class="glance-item">
+      <div class="glance-label">Activities completed</div>
+      <div class="glance-val">${doneCards.length} ${deltaBadge(doneCards.length, prevActivitiesCount)}</div>
+    </div>
+  `;
+  bodyWrap.appendChild(glance);
+  if(!previousPeriod){
+    const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.marginTop = "-14px"; note.style.marginBottom = "18px";
+    note.textContent = "No prior period to compare yet.";
+    bodyWrap.appendChild(note);
+  }
+
+  if(previousPeriod){
+    bodyWrap.appendChild(buildComparisonChart([
+      {label:"Traffic", curr:totals.traffic, prev:prevTotals.traffic},
+      {label:"Bookings", curr:totals.bookings, prev:prevTotals.bookings},
+      {label:"Revenue", curr:totals.revenue, prev:prevTotals.revenue},
+    ], previousPeriod.period, periodLabel));
+  }
+
   // Results section
   const resultsSection = document.createElement("div"); resultsSection.className = "section";
   const kpiGrid = document.createElement("div"); kpiGrid.className = "kpi-grid";
   kpiGrid.innerHTML = `
-    <div class="kpi"><div class="kpi-label">Traffic</div><div class="kpi-val">${totals.traffic}</div></div>
-    <div class="kpi"><div class="kpi-label">Bookings</div><div class="kpi-val accent">${totals.bookings}</div></div>
-    <div class="kpi"><div class="kpi-label">Direct revenue</div><div class="kpi-val accent">$${totals.revenue}</div></div>
-    ${showSpend ? `<div class="kpi"><div class="kpi-label">Marketing spend</div><div class="kpi-val">$${totals.spend}</div></div>
+    <div class="kpi"><div class="kpi-label">Traffic</div><div class="kpi-val">${totals.traffic} ${deltaBadge(totals.traffic, prevTotals?.traffic)}</div></div>
+    <div class="kpi"><div class="kpi-label">Bookings</div><div class="kpi-val accent">${totals.bookings} ${deltaBadge(totals.bookings, prevTotals?.bookings)}</div></div>
+    ${showSpend ? `<div class="kpi"><div class="kpi-label">Marketing spend</div><div class="kpi-val">$${totals.spend} ${deltaBadge(totals.spend, prevTotals?.spend, false)}</div></div>
     <div class="kpi"><div class="kpi-label">Return on spend</div><div class="kpi-val accent">${roas}×</div></div>` : ""}
   `;
-  resultsSection.innerHTML = `<div class="section-title">Results</div>`;
+  resultsSection.innerHTML = `<div class="section-title">Results in detail</div>`;
   resultsSection.appendChild(kpiGrid);
 
   if(allRows.length){
@@ -260,9 +346,6 @@ function renderReport(){
   }
 
   // What we did — from Progress cards in the selected periods
-  const doneCards = (currentProgress.cards||[]).filter(c=>
-    selectedPeriods.has(c.period) && (c.stage==="Done/Paused" || c.stage==="Live")
-  );
   const activitySection = document.createElement("div"); activitySection.className = "section";
   activitySection.innerHTML = `<div class="section-title">What we did</div>`;
   if(doneCards.length){
@@ -323,6 +406,30 @@ function renderReport(){
   }
 
   root.appendChild(report);
+}
+
+function buildComparisonChart(metrics, prevLabel, currLabel){
+  const wrap = document.createElement("div"); wrap.className = "section compare-chart";
+  wrap.innerHTML = `<div class="section-title">What changed vs last time</div>
+    <div class="compare-legend">
+      <span><span class="legend-dot" style="background:var(--line);"></span>${prevLabel}</span>
+      <span><span class="legend-dot" style="background:var(--brand);"></span>${currLabel}</span>
+    </div>`;
+  metrics.forEach(m=>{
+    const max = Math.max(m.curr, m.prev, 1);
+    const row = document.createElement("div"); row.className = "compare-row";
+    const pct = m.prev>0 ? Math.round((m.curr-m.prev)/m.prev*100) : null;
+    row.innerHTML = `
+      <div>${m.label}</div>
+      <div class="compare-bars">
+        <div class="compare-bar-track"><div class="compare-bar-fill prev" style="width:${(m.prev/max*100).toFixed(0)}%;"></div></div>
+        <div class="compare-bar-track"><div class="compare-bar-fill curr" style="width:${(m.curr/max*100).toFixed(0)}%;"></div></div>
+      </div>
+      <div style="text-align:right;font-weight:600;color:${pct===null?'var(--ink-soft)':pct>=0?'#8A3A18':'var(--ink-soft)'};">${pct===null?"—":(pct>=0?"+":"")+pct+"%"}</div>
+    `;
+    wrap.appendChild(row);
+  });
+  return wrap;
 }
 
 function isImageUrl(url){
