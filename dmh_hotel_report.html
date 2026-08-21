@@ -347,7 +347,7 @@ function renderReport(){
 
   // What we did — from Progress cards in the selected periods
   const activitySection = document.createElement("div"); activitySection.className = "section";
-  activitySection.innerHTML = `<div class="section-title">What we did — and what it means for you</div>`;
+  activitySection.innerHTML = `<div class="section-title">What we did</div>`;
   if(doneCards.length){
     doneCards.forEach(c=>{
       const item = document.createElement("div"); item.className = "activity-card";
