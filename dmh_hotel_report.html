@@ -52,6 +52,7 @@
   .glance-item{background:var(--brand-soft);border-radius:12px;padding:16px 18px;text-align:center;}
   .glance-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--brand);font-weight:600;margin-bottom:6px;}
   .glance-val{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--brand-dark);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
+  .glance-yoy{font-size:10.5px;color:var(--ink-soft);margin-top:6px;}
   .delta-badge{font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;padding:3px 10px;border-radius:8px;vertical-align:middle;}
   .delta-badge.delta-up{background:var(--accent-soft);color:#8A3A18;}
   .delta-badge.delta-down{background:#E9E4EE;color:var(--ink-soft);}
@@ -90,6 +91,10 @@
 
   @media (max-width:600px){
     .glance-strip{grid-template-columns:1fr;}
+  }
+
+  @page{
+    margin: 0.4in;
   }
 
   @media print{
@@ -246,6 +251,30 @@ function renderReport(){
     const arrow = up ? "▲" : "▼";
     return `<span class="delta-badge ${cls}">${arrow} ${Math.abs(d).toFixed(0)}%</span>`;
   }
+  function parseMonthYear(label){
+    const m = (label||"").trim().match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
+    if(!m) return null;
+    return { month: m[1], year: parseInt(m[2],10) };
+  }
+  function findYoYPeriod(label, allPeriodsList){
+    const parsed = parseMonthYear(label);
+    if(!parsed) return null;
+    const targetLabel = `${parsed.month} ${parsed.year-1}`;
+    return allPeriodsList.find(p => p.period.trim().toLowerCase() === targetLabel.toLowerCase()) || null;
+  }
+  function sumRows(rows){
+    return (rows||[]).reduce((acc,r)=>({
+      spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
+    }), {spend:0,traffic:0,bookings:0,revenue:0});
+  }
+  // YoY is only meaningful when a single, named period is selected — a range
+  // or an unparseable label ("Q3 push") can't be reliably matched a year back.
+  const yoyPeriod = (periods.length === 1) ? findYoYPeriod(periods[0].period, allPeriods) : null;
+  const yoyTotals = yoyPeriod ? sumRows(yoyPeriod.rows) : null;
+  function yoyLine(curr, prev){
+    if(!yoyPeriod || prev===null || prev===undefined) return "";
+    return `<div class="glance-yoy">vs ${yoyPeriod.period}: ${deltaBadge(curr, prev)}</div>`;
+  }
 
   const report = document.createElement("div");
   report.className = "report";
@@ -260,10 +289,12 @@ function renderReport(){
   const bodyWrap = document.createElement("div"); bodyWrap.className = "report-body";
   report.appendChild(bodyWrap);
 
-  // Activities completed this period — moved up so it can join the glance strip
+  // Activities this period — moved up so it can join the glance strip
   const doneCards = (currentProgress.cards||[]).filter(c=>
     selectedPeriods.has(c.period) && (c.stage==="Done/Paused" || c.stage==="Live")
   );
+  const completedCount = doneCards.filter(c=>c.stage==="Done/Paused").length;
+  const ongoingCount = doneCards.filter(c=>c.stage==="Live").length;
   const prevActivitiesCount = previousPeriod
     ? (currentProgress.cards||[]).filter(c=> c.period===previousPeriod.period && (c.stage==="Done/Paused" || c.stage==="Live")).length
     : null;
@@ -276,19 +307,23 @@ function renderReport(){
     <div class="glance-item">
       <div class="glance-label">Revenue from tracked campaigns</div>
       <div class="glance-val">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div>
+      ${yoyLine(totals.revenue, yoyTotals?.revenue)}
     </div>
     <div class="glance-item">
-      <div class="glance-label">Traffic reached</div>
+      <div class="glance-label">Traffic reached from tracked campaigns</div>
       <div class="glance-val">${totals.traffic} ${deltaBadge(totals.traffic, prevTotals?.traffic)}</div>
+      ${yoyLine(totals.traffic, yoyTotals?.traffic)}
     </div>
     <div class="glance-item">
-      <div class="glance-label">Activities completed</div>
+      <div class="glance-label">Activities</div>
       <div class="glance-val">${doneCards.length} ${deltaBadge(doneCards.length, prevActivitiesCount)}</div>
+      <div class="glance-yoy">${completedCount} completed · ${ongoingCount} ongoing</div>
     </div>
   `;
   bodyWrap.appendChild(glance);
   if(!previousPeriod){
     const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.marginTop = "-14px"; note.style.marginBottom = "18px";
+    note.textContent = "No prior period to compare yet.";
     bodyWrap.appendChild(note);
   }
 
@@ -321,12 +356,13 @@ function renderReport(){
       byCampaign[name].revenue += r.revenue||0; byCampaign[name].spend += r.spend||0;
     });
     const table = document.createElement("table"); table.className = "rtable";
-    table.innerHTML = `<tr><th>Campaign</th><th>Traffic</th><th>Bookings</th><th>Revenue</th>${showSpend?"<th>Spend</th><th>ROAS</th>":""}</tr>` +
+    table.innerHTML = `<tr><th>Campaign</th><th>Traffic</th><th>Bookings</th><th>Revenue</th><th>% of Revenue</th>${showSpend?"<th>Spend</th><th>ROAS</th>":""}</tr>` +
       Object.keys(byCampaign).sort((a,b)=>byCampaign[b].revenue-byCampaign[a].revenue).map(name=>{
         const c = byCampaign[name];
         const r = c.spend>0 ? (c.revenue/c.spend).toFixed(2)+"×" : "—";
+        const revShare = totals.revenue>0 ? Math.round(c.revenue/totals.revenue*100)+"%" : "—";
         const channelNote = c.channel ? `<div style="font-size:10.5px;color:var(--ink-soft);">${c.channel}</div>` : "";
-        return `<tr><td>${name}${channelNote}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td>${showSpend?`<td>$${c.spend}</td><td>${r}</td>`:""}</tr>`;
+        return `<tr><td>${name}${channelNote}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td><td>${revShare}</td>${showSpend?`<td>$${c.spend}</td><td>${r}</td>`:""}</tr>`;
       }).join("");
     resultsSection.appendChild(table);
   } else {
@@ -334,20 +370,70 @@ function renderReport(){
   }
   bodyWrap.appendChild(resultsSection);
 
-  // Visibility metrics
+  // Investment summary — only when the team has chosen to show spend for
+  // this export. Budget, revenue, and ROI in one focused block, distinct
+  // from the always-visible KPI grid above.
+  if(showSpend){
+    const roiPct = totals.spend>0 ? Math.round((totals.revenue-totals.spend)/totals.spend*100) : null;
+    const investSection = document.createElement("div"); investSection.className = "section";
+    investSection.innerHTML = `<div class="section-title">Investment &amp; return</div>`;
+    const grid = document.createElement("div"); grid.className = "kpi-grid";
+    grid.innerHTML = `
+      <div class="kpi"><div class="kpi-label">Budget spent</div><div class="kpi-val">$${totals.spend} ${deltaBadge(totals.spend, prevTotals?.spend, false)}</div></div>
+      <div class="kpi"><div class="kpi-label">Revenue generated</div><div class="kpi-val accent">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div></div>
+      <div class="kpi"><div class="kpi-label">ROI</div><div class="kpi-val accent">${roiPct===null?"—":(roiPct>=0?"+":"")+roiPct+"%"}</div></div>
+    `;
+    investSection.appendChild(grid);
+    bodyWrap.appendChild(investSection);
+  }
+
+  // Visibility metrics — a chart where the same metric name and a numeric
+  // value exist in both this period and the last one; otherwise, a plain
+  // list. Raw absolute numbers side-by-side aren't reliable here since
+  // metric names and formats can vary period to period.
   if(allVisMetrics.length){
-    const visSection = document.createElement("div"); visSection.className = "section";
-    visSection.innerHTML = `<div class="section-title">Visibility</div>`;
-    const table = document.createElement("table"); table.className = "rtable";
-    table.innerHTML = `<tr><th>Metric</th><th>Value</th></tr>` +
-      allVisMetrics.map(m=>`<tr><td>${m.name||""}</td><td>${m.value||""}</td></tr>`).join("");
-    visSection.appendChild(table);
-    bodyWrap.appendChild(visSection);
+    function parseNumeric(str){
+      if(str===null || str===undefined) return null;
+      const cleaned = String(str).replace(/[^0-9.\-]/g,"");
+      if(cleaned==="" || cleaned==="-") return null;
+      const n = parseFloat(cleaned);
+      return isNaN(n) ? null : n;
+    }
+    const currentVisMap = {};
+    allVisMetrics.forEach(m=>{ if(m.name && m.name.trim()) currentVisMap[m.name.trim()] = m.value; });
+    const prevVisMap = {};
+    if(previousPeriod){
+      (previousPeriod.visibilityMetrics||[]).forEach(m=>{ if(m.name && m.name.trim()) prevVisMap[m.name.trim()] = m.value; });
+    }
+    const chartable = [];
+    const plain = [];
+    Object.keys(currentVisMap).forEach(name=>{
+      const currNum = parseNumeric(currentVisMap[name]);
+      const prevRaw = prevVisMap[name];
+      const prevNum = prevRaw!==undefined ? parseNumeric(prevRaw) : null;
+      if(currNum!==null && prevNum!==null){
+        chartable.push({label:name, curr:currNum, prev:prevNum});
+      } else {
+        plain.push({name, value: currentVisMap[name]});
+      }
+    });
+    if(chartable.length){
+      bodyWrap.appendChild(buildComparisonChart(chartable, previousPeriod.period, periodLabel, "Visibility — what changed"));
+    }
+    if(plain.length){
+      const visSection = document.createElement("div"); visSection.className = "section";
+      visSection.innerHTML = `<div class="section-title">Visibility — other metrics</div>`;
+      const table = document.createElement("table"); table.className = "rtable";
+      table.innerHTML = `<tr><th>Metric</th><th>Value</th></tr>` +
+        plain.map(m=>`<tr><td>${m.name||""}</td><td>${m.value||""}</td></tr>`).join("");
+      visSection.appendChild(table);
+      bodyWrap.appendChild(visSection);
+    }
   }
 
   // What we did — from Progress cards in the selected periods
   const activitySection = document.createElement("div"); activitySection.className = "section";
-  activitySection.innerHTML = `<div class="section-title">What we did</div>`;
+  activitySection.innerHTML = `<div class="section-title">Activities</div>`;
   if(doneCards.length){
     doneCards.forEach(c=>{
       const item = document.createElement("div"); item.className = "activity-card";
@@ -377,6 +463,27 @@ function renderReport(){
     activitySection.innerHTML += `<div class="empty-note">No activities logged for the selected period(s) yet.</div>`;
   }
   bodyWrap.appendChild(activitySection);
+
+  // Activities planned — a light look-ahead, not an approval request. Just
+  // enough for the team to discuss "here's the direction" at a review call.
+  const plannedCards = (currentProgress.cards||[]).filter(c=> c.stage==="Planned");
+  const plannedSection = document.createElement("div"); plannedSection.className = "section";
+  plannedSection.innerHTML = `<div class="section-title">Activities planned</div>`;
+  if(plannedCards.length){
+    plannedCards.forEach(c=>{
+      const item = document.createElement("div"); item.className = "activity-card";
+      const tagPills = (c.tags||[]).map(t=>`<span class="pill">${t}</span>`).join("");
+      item.innerHTML = `
+        <div class="activity-title">${c.title||"(untitled)"}</div>
+        <div class="activity-meta">${tagPills} ${c.period?("· targeting "+c.period):""}</div>
+        ${c.notes ? `<div class="activity-result"><div class="result-label">Plan</div>${c.notes}</div>` : ""}
+      `;
+      plannedSection.appendChild(item);
+    });
+  } else {
+    plannedSection.innerHTML += `<div class="empty-note">No planned activities logged yet.</div>`;
+  }
+  bodyWrap.appendChild(plannedSection);
 
   // Supporting materials — general notes & links (screenshots, docs) attached in Progress
   const generalNotes = (currentProgress.generalNotes || []).filter(n=>n.link && n.link.trim());
@@ -408,9 +515,9 @@ function renderReport(){
   root.appendChild(report);
 }
 
-function buildComparisonChart(metrics, prevLabel, currLabel){
+function buildComparisonChart(metrics, prevLabel, currLabel, title){
   const wrap = document.createElement("div"); wrap.className = "section compare-chart";
-  wrap.innerHTML = `<div class="section-title">What changed vs last time</div>
+  wrap.innerHTML = `<div class="section-title">${title || "What changed vs last time"}</div>
     <div class="compare-legend">
       <span><span class="legend-dot" style="background:var(--line);"></span>${prevLabel}</span>
       <span><span class="legend-dot" style="background:var(--brand);"></span>${currLabel}</span>
