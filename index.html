@@ -94,6 +94,8 @@
 <body>
 <div class="shell">
   <h1>DMH marketing workspace</h1>
+  <div class="sub">One shared workspace: hotel facts, strategy decisions, execution progress, and results — all reading the same records.</div>
+
   <div class="header-card">
     <div class="row">
       <div class="field" style="min-width:240px;">
@@ -147,8 +149,9 @@ function checkBackendConfigured(){
 
 async function stGet(key, shared){
   checkBackendConfigured();
+  const bust = Date.now() + "_" + Math.random().toString(36).slice(2);
   const res = await withTimeout(
-    fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}`),
+    fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}&_=${bust}`, { cache: "no-store" }),
     12000, `loading "${key}"`
   );
   const data = await res.json();
@@ -162,7 +165,8 @@ async function stSet(key, value, shared){
     fetch(SHEETS_WEBAPP_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids CORS preflight
-      body: JSON.stringify({ action: "set", key, value })
+      body: JSON.stringify({ action: "set", key, value }),
+      cache: "no-store"
     }),
     12000, `saving "${key}"`
   );
@@ -176,7 +180,8 @@ async function stDelete(key, shared){
     fetch(SHEETS_WEBAPP_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "delete", key })
+      body: JSON.stringify({ action: "delete", key }),
+      cache: "no-store"
     }),
     12000, `deleting "${key}"`
   );
