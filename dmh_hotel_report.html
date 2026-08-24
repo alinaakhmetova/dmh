@@ -152,7 +152,11 @@ function checkBackendConfigured(){
 }
 async function stGet(key){
   checkBackendConfigured();
-  const res = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}`), 12000, `loading "${key}"`);
+  const bust = Date.now() + "_" + Math.random().toString(36).slice(2);
+  const res = await withTimeout(
+    fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}&_=${bust}`, { cache: "no-store" }),
+    12000, `loading "${key}"`
+  );
   const data = await res.json();
   if(data.error) throw new Error(data.error);
   return data.value;
@@ -323,7 +327,6 @@ function renderReport(){
   bodyWrap.appendChild(glance);
   if(!previousPeriod){
     const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.marginTop = "-14px"; note.style.marginBottom = "18px";
-    note.textContent = "No prior period to compare yet.";
     bodyWrap.appendChild(note);
   }
 
