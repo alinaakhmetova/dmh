@@ -1227,7 +1227,7 @@ async function ensureResultsLoaded(){
     selectedSummaryPeriods = new Set();
   }
 }
-function blankPeriod(label){ return { period: label, rows: [], seasonalNote: "", seasonalDeviationPct: "", visibilityMetrics: [], totalWebsiteTraffic: "", totalBeTraffic: "", totalBookings: "", yoyRevenue: "", yoyTraffic: "", yoyBookings: "" }; }
+function blankPeriod(label){ return { period: label, rows: [], seasonalNote: "", seasonalDeviationPct: "", visibilityMetrics: [], totalWebsiteTraffic: "", totalBeTraffic: "", totalBookings: "", totalRevenue: "", yoyRevenue: "", yoyTraffic: "", yoyBookings: "" }; }
 
 async function renderResultsTab(){
   const root = el("tabResults");
@@ -1327,11 +1327,12 @@ async function renderResultsTab(){
   // you see what share of total bookings tracked marketing actually
   // represents, instead of only looking at tracked numbers in isolation.
   const overallCard = document.createElement("div"); overallCard.className = "card";
-  overallCard.innerHTML = `<div class="card-title">Overall hotel results — ${periodObj.period}</div><div class="card-note">Website and Booking Engine traffic, plus bookings, for this period — all sources, organic and tracked combined.</div>`;
+  overallCard.innerHTML = `<div class="card-title">Overall hotel results — ${periodObj.period}</div><div class="card-note">Website and Booking Engine traffic, plus bookings and revenue, for this period — all sources, organic and tracked combined. This is the number that carries the YoY story in the report — last year had no tracked marketing at all, so YoY only makes sense against overall totals, not tracked ones.</div>`;
   const overallGrid = document.createElement("div"); overallGrid.className = "form-grid";
   overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalWebsiteTraffic", label:"Total website traffic (all sources)", type:"number"}));
   overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalBeTraffic", label:"Total Booking Engine traffic (all sources)", type:"number"}));
   overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalBookings", label:"Total bookings (all sources)", type:"number"}));
+  overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalRevenue", label:"Total revenue (all sources)", type:"number"}));
   overallCard.appendChild(overallGrid);
   const totalBookingsNum = parseFloat(periodObj.totalBookings);
   const totalBeTrafficNum = parseFloat(periodObj.totalBeTraffic);
