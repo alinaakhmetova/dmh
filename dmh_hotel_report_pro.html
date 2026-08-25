@@ -371,7 +371,6 @@ function renderReport(){
 
   if(previousPeriod){
     bodyWrap.appendChild(buildComparisonChart([
-      {label:"Traffic", curr:totals.traffic, prev:prevTotals.traffic},
       {label:"Bookings", curr:totals.bookings, prev:prevTotals.bookings},
       {label:"Revenue", curr:totals.revenue, prev:prevTotals.revenue},
     ], previousPeriod.period, periodLabel));
