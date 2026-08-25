@@ -359,13 +359,13 @@ function renderReport(){
       byCampaign[name].revenue += r.revenue||0; byCampaign[name].spend += r.spend||0;
     });
     const table = document.createElement("table"); table.className = "rtable";
-    table.innerHTML = `<tr><th>Campaign</th><th>Traffic</th><th>Bookings</th><th>Revenue</th><th>% of Revenue</th>${showSpend?"<th>Spend</th><th>ROAS</th>":""}</tr>` +
+    table.innerHTML = `<tr><th>Campaign</th><th>Traffic</th><th>Bookings</th><th>Revenue</th>${showSpend?"<th>Spend</th><th>ROAS</th>":""}</tr>` +
       Object.keys(byCampaign).sort((a,b)=>byCampaign[b].revenue-byCampaign[a].revenue).map(name=>{
         const c = byCampaign[name];
         const r = c.spend>0 ? (c.revenue/c.spend).toFixed(2)+"×" : "—";
         const revShare = totals.revenue>0 ? Math.round(c.revenue/totals.revenue*100)+"%" : "—";
         const channelNote = c.channel ? `<div style="font-size:10.5px;color:var(--ink-soft);">${c.channel}</div>` : "";
-        return `<tr><td>${name}${channelNote}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td><td>${revShare}</td>${showSpend?`<td>$${c.spend}</td><td>${r}</td>`:""}</tr>`;
+        return `<tr><td>${name}${channelNote}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td></td>${showSpend?`<td>$${c.spend}</td><td>${r}</td>`:""}</tr>`;
       }).join("");
     resultsSection.appendChild(table);
   } else {
