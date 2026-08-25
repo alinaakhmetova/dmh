@@ -52,7 +52,7 @@
   .group-sublabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin:14px 0 8px;}
   .group-sublabel:first-of-type{margin-top:0;}
   .section-title::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:4px;background:var(--accent);border-radius:3px;}
-  .glance-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:8px;}
+  .glance-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:8px;}
   .glance-item{background:var(--brand-soft);border-radius:12px;padding:16px 18px;text-align:center;}
   .glance-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--brand);font-weight:600;margin-bottom:6px;}
   .glance-val{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--brand-dark);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
@@ -355,17 +355,25 @@ function renderReport(){
     glance.innerHTML = `
       <div class="glance-item">
         <div class="glance-label">Total revenue</div>
-        <div class="glance-val">$${overallTotals.revenue} ${hasPrevOverallData?deltaBadge(overallTotals.revenue, prevOverallTotals.revenue):""}</div>
+        <div class="glance-val">$${overallTotals.revenue}</div>
+        ${hasPrevOverallData?`<div class="glance-yoy">vs last month: ${deltaBadge(overallTotals.revenue, prevOverallTotals.revenue)}</div>`:""}
         ${hasYoyData ? `<div class="glance-yoy">vs last year: ${yoyBadge(overallTotals.revenue, primaryPeriod.yoyRevenue)}</div>` : ""}
       </div>
       <div class="glance-item">
         <div class="glance-label">Total bookings</div>
-        <div class="glance-val">${overallTotals.bookings} ${hasPrevOverallData?deltaBadge(overallTotals.bookings, prevOverallTotals.bookings):""}</div>
+        <div class="glance-val">${overallTotals.bookings}</div>
+        ${hasPrevOverallData?`<div class="glance-yoy">vs last month: ${deltaBadge(overallTotals.bookings, prevOverallTotals.bookings)}</div>`:""}
         ${hasYoyData ? `<div class="glance-yoy">vs last year: ${yoyBadge(overallTotals.bookings, primaryPeriod.yoyBookings)}</div>` : ""}
       </div>
       <div class="glance-item">
-        <div class="glance-label">Total BE traffic</div>
-        <div class="glance-val">${overallTotals.beTraffic} ${hasPrevOverallData?deltaBadge(overallTotals.beTraffic, prevOverallTotals.beTraffic):""}</div>
+        <div class="glance-label">Total website traffic</div>
+        <div class="glance-val">${overallTotals.websiteTraffic}</div>
+        ${hasPrevOverallData?`<div class="glance-yoy">vs last month: ${deltaBadge(overallTotals.websiteTraffic, prevOverallTotals.websiteTraffic)}</div>`:""}
+      </div>
+      <div class="glance-item">
+        <div class="glance-label">Total Booking Engine traffic</div>
+        <div class="glance-val">${overallTotals.beTraffic}</div>
+        ${hasPrevOverallData?`<div class="glance-yoy">vs last month: ${deltaBadge(overallTotals.beTraffic, prevOverallTotals.beTraffic)}</div>`:""}
         ${hasYoyData ? `<div class="glance-yoy">vs last year: ${yoyBadge(overallTotals.beTraffic, primaryPeriod.yoyTraffic)}</div>` : ""}
       </div>
     `;
@@ -401,7 +409,7 @@ function renderReport(){
     const trafficShare = overallTotals.beTraffic>0 ? Math.round(totals.traffic/overallTotals.beTraffic*100) : null;
     const revenueShare = overallTotals.revenue>0 ? Math.round(totals.revenue/overallTotals.revenue*100) : null;
     const liftSection = document.createElement("div"); liftSection.className = "section";
-    liftSection.innerHTML = `<div class="section-title">Marketing lift</div><div class="card-note">Tracked marketing's share of the overall totals above — traffic is compared against Booking Engine traffic, the funnel stage closest to a tracked click.</div>`;
+    liftSection.innerHTML = `<div class="section-title">Marketing lift</div>`;
     const liftTable = document.createElement("table"); liftTable.className = "rtable";
     liftTable.innerHTML = `<tr><th></th><th>Total (all sources)</th><th>Tracked marketing</th><th>Share</th></tr>
       <tr><td>Revenue</td><td>$${overallTotals.revenue}</td><td>$${totals.revenue}</td><td><strong>${revenueShare===null?"—":revenueShare+"%"}</strong></td></tr>
@@ -409,6 +417,24 @@ function renderReport(){
       <tr><td>Traffic</td><td>${overallTotals.beTraffic}</td><td>${totals.traffic}</td><td><strong>${trafficShare===null?"—":trafficShare+"%"}</strong></td></tr>`;
     liftSection.appendChild(liftTable);
     bodyWrap.appendChild(liftSection);
+  }
+
+  // Investment & return — the overall tracked-marketing picture (spend,
+  // revenue, bookings, ROAS), before drilling into individual campaigns
+  // below. Month-over-month only — no YoY, since tracking didn't exist a
+  // year ago and there's nothing honest to compare it against.
+  if(showSpend){
+    const investSection = document.createElement("div"); investSection.className = "section";
+    investSection.innerHTML = `<div class="section-title">Investment &amp; return</div>`;
+    const grid = document.createElement("div"); grid.className = "kpi-grid";
+    grid.innerHTML = `
+      <div class="kpi"><div class="kpi-label">Budget spent</div><div class="kpi-val">$${totals.spend} ${deltaBadge(totals.spend, prevTotals?.spend, false)}</div></div>
+      <div class="kpi"><div class="kpi-label">Tracked bookings</div><div class="kpi-val">${totals.bookings} ${deltaBadge(totals.bookings, prevTotals?.bookings)}</div></div>
+      <div class="kpi"><div class="kpi-label">Tracked revenue</div><div class="kpi-val accent">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div></div>
+      <div class="kpi"><div class="kpi-label">ROAS</div><div class="kpi-val accent">${roas}×</div></div>
+    `;
+    investSection.appendChild(grid);
+    bodyWrap.appendChild(investSection);
   }
 
   // Campaign performance — the only place campaign-level numbers live.
@@ -436,22 +462,6 @@ function renderReport(){
     resultsSection.innerHTML += `<div class="empty-note">No tracked campaigns logged for this period.</div>`;
   }
   bodyWrap.appendChild(resultsSection);
-
-  // Investment & return — tracked spend/revenue/ROAS, month-over-month
-  // only. No YoY here — tracking didn't exist a year ago, so there's
-  // nothing honest to compare it against.
-  if(showSpend){
-    const investSection = document.createElement("div"); investSection.className = "section";
-    investSection.innerHTML = `<div class="section-title">Investment &amp; return</div>`;
-    const grid = document.createElement("div"); grid.className = "kpi-grid";
-    grid.innerHTML = `
-      <div class="kpi"><div class="kpi-label">Budget spent</div><div class="kpi-val">$${totals.spend} ${deltaBadge(totals.spend, prevTotals?.spend, false)}</div></div>
-      <div class="kpi"><div class="kpi-label">Revenue generated</div><div class="kpi-val accent">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div></div>
-      <div class="kpi"><div class="kpi-label">ROAS (revenue ÷ spend)</div><div class="kpi-val accent">${roas}×</div></div>
-    `;
-    investSection.appendChild(grid);
-    bodyWrap.appendChild(investSection);
-  }
 
   // Visibility — one line per source/metric, plotted across the trend
   // window. A metric with even a single logged value is drawn from a zero
@@ -635,11 +645,22 @@ function buildLineChart(seriesMap, periodLabels){
       const path = points.map((p,i)=> (i===0?"M":"L")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
       svg += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
       points.forEach(p=>{ svg += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="${color}"/>`; });
-      // Label the most recent point with its exact figure — labeling every
-      // point gets cluttered once there are several months and series;
-      // the gridlines on the left give a rough read on the rest.
+      // Label the most recent point with its exact figure, plus the %
+      // change from the first point in the window — labeling every point
+      // gets cluttered once there are several months and series; the
+      // gridlines on the left give a rough read on the rest.
+      const first = points[0];
       const last = points[points.length-1];
-      svg += `<text x="${last[0].toFixed(1)}" y="${(last[1]-9).toFixed(1)}" font-size="10.5" text-anchor="middle" fill="${color}" font-weight="600">${Math.round(last[2])}</text>`;
+      let pctText = "";
+      if(points.length > 1){
+        if(first[2] === 0){
+          pctText = last[2] > 0 ? " (new)" : "";
+        } else {
+          const pct = Math.round((last[2]-first[2])/first[2]*100);
+          pctText = ` (${pct>=0?"▲":"▼"}${Math.abs(pct)}%)`;
+        }
+      }
+      svg += `<text x="${last[0].toFixed(1)}" y="${(last[1]-9).toFixed(1)}" font-size="10.5" text-anchor="middle" fill="${color}" font-weight="600">${Math.round(last[2])}${pctText}</text>`;
     }
   });
   svg += `</svg>`;
