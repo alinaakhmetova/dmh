@@ -324,8 +324,8 @@ function renderReport(){
   `;
   bodyWrap.appendChild(glance);
   if(!previousPeriod){
-    const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.marginTop = "-14px"; note.style.marginBottom = "18px";
-    note.textContent = "No prior period to compare yet.";
+    const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.margin = "10px 0 20px";
+    note.textContent = "No prior period to compare yet — trend charts and month-over-month comparisons will appear once a second period is logged.";
     bodyWrap.appendChild(note);
   }
 
@@ -440,18 +440,23 @@ function renderReport(){
     if(Object.keys(seriesMap).length || plainMetrics.length){
       const visSection = document.createElement("div"); visSection.className = "section";
       visSection.innerHTML = `<div class="section-title">Visibility</div>`;
-      if(Object.keys(seriesMap).length){
+      const hasTrend = Object.keys(seriesMap).length > 0;
+      if(hasTrend){
         const trendLabel = document.createElement("div"); trendLabel.className = "group-sublabel"; trendLabel.textContent = "Trend";
         visSection.appendChild(trendLabel);
         visSection.appendChild(buildLineChart(seriesMap, trendPeriodLabels));
       }
       if(plainMetrics.length){
-        const otherLabel = document.createElement("div"); otherLabel.className = "group-sublabel"; otherLabel.textContent = "Other signals";
-        visSection.appendChild(otherLabel);
+        // Only label this as "other" when there's a trend chart above for it
+        // to be "other than" — otherwise it's just the list, full stop.
+        if(hasTrend){
+          const otherLabel = document.createElement("div"); otherLabel.className = "group-sublabel"; otherLabel.textContent = "Not enough history for a trend yet";
+          visSection.appendChild(otherLabel);
+        }
         const table = document.createElement("table"); table.className = "rtable";
-        table.innerHTML = `<tr><th>Metric</th><th>Value</th></tr>` +
+        table.innerHTML = `<tr><th>Signal</th><th>This period</th></tr>` +
           plainMetrics.map(m=>`<tr><td>${m.name||""}</td><td>${m.value||""}</td></tr>`).join("");
-        table.style.marginTop = "6px";
+        table.style.marginTop = hasTrend ? "6px" : "0";
         visSection.appendChild(table);
       }
       bodyWrap.appendChild(visSection);
