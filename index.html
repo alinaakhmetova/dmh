@@ -1227,7 +1227,7 @@ async function ensureResultsLoaded(){
     selectedSummaryPeriods = new Set();
   }
 }
-function blankPeriod(label){ return { period: label, rows: [], seasonalNote: "", seasonalDeviationPct: "", visibilityMetrics: [] }; }
+function blankPeriod(label){ return { period: label, rows: [], seasonalNote: "", seasonalDeviationPct: "", visibilityMetrics: [], totalWebsiteTraffic: "", totalBeTraffic: "", totalBookings: "", yoyRevenue: "", yoyTraffic: "", yoyBookings: "" }; }
 
 async function renderResultsTab(){
   const root = el("tabResults");
@@ -1305,12 +1305,12 @@ async function renderResultsTab(){
   }), {spend:0,traffic:0,bookings:0,revenue:0});
   const blendedROAS = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
   const summaryCard = document.createElement("div"); summaryCard.className = "card";
-  summaryCard.innerHTML = `<div class="card-title">Summary — ${periodObj.period}</div>`;
+  summaryCard.innerHTML = `<div class="card-title">Summary — ${periodObj.period}</div><div class="card-note">These totals are only what's tracked to a campaign/channel above — see "Overall hotel results" below for everything, including organic.</div>`;
   const grid = document.createElement("div"); grid.className = "context-grid";
   grid.innerHTML = `
-    <div class="ctx-item"><div class="ctx-label">Total spend</div><div class="ctx-val">$${totals.spend}</div></div>
-    <div class="ctx-item"><div class="ctx-label">Total traffic</div><div class="ctx-val">${totals.traffic}</div></div>
-    <div class="ctx-item"><div class="ctx-label">Total bookings</div><div class="ctx-val">${totals.bookings}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Tracked spend</div><div class="ctx-val">$${totals.spend}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Tracked traffic</div><div class="ctx-val">${totals.traffic}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Tracked bookings</div><div class="ctx-val">${totals.bookings}</div></div>
     <div class="ctx-item"><div class="ctx-label">Blended ROAS</div><div class="ctx-val">${blendedROAS}</div></div>`;
   summaryCard.appendChild(grid);
   root.appendChild(summaryCard);
@@ -1320,13 +1320,53 @@ async function renderResultsTab(){
   channelRollupCard.appendChild(buildChannelBreakdownTable(computeChannelBreakdown(periodObj.rows)));
   root.appendChild(channelRollupCard);
 
-  const seasonCard = document.createElement("div"); seasonCard.className = "card";
-  seasonCard.innerHTML = `<div class="card-title">Seasonal context</div>`;
-  const sGrid = document.createElement("div"); sGrid.className = "form-grid";
-  sGrid.appendChild(makeFieldInput(periodObj, {key:"seasonalNote", label:"Note", type:"textarea", full:true}));
-  sGrid.appendChild(makeFieldInput(periodObj, {key:"seasonalDeviationPct", label:"Expected deviation from average, %", type:"number"}));
-  seasonCard.appendChild(sGrid);
-  root.appendChild(seasonCard);
+  // Overall hotel results — traffic and bookings for the whole property this
+  // period, regardless of source (organic + all channels). Website and BE
+  // traffic are kept separate, same split used in Hotel Data — website is
+  // top-of-funnel, BE is much closer to purchase intent. This is what lets
+  // you see what share of total bookings tracked marketing actually
+  // represents, instead of only looking at tracked numbers in isolation.
+  const overallCard = document.createElement("div"); overallCard.className = "card";
+  overallCard.innerHTML = `<div class="card-title">Overall hotel results — ${periodObj.period}</div><div class="card-note">Website and Booking Engine traffic, plus bookings, for this period — all sources, organic and tracked combined.</div>`;
+  const overallGrid = document.createElement("div"); overallGrid.className = "form-grid";
+  overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalWebsiteTraffic", label:"Total website traffic (all sources)", type:"number"}));
+  overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalBeTraffic", label:"Total Booking Engine traffic (all sources)", type:"number"}));
+  overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalBookings", label:"Total bookings (all sources)", type:"number"}));
+  overallCard.appendChild(overallGrid);
+  const totalBookingsNum = parseFloat(periodObj.totalBookings);
+  const totalBeTrafficNum = parseFloat(periodObj.totalBeTraffic);
+  const shareLines = [];
+  if(totalBookingsNum > 0){
+    const share = Math.min(100, Math.round(totals.bookings/totalBookingsNum*100));
+    shareLines.push(`Tracked marketing represents <strong style="color:var(--ink);">${share}%</strong> of total bookings this period (${totals.bookings} of ${totalBookingsNum}).`);
+  }
+  if(totalBeTrafficNum > 0){
+    const trafficShare = Math.min(100, Math.round(totals.traffic/totalBeTrafficNum*100));
+    shareLines.push(`Tracked marketing represents <strong style="color:var(--ink);">${trafficShare}%</strong> of total Booking Engine traffic this period (${totals.traffic} of ${totalBeTrafficNum}).`);
+  }
+  if(shareLines.length){
+    const shareNote = document.createElement("div");
+    shareNote.style.cssText = "margin-top:10px;font-size:12.5px;color:var(--ink-soft);";
+    shareNote.innerHTML = shareLines.join("<br>");
+    overallCard.appendChild(shareNote);
+  }
+  root.appendChild(overallCard);
+
+  const commentCard = document.createElement("div"); commentCard.className = "card";
+  commentCard.innerHTML = `<div class="card-title">Commentary</div><div class="card-note">Free-form — context, explanation, or a conclusion for this period. Not limited to seasonality.</div>`;
+  const cGrid = document.createElement("div"); cGrid.className = "form-grid";
+  cGrid.appendChild(makeFieldInput(periodObj, {key:"seasonalNote", label:"Comment / conclusion", type:"textarea", full:true}));
+  commentCard.appendChild(cGrid);
+  root.appendChild(commentCard);
+
+  const yoyCard = document.createElement("div"); yoyCard.className = "card";
+  yoyCard.innerHTML = `<div class="card-title">Year-over-year reference (optional)</div><div class="card-note">Type in what the hotel's own analytics showed for this same period last year — not something we auto-calculate, since we may not have tracked it ourselves back then.</div>`;
+  const yGrid = document.createElement("div"); yGrid.className = "form-grid";
+  yGrid.appendChild(makeFieldInput(periodObj, {key:"yoyRevenue", label:"Revenue, same period last year", type:"number"}));
+  yGrid.appendChild(makeFieldInput(periodObj, {key:"yoyTraffic", label:"Traffic, same period last year", type:"number"}));
+  yGrid.appendChild(makeFieldInput(periodObj, {key:"yoyBookings", label:"Bookings, same period last year", type:"number"}));
+  yoyCard.appendChild(yGrid);
+  root.appendChild(yoyCard);
 
   const visCard = document.createElement("div"); visCard.className = "card";
   visCard.innerHTML = `<div class="card-title">Visibility metrics (not tied to spend)</div>`;
@@ -1417,12 +1457,12 @@ function renderMultiPeriodSummary(root){
   const blended = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
 
   const summaryCard = document.createElement("div"); summaryCard.className = "card";
-  summaryCard.innerHTML = `<div class="card-title">Overall totals across ${selectedPeriods.length} selected period(s)</div>`;
+  summaryCard.innerHTML = `<div class="card-title">Tracked totals across ${selectedPeriods.length} selected period(s)</div>`;
   const grid = document.createElement("div"); grid.className = "context-grid";
   grid.innerHTML = `
-    <div class="ctx-item"><div class="ctx-label">Total spend</div><div class="ctx-val">$${totals.spend}</div></div>
-    <div class="ctx-item"><div class="ctx-label">Total traffic</div><div class="ctx-val">${totals.traffic}</div></div>
-    <div class="ctx-item"><div class="ctx-label">Total bookings</div><div class="ctx-val">${totals.bookings}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Tracked spend</div><div class="ctx-val">$${totals.spend}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Tracked traffic</div><div class="ctx-val">${totals.traffic}</div></div>
+    <div class="ctx-item"><div class="ctx-label">Tracked bookings</div><div class="ctx-val">${totals.bookings}</div></div>
     <div class="ctx-item"><div class="ctx-label">Blended ROAS</div><div class="ctx-val">${blended}</div></div>`;
   summaryCard.appendChild(grid);
   root.appendChild(summaryCard);
