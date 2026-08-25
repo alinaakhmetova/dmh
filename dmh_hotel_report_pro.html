@@ -46,6 +46,8 @@
   .report-sub{font-size:13px;opacity:.9;}
   .report-body{padding:32px 40px 0;}
   .section{margin-bottom:30px;}
+  .layer-heading{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:600;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent-soft);}
+  .layer-heading:first-of-type{margin-top:4px;}
   .section-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin:0 0 14px;color:var(--brand);position:relative;padding-left:14px;}
   .group-sublabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin:14px 0 8px;}
   .group-sublabel:first-of-type{margin-top:0;}
@@ -261,37 +263,44 @@ function renderReport(){
   const showSpend = el("showSpendToggle").checked;
   const periodLabel = primaryPeriod.period;
   const allRows = primaryPeriod.rows || [];
-  const seasonalNotes = [primaryPeriod.seasonalNote].filter(Boolean);
+  const notesText = [primaryPeriod.seasonalNote].filter(Boolean);
 
+  // Tracked (marketing-attributed) totals for this period — only what's
+  // logged against a campaign/channel above.
   const totals = allRows.reduce((acc,r)=>({
     spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
   }), {spend:0,traffic:0,bookings:0,revenue:0});
   const roas = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
 
-  // Overall hotel results (organic + tracked combined) — entered separately
-  // per period in the main workspace. Lets us show what share of total
-  // performance tracked marketing actually represents, not just tracked
-  // numbers in isolation. This is for the report period only, not summed
-  // across a range — mixing months here would misrepresent the share.
+  // Overall hotel results — the whole property, organic + tracked combined,
+  // entered separately per period in the main workspace. This is the
+  // number that carries the big-picture story: last year had no tracked
+  // marketing at all, so a YoY comparison only makes sense against these
+  // overall totals, never against tracked-only figures.
   const overallTotals = {
     websiteTraffic: parseFloat(primaryPeriod.totalWebsiteTraffic)||0,
     beTraffic: parseFloat(primaryPeriod.totalBeTraffic)||0,
     bookings: parseFloat(primaryPeriod.totalBookings)||0,
+    revenue: parseFloat(primaryPeriod.totalRevenue)||0,
   };
-  const hasOverallData = overallTotals.websiteTraffic>0 || overallTotals.beTraffic>0 || overallTotals.bookings>0;
+  const hasOverallData = overallTotals.websiteTraffic>0 || overallTotals.beTraffic>0 || overallTotals.bookings>0 || overallTotals.revenue>0;
 
-  // Compare against the period right before the report period, so the
-  // reader sees "up/down vs last time" instead of only a flat snapshot.
+  // Compare against the period right before the report period.
   const primaryIndex = allPeriods.findIndex(p=>p.period===periodLabel);
   const previousPeriod = primaryIndex > 0 ? allPeriods[primaryIndex-1] : null;
   const prevTotals = previousPeriod ? (previousPeriod.rows||[]).reduce((acc,r)=>({
     spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
   }), {spend:0,traffic:0,bookings:0,revenue:0}) : null;
+  const prevOverallTotals = previousPeriod ? {
+    websiteTraffic: parseFloat(previousPeriod.totalWebsiteTraffic)||0,
+    beTraffic: parseFloat(previousPeriod.totalBeTraffic)||0,
+    bookings: parseFloat(previousPeriod.totalBookings)||0,
+    revenue: parseFloat(previousPeriod.totalRevenue)||0,
+  } : null;
+  const hasPrevOverallData = prevOverallTotals && (prevOverallTotals.websiteTraffic>0 || prevOverallTotals.beTraffic>0 || prevOverallTotals.bookings>0 || prevOverallTotals.revenue>0);
 
-  // Trend window for the charts below — always the last few months leading
-  // up to and including the report period, independent of which single
-  // period the rest of the report is about. This is what keeps "I want to
-  // see a trend" from fighting with "I want one clean period's numbers."
+  // Trend window for the charts below — last few months up to and
+  // including the report period.
   const TREND_WINDOW = 6;
   const trendPeriods = primaryIndex >= 0 ? allPeriods.slice(Math.max(0, primaryIndex-TREND_WINDOW+1), primaryIndex+1) : [];
 
@@ -308,16 +317,16 @@ function renderReport(){
     const arrow = up ? "▲" : "▼";
     return `<span class="delta-badge ${cls}">${arrow} ${Math.abs(d).toFixed(0)}%</span>`;
   }
-  // YoY comes from manual entry (the hotel's own analytics), not from
-  // finding a matching period a year back — most accounts won't have a
-  // full tracked year yet, and the client's own numbers are the real
-  // reference point anyway. Only meaningful for a single selected period.
-  const yoyManual = primaryPeriod;
-  function yoyLine(curr, manualPrev){
+  // YoY compares OVERALL numbers (this period's total vs the same period a
+  // year ago, entered manually from the hotel's own analytics) — never
+  // tracked-marketing numbers, since there was no tracking a year ago and
+  // that comparison would be meaningless.
+  function yoyBadge(curr, manualPrev){
     const prevNum = parseFloat(manualPrev);
-    if(!yoyManual || isNaN(prevNum)) return "";
-    return `<div class="glance-yoy">vs same period last year: ${deltaBadge(curr, prevNum)}</div>`;
+    if(isNaN(prevNum)) return "";
+    return deltaBadge(curr, prevNum);
   }
+  const hasYoyData = ["yoyRevenue","yoyTraffic","yoyBookings"].some(k=>!isNaN(parseFloat(primaryPeriod[k])));
 
   const report = document.createElement("div");
   report.className = "report";
@@ -331,7 +340,51 @@ function renderReport(){
   const bodyWrap = document.createElement("div"); bodyWrap.className = "report-body";
   report.appendChild(bodyWrap);
 
-  // Activities this period — moved up so it can join the glance strip
+  // ============================================================
+  // LAYER 1 — Overall performance (the big picture, all sources)
+  // ============================================================
+  const layer1 = document.createElement("div"); layer1.className = "layer-heading"; layer1.textContent = "Overall performance";
+  bodyWrap.appendChild(layer1);
+
+  if(!hasOverallData){
+    const note = document.createElement("div"); note.className = "empty-note";
+    note.textContent = "Overall hotel results (all sources) haven't been filled in for this period yet — add them in the main workspace to unlock this section.";
+    bodyWrap.appendChild(note);
+  } else {
+    const glance = document.createElement("div"); glance.className = "glance-strip";
+    glance.innerHTML = `
+      <div class="glance-item">
+        <div class="glance-label">Total revenue</div>
+        <div class="glance-val">$${overallTotals.revenue} ${hasPrevOverallData?deltaBadge(overallTotals.revenue, prevOverallTotals.revenue):""}</div>
+        ${hasYoyData ? `<div class="glance-yoy">vs last year: ${yoyBadge(overallTotals.revenue, primaryPeriod.yoyRevenue)}</div>` : ""}
+      </div>
+      <div class="glance-item">
+        <div class="glance-label">Total bookings</div>
+        <div class="glance-val">${overallTotals.bookings} ${hasPrevOverallData?deltaBadge(overallTotals.bookings, prevOverallTotals.bookings):""}</div>
+        ${hasYoyData ? `<div class="glance-yoy">vs last year: ${yoyBadge(overallTotals.bookings, primaryPeriod.yoyBookings)}</div>` : ""}
+      </div>
+      <div class="glance-item">
+        <div class="glance-label">Total BE traffic</div>
+        <div class="glance-val">${overallTotals.beTraffic} ${hasPrevOverallData?deltaBadge(overallTotals.beTraffic, prevOverallTotals.beTraffic):""}</div>
+        ${hasYoyData ? `<div class="glance-yoy">vs last year: ${yoyBadge(overallTotals.beTraffic, primaryPeriod.yoyTraffic)}</div>` : ""}
+      </div>
+    `;
+    bodyWrap.appendChild(glance);
+    if(!hasPrevOverallData && !hasYoyData){
+      const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.margin = "10px 0 4px";
+      note.textContent = "No prior period or year-over-year reference yet — comparisons will appear once logged.";
+      bodyWrap.appendChild(note);
+    }
+  }
+
+  // ============================================================
+  // LAYER 2 — Marketing contribution (what tracked activity did)
+  // ============================================================
+  const layer2 = document.createElement("div"); layer2.className = "layer-heading"; layer2.textContent = "Marketing contribution";
+  bodyWrap.appendChild(layer2);
+
+  // Activities count needed here too (for Marketing lift context is not
+  // required, kept below in Layer 3).
   const doneCards = (currentProgress.cards||[]).filter(c=>
     c.period===periodLabel && (c.stage==="Done/Paused" || c.stage==="Live")
   );
@@ -341,66 +394,26 @@ function renderReport(){
     ? (currentProgress.cards||[]).filter(c=> c.period===previousPeriod.period && (c.stage==="Done/Paused" || c.stage==="Live")).length
     : null;
 
-  // At a glance — three co-equal figures, so a dip in one doesn't read as
-  // "everything failed." Revenue here is only what's attributed to tracked
-  // marketing activity, not the hotel's total direct revenue.
-  const glance = document.createElement("div"); glance.className = "glance-strip";
-  glance.innerHTML = `
-    <div class="glance-item">
-      <div class="glance-label">Revenue from tracked campaigns</div>
-      <div class="glance-val">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div>
-      ${yoyLine(totals.revenue, yoyManual?.yoyRevenue)}
-    </div>
-    <div class="glance-item">
-      <div class="glance-label">Traffic reached from tracked campaigns</div>
-      <div class="glance-val">${totals.traffic} ${deltaBadge(totals.traffic, prevTotals?.traffic)}</div>
-      ${yoyLine(totals.traffic, yoyManual?.yoyTraffic)}
-    </div>
-    <div class="glance-item">
-      <div class="glance-label">Activities</div>
-      <div class="glance-val">${doneCards.length} ${deltaBadge(doneCards.length, prevActivitiesCount)}</div>
-      <div class="glance-yoy">${completedCount} completed · ${ongoingCount} ongoing</div>
-    </div>
-  `;
-  bodyWrap.appendChild(glance);
-  if(!previousPeriod){
-    const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.margin = "10px 0 20px";
-    note.textContent = "No prior period to compare yet — trend charts and month-over-month comparisons will appear once a second period is logged.";
-    bodyWrap.appendChild(note);
-  }
-
-  if(previousPeriod){
-    bodyWrap.appendChild(buildComparisonChart([
-      {label:"Bookings", curr:totals.bookings, prev:prevTotals.bookings},
-      {label:"Revenue", curr:totals.revenue, prev:prevTotals.revenue},
-    ], previousPeriod.period, periodLabel));
-  }
-
-  // Marketing lift — what tracked campaigns contribute on top of the
-  // hotel's overall performance (organic + everything else combined).
-  // Tracked traffic is compared against Booking Engine traffic specifically
-  // (not website traffic) — campaign clicks land near-purchase-intent, the
-  // same funnel stage as the BE, not general site browsing.
-  // A compact table, not a wall of tiles — two rows, three columns, so it
-  // reads as one comparison rather than six separate numbers.
+  // Marketing lift — tracked vs. total, three rows (bookings, traffic,
+  // revenue), one compact table instead of a wall of tiles.
   if(hasOverallData){
     const bookingShare = overallTotals.bookings>0 ? Math.round(totals.bookings/overallTotals.bookings*100) : null;
     const trafficShare = overallTotals.beTraffic>0 ? Math.round(totals.traffic/overallTotals.beTraffic*100) : null;
+    const revenueShare = overallTotals.revenue>0 ? Math.round(totals.revenue/overallTotals.revenue*100) : null;
     const liftSection = document.createElement("div"); liftSection.className = "section";
-    liftSection.innerHTML = `<div class="section-title">Marketing lift</div>`;
+    liftSection.innerHTML = `<div class="section-title">Marketing lift</div><div class="card-note">Tracked marketing's share of the overall totals above — traffic is compared against Booking Engine traffic, the funnel stage closest to a tracked click.</div>`;
     const liftTable = document.createElement("table"); liftTable.className = "rtable";
     liftTable.innerHTML = `<tr><th></th><th>Total (all sources)</th><th>Tracked marketing</th><th>Share</th></tr>
+      <tr><td>Revenue</td><td>$${overallTotals.revenue}</td><td>$${totals.revenue}</td><td><strong>${revenueShare===null?"—":revenueShare+"%"}</strong></td></tr>
       <tr><td>Bookings</td><td>${overallTotals.bookings}</td><td>${totals.bookings}</td><td><strong>${bookingShare===null?"—":bookingShare+"%"}</strong></td></tr>
       <tr><td>Traffic</td><td>${overallTotals.beTraffic}</td><td>${totals.traffic}</td><td><strong>${trafficShare===null?"—":trafficShare+"%"}</strong></td></tr>`;
     liftSection.appendChild(liftTable);
     bodyWrap.appendChild(liftSection);
   }
 
-  // Campaign performance — the only place campaign-level numbers live, so
-  // they aren't repeated as separate tiles elsewhere.
+  // Campaign performance — the only place campaign-level numbers live.
   const resultsSection = document.createElement("div"); resultsSection.className = "section";
   resultsSection.innerHTML = `<div class="section-title">Campaign performance</div>`;
-
   if(allRows.length){
     const byCampaign = {};
     allRows.forEach(r=>{
@@ -420,16 +433,13 @@ function renderReport(){
       }).join("");
     resultsSection.appendChild(table);
   } else {
-    resultsSection.innerHTML += `<div class="empty-note">No results logged for the selected period(s).</div>`;
+    resultsSection.innerHTML += `<div class="empty-note">No tracked campaigns logged for this period.</div>`;
   }
   bodyWrap.appendChild(resultsSection);
 
-  // Investment & return — the only place ROAS and ROI appear, side by side
-  // with their formulas spelled out, so the two aren't mistaken for the
-  // same number under different names.
-  // Investment & return — ROAS only. ROI would just restate the same
-  // number in percentage form (ROI% = (ROAS-1)*100) — showing both reads
-  // as padding, not as two different facts.
+  // Investment & return — tracked spend/revenue/ROAS, month-over-month
+  // only. No YoY here — tracking didn't exist a year ago, so there's
+  // nothing honest to compare it against.
   if(showSpend){
     const investSection = document.createElement("div"); investSection.className = "section";
     investSection.innerHTML = `<div class="section-title">Investment &amp; return</div>`;
@@ -443,12 +453,11 @@ function renderReport(){
     bodyWrap.appendChild(investSection);
   }
 
-  // Visibility trend — one line per source/metric, plotted across the trend
-  // window (last few months up to the report period), like GA's
-  // traffic-over-time view — independent of which single period the rest
-  // of the report is about. A metric needs at least 2 numeric data points
-  // in that window to be worth drawing as a trend; anything with fewer
-  // just gets listed with its latest value.
+  // Visibility — one line per source/metric, plotted across the trend
+  // window. A metric with even a single logged value is drawn from a zero
+  // baseline — absence in earlier months usually means "wasn't happening
+  // yet," which is a real zero, not missing data. Only genuinely
+  // non-numeric entries fall back to a plain list.
   function parseNumeric(str){
     if(str===null || str===undefined) return null;
     const cleaned = String(str).replace(/[^0-9.\-]/g,"");
@@ -467,8 +476,9 @@ function renderReport(){
         const found = (p.visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name);
         return found ? parseNumeric(found.value) : null;
       });
-      if(values.filter(v=>v!==null).length >= 2){
-        seriesMap[name] = values;
+      const hasAnyNumeric = values.some(v=>v!==null);
+      if(hasAnyNumeric){
+        seriesMap[name] = values.map(v=>v===null?0:v);
       } else {
         for(let i=trendPeriods.length-1; i>=0; i--){
           const found = (trendPeriods[i].visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name);
@@ -486,10 +496,8 @@ function renderReport(){
         visSection.appendChild(buildLineChart(seriesMap, trendPeriodLabels));
       }
       if(plainMetrics.length){
-        // Only label this as "other" when there's a trend chart above for it
-        // to be "other than" — otherwise it's just the list, full stop.
         if(hasTrend){
-          const otherLabel = document.createElement("div"); otherLabel.className = "group-sublabel"; otherLabel.textContent = "Not enough history for a trend yet";
+          const otherLabel = document.createElement("div"); otherLabel.className = "group-sublabel"; otherLabel.textContent = "Non-numeric signals";
           visSection.appendChild(otherLabel);
         }
         const table = document.createElement("table"); table.className = "rtable";
@@ -502,7 +510,12 @@ function renderReport(){
     }
   }
 
-  // What we did — from Progress cards in the selected periods
+  // ============================================================
+  // LAYER 3 — What we did, and what's next
+  // ============================================================
+  const layer3 = document.createElement("div"); layer3.className = "layer-heading"; layer3.textContent = "What we did, and what's next";
+  bodyWrap.appendChild(layer3);
+
   const activitySection = document.createElement("div"); activitySection.className = "section";
   activitySection.innerHTML = `<div class="section-title">Activities</div>`;
   if(doneCards.length){
@@ -531,12 +544,10 @@ function renderReport(){
       activitySection.appendChild(item);
     });
   } else {
-    activitySection.innerHTML += `<div class="empty-note">No activities logged for the selected period(s) yet.</div>`;
+    activitySection.innerHTML += `<div class="empty-note">No activities logged for this period yet.</div>`;
   }
   bodyWrap.appendChild(activitySection);
 
-  // Activities planned — a light look-ahead, not an approval request. Just
-  // enough for the team to discuss "here's the direction" at a review call.
   const plannedCards = (currentProgress.cards||[]).filter(c=> c.stage==="Planned");
   const plannedSection = document.createElement("div"); plannedSection.className = "section";
   plannedSection.innerHTML = `<div class="section-title">Activities planned</div>`;
@@ -556,7 +567,6 @@ function renderReport(){
   }
   bodyWrap.appendChild(plannedSection);
 
-  // Supporting materials — general notes & links (screenshots, docs) attached in Progress
   const generalNotes = (currentProgress.generalNotes || []).filter(n=>n.link && n.link.trim());
   if(generalNotes.length){
     const materialsSection = document.createElement("div"); materialsSection.className = "section";
@@ -575,12 +585,11 @@ function renderReport(){
     bodyWrap.appendChild(materialsSection);
   }
 
-  // Seasonal context
-  if(seasonalNotes.length){
-    const seasonSection = document.createElement("div"); seasonSection.className = "section";
-    seasonSection.innerHTML = `<div class="section-title">Commentary</div>` +
-      seasonalNotes.map(n=>`<div class="season-note" style="margin-bottom:8px;">${n}</div>`).join("");
-    bodyWrap.appendChild(seasonSection);
+  if(notesText.length){
+    const notesSection = document.createElement("div"); notesSection.className = "section";
+    notesSection.innerHTML = `<div class="section-title">Notes</div>` +
+      notesText.map(n=>`<div class="season-note" style="margin-bottom:8px;">${n}</div>`).join("");
+    bodyWrap.appendChild(notesSection);
   }
 
   root.appendChild(report);
