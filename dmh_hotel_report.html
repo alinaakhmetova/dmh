@@ -48,6 +48,25 @@
   .section{margin-bottom:30px;}
   .section-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin:0 0 14px;color:var(--brand);position:relative;padding-left:14px;}
   .section-title::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:4px;background:var(--accent);border-radius:3px;}
+  .glance-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:8px;}
+  .glance-item{background:var(--brand-soft);border-radius:12px;padding:16px 18px;text-align:center;}
+  .glance-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--brand);font-weight:600;margin-bottom:6px;}
+  .glance-val{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--brand-dark);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
+  .glance-yoy{font-size:10.5px;color:var(--ink-soft);margin-top:6px;}
+  .delta-badge{font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;padding:3px 10px;border-radius:8px;vertical-align:middle;}
+  .delta-badge.delta-up{background:var(--accent-soft);color:#8A3A18;}
+  .delta-badge.delta-down{background:#E9E4EE;color:var(--ink-soft);}
+  .kpi .delta-badge{font-size:11px;padding:1px 6px;border-radius:6px;margin-left:4px;}
+  .compare-chart{margin-bottom:26px;}
+  .compare-row{display:grid;grid-template-columns:80px 1fr 40px;align-items:center;gap:10px;margin-bottom:10px;font-size:12px;}
+  .compare-bars{display:flex;flex-direction:column;gap:3px;}
+  .compare-bar-track{background:var(--slate-soft);border-radius:4px;height:14px;overflow:hidden;position:relative;}
+  .compare-bar-fill{height:100%;border-radius:4px;}
+  .compare-bar-fill.prev{background:var(--line);}
+  .compare-bar-fill.curr{background:var(--brand);}
+  .compare-legend{display:flex;gap:16px;font-size:11px;color:var(--ink-soft);margin-bottom:10px;}
+  .compare-legend span{display:flex;align-items:center;gap:5px;}
+  .legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
   .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;}
   .kpi{background:var(--slate-soft);border-radius:10px;padding:14px 16px;border:1px solid var(--line);}
   .kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
@@ -69,6 +88,14 @@
 
   .season-note{background:var(--accent-soft);color:#8A3A18;border-radius:8px;padding:10px 14px;font-size:12.5px;}
   .empty-note{color:var(--ink-soft);font-size:12.5px;font-style:italic;}
+
+  @media (max-width:600px){
+    .glance-strip{grid-template-columns:1fr;}
+  }
+
+  @page{
+    margin: 0.4in;
+  }
 
   @media print{
     body{background:#fff;}
@@ -125,7 +152,11 @@ function checkBackendConfigured(){
 }
 async function stGet(key){
   checkBackendConfigured();
-  const res = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}`), 12000, `loading "${key}"`);
+  const bust = Date.now() + "_" + Math.random().toString(36).slice(2);
+  const res = await withTimeout(
+    fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}&_=${bust}`, { cache: "no-store" }),
+    12000, `loading "${key}"`
+  );
   const data = await res.json();
   if(data.error) throw new Error(data.error);
   return data.value;
@@ -201,6 +232,54 @@ function renderReport(){
   }), {spend:0,traffic:0,bookings:0,revenue:0});
   const roas = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
 
+  // Compare against the period right before the earliest selected one, so the
+  // reader sees "up/down vs last time" instead of only a flat snapshot.
+  const allPeriods = currentResults.periods || [];
+  const selectedIndexes = periods.map(p => allPeriods.findIndex(x=>x.period===p.period)).filter(i=>i>=0);
+  const earliestSelectedIndex = selectedIndexes.length ? Math.min(...selectedIndexes) : -1;
+  const previousPeriod = earliestSelectedIndex > 0 ? allPeriods[earliestSelectedIndex-1] : null;
+  const prevTotals = previousPeriod ? (previousPeriod.rows||[]).reduce((acc,r)=>({
+    spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
+  }), {spend:0,traffic:0,bookings:0,revenue:0}) : null;
+
+  function pctDelta(curr, prev){
+    if(prev===null || prev===undefined || prev===0) return null;
+    return ((curr-prev)/prev*100);
+  }
+  function deltaBadge(curr, prev, goodWhenUp=true){
+    const d = pctDelta(curr, prev);
+    if(d === null) return "";
+    const up = d >= 0;
+    const positive = goodWhenUp ? up : !up;
+    const cls = positive ? "delta-up" : "delta-down";
+    const arrow = up ? "▲" : "▼";
+    return `<span class="delta-badge ${cls}">${arrow} ${Math.abs(d).toFixed(0)}%</span>`;
+  }
+  function parseMonthYear(label){
+    const m = (label||"").trim().match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
+    if(!m) return null;
+    return { month: m[1], year: parseInt(m[2],10) };
+  }
+  function findYoYPeriod(label, allPeriodsList){
+    const parsed = parseMonthYear(label);
+    if(!parsed) return null;
+    const targetLabel = `${parsed.month} ${parsed.year-1}`;
+    return allPeriodsList.find(p => p.period.trim().toLowerCase() === targetLabel.toLowerCase()) || null;
+  }
+  function sumRows(rows){
+    return (rows||[]).reduce((acc,r)=>({
+      spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
+    }), {spend:0,traffic:0,bookings:0,revenue:0});
+  }
+  // YoY is only meaningful when a single, named period is selected — a range
+  // or an unparseable label ("Q3 push") can't be reliably matched a year back.
+  const yoyPeriod = (periods.length === 1) ? findYoYPeriod(periods[0].period, allPeriods) : null;
+  const yoyTotals = yoyPeriod ? sumRows(yoyPeriod.rows) : null;
+  function yoyLine(curr, prev){
+    if(!yoyPeriod || prev===null || prev===undefined) return "";
+    return `<div class="glance-yoy">vs ${yoyPeriod.period}: ${deltaBadge(curr, prev)}</div>`;
+  }
+
   const report = document.createElement("div");
   report.className = "report";
 
@@ -214,33 +293,79 @@ function renderReport(){
   const bodyWrap = document.createElement("div"); bodyWrap.className = "report-body";
   report.appendChild(bodyWrap);
 
+  // Activities this period — moved up so it can join the glance strip
+  const doneCards = (currentProgress.cards||[]).filter(c=>
+    selectedPeriods.has(c.period) && (c.stage==="Done/Paused" || c.stage==="Live")
+  );
+  const completedCount = doneCards.filter(c=>c.stage==="Done/Paused").length;
+  const ongoingCount = doneCards.filter(c=>c.stage==="Live").length;
+  const prevActivitiesCount = previousPeriod
+    ? (currentProgress.cards||[]).filter(c=> c.period===previousPeriod.period && (c.stage==="Done/Paused" || c.stage==="Live")).length
+    : null;
+
+  // At a glance — three co-equal figures, so a dip in one doesn't read as
+  // "everything failed." Revenue here is only what's attributed to tracked
+  // marketing activity, not the hotel's total direct revenue.
+  const glance = document.createElement("div"); glance.className = "glance-strip";
+  glance.innerHTML = `
+    <div class="glance-item">
+      <div class="glance-label">Revenue from tracked campaigns</div>
+      <div class="glance-val">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div>
+      ${yoyLine(totals.revenue, yoyTotals?.revenue)}
+    </div>
+    <div class="glance-item">
+      <div class="glance-label">Traffic reached from tracked campaigns</div>
+      <div class="glance-val">${totals.traffic} ${deltaBadge(totals.traffic, prevTotals?.traffic)}</div>
+      ${yoyLine(totals.traffic, yoyTotals?.traffic)}
+    </div>
+    <div class="glance-item">
+      <div class="glance-label">Activities</div>
+      <div class="glance-val">${doneCards.length} ${deltaBadge(doneCards.length, prevActivitiesCount)}</div>
+      <div class="glance-yoy">${completedCount} completed · ${ongoingCount} ongoing</div>
+    </div>
+  `;
+  bodyWrap.appendChild(glance);
+  if(!previousPeriod){
+    const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.marginTop = "-14px"; note.style.marginBottom = "18px";
+    bodyWrap.appendChild(note);
+  }
+
+  if(previousPeriod){
+    bodyWrap.appendChild(buildComparisonChart([
+      {label:"Traffic", curr:totals.traffic, prev:prevTotals.traffic},
+      {label:"Bookings", curr:totals.bookings, prev:prevTotals.bookings},
+      {label:"Revenue", curr:totals.revenue, prev:prevTotals.revenue},
+    ], previousPeriod.period, periodLabel));
+  }
+
   // Results section
   const resultsSection = document.createElement("div"); resultsSection.className = "section";
   const kpiGrid = document.createElement("div"); kpiGrid.className = "kpi-grid";
   kpiGrid.innerHTML = `
-    <div class="kpi"><div class="kpi-label">Traffic</div><div class="kpi-val">${totals.traffic}</div></div>
-    <div class="kpi"><div class="kpi-label">Bookings</div><div class="kpi-val accent">${totals.bookings}</div></div>
-    <div class="kpi"><div class="kpi-label">Direct revenue</div><div class="kpi-val accent">$${totals.revenue}</div></div>
-    ${showSpend ? `<div class="kpi"><div class="kpi-label">Marketing spend</div><div class="kpi-val">$${totals.spend}</div></div>
+    <div class="kpi"><div class="kpi-label">Traffic</div><div class="kpi-val">${totals.traffic} ${deltaBadge(totals.traffic, prevTotals?.traffic)}</div></div>
+    <div class="kpi"><div class="kpi-label">Bookings</div><div class="kpi-val accent">${totals.bookings} ${deltaBadge(totals.bookings, prevTotals?.bookings)}</div></div>
+    ${showSpend ? `<div class="kpi"><div class="kpi-label">Marketing spend</div><div class="kpi-val">$${totals.spend} ${deltaBadge(totals.spend, prevTotals?.spend, false)}</div></div>
     <div class="kpi"><div class="kpi-label">Return on spend</div><div class="kpi-val accent">${roas}×</div></div>` : ""}
   `;
-  resultsSection.innerHTML = `<div class="section-title">Results</div>`;
+  resultsSection.innerHTML = `<div class="section-title">Results in detail</div>`;
   resultsSection.appendChild(kpiGrid);
 
   if(allRows.length){
-    const byChannel = {};
+    const byCampaign = {};
     allRows.forEach(r=>{
-      const ch = r.channel && r.channel.trim() ? r.channel.trim() : "Other";
-      if(!byChannel[ch]) byChannel[ch] = {traffic:0,bookings:0,revenue:0,spend:0};
-      byChannel[ch].traffic += r.traffic||0; byChannel[ch].bookings += r.bookings||0;
-      byChannel[ch].revenue += r.revenue||0; byChannel[ch].spend += r.spend||0;
+      const name = r.campaign && r.campaign.trim() ? r.campaign.trim() : (r.channel && r.channel.trim() ? r.channel.trim() : "Other");
+      if(!byCampaign[name]) byCampaign[name] = {traffic:0,bookings:0,revenue:0,spend:0,channel:r.channel||""};
+      byCampaign[name].traffic += r.traffic||0; byCampaign[name].bookings += r.bookings||0;
+      byCampaign[name].revenue += r.revenue||0; byCampaign[name].spend += r.spend||0;
     });
     const table = document.createElement("table"); table.className = "rtable";
-    table.innerHTML = `<tr><th>Channel</th><th>Traffic</th><th>Bookings</th><th>Revenue</th>${showSpend?"<th>Spend</th><th>ROAS</th>":""}</tr>` +
-      Object.keys(byChannel).sort((a,b)=>byChannel[b].revenue-byChannel[a].revenue).map(ch=>{
-        const c = byChannel[ch];
+    table.innerHTML = `<tr><th>Campaign</th><th>Traffic</th><th>Bookings</th><th>Revenue</th><th>% of Revenue</th>${showSpend?"<th>Spend</th><th>ROAS</th>":""}</tr>` +
+      Object.keys(byCampaign).sort((a,b)=>byCampaign[b].revenue-byCampaign[a].revenue).map(name=>{
+        const c = byCampaign[name];
         const r = c.spend>0 ? (c.revenue/c.spend).toFixed(2)+"×" : "—";
-        return `<tr><td>${ch}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td>${showSpend?`<td>$${c.spend}</td><td>${r}</td>`:""}</tr>`;
+        const revShare = totals.revenue>0 ? Math.round(c.revenue/totals.revenue*100)+"%" : "—";
+        const channelNote = c.channel ? `<div style="font-size:10.5px;color:var(--ink-soft);">${c.channel}</div>` : "";
+        return `<tr><td>${name}${channelNote}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td><td>${revShare}</td>${showSpend?`<td>$${c.spend}</td><td>${r}</td>`:""}</tr>`;
       }).join("");
     resultsSection.appendChild(table);
   } else {
@@ -248,23 +373,70 @@ function renderReport(){
   }
   bodyWrap.appendChild(resultsSection);
 
-  // Visibility metrics
+  // Investment summary — only when the team has chosen to show spend for
+  // this export. Budget, revenue, and ROI in one focused block, distinct
+  // from the always-visible KPI grid above.
+  if(showSpend){
+    const roiPct = totals.spend>0 ? Math.round((totals.revenue-totals.spend)/totals.spend*100) : null;
+    const investSection = document.createElement("div"); investSection.className = "section";
+    investSection.innerHTML = `<div class="section-title">Investment &amp; return</div>`;
+    const grid = document.createElement("div"); grid.className = "kpi-grid";
+    grid.innerHTML = `
+      <div class="kpi"><div class="kpi-label">Budget spent</div><div class="kpi-val">$${totals.spend} ${deltaBadge(totals.spend, prevTotals?.spend, false)}</div></div>
+      <div class="kpi"><div class="kpi-label">Revenue generated</div><div class="kpi-val accent">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div></div>
+      <div class="kpi"><div class="kpi-label">ROI</div><div class="kpi-val accent">${roiPct===null?"—":(roiPct>=0?"+":"")+roiPct+"%"}</div></div>
+    `;
+    investSection.appendChild(grid);
+    bodyWrap.appendChild(investSection);
+  }
+
+  // Visibility metrics — a chart where the same metric name and a numeric
+  // value exist in both this period and the last one; otherwise, a plain
+  // list. Raw absolute numbers side-by-side aren't reliable here since
+  // metric names and formats can vary period to period.
   if(allVisMetrics.length){
-    const visSection = document.createElement("div"); visSection.className = "section";
-    visSection.innerHTML = `<div class="section-title">Visibility</div>`;
-    const table = document.createElement("table"); table.className = "rtable";
-    table.innerHTML = `<tr><th>Metric</th><th>Value</th></tr>` +
-      allVisMetrics.map(m=>`<tr><td>${m.name||""}</td><td>${m.value||""}</td></tr>`).join("");
-    visSection.appendChild(table);
-    bodyWrap.appendChild(visSection);
+    function parseNumeric(str){
+      if(str===null || str===undefined) return null;
+      const cleaned = String(str).replace(/[^0-9.\-]/g,"");
+      if(cleaned==="" || cleaned==="-") return null;
+      const n = parseFloat(cleaned);
+      return isNaN(n) ? null : n;
+    }
+    const currentVisMap = {};
+    allVisMetrics.forEach(m=>{ if(m.name && m.name.trim()) currentVisMap[m.name.trim()] = m.value; });
+    const prevVisMap = {};
+    if(previousPeriod){
+      (previousPeriod.visibilityMetrics||[]).forEach(m=>{ if(m.name && m.name.trim()) prevVisMap[m.name.trim()] = m.value; });
+    }
+    const chartable = [];
+    const plain = [];
+    Object.keys(currentVisMap).forEach(name=>{
+      const currNum = parseNumeric(currentVisMap[name]);
+      const prevRaw = prevVisMap[name];
+      const prevNum = prevRaw!==undefined ? parseNumeric(prevRaw) : null;
+      if(currNum!==null && prevNum!==null){
+        chartable.push({label:name, curr:currNum, prev:prevNum});
+      } else {
+        plain.push({name, value: currentVisMap[name]});
+      }
+    });
+    if(chartable.length){
+      bodyWrap.appendChild(buildComparisonChart(chartable, previousPeriod.period, periodLabel, "Visibility — what changed"));
+    }
+    if(plain.length){
+      const visSection = document.createElement("div"); visSection.className = "section";
+      visSection.innerHTML = `<div class="section-title">Visibility — other metrics</div>`;
+      const table = document.createElement("table"); table.className = "rtable";
+      table.innerHTML = `<tr><th>Metric</th><th>Value</th></tr>` +
+        plain.map(m=>`<tr><td>${m.name||""}</td><td>${m.value||""}</td></tr>`).join("");
+      visSection.appendChild(table);
+      bodyWrap.appendChild(visSection);
+    }
   }
 
   // What we did — from Progress cards in the selected periods
-  const doneCards = (currentProgress.cards||[]).filter(c=>
-    selectedPeriods.has(c.period) && (c.stage==="Done/Paused" || c.stage==="Live")
-  );
   const activitySection = document.createElement("div"); activitySection.className = "section";
-  activitySection.innerHTML = `<div class="section-title">What we did</div>`;
+  activitySection.innerHTML = `<div class="section-title">Activities</div>`;
   if(doneCards.length){
     doneCards.forEach(c=>{
       const item = document.createElement("div"); item.className = "activity-card";
@@ -295,6 +467,27 @@ function renderReport(){
   }
   bodyWrap.appendChild(activitySection);
 
+  // Activities planned — a light look-ahead, not an approval request. Just
+  // enough for the team to discuss "here's the direction" at a review call.
+  const plannedCards = (currentProgress.cards||[]).filter(c=> c.stage==="Planned");
+  const plannedSection = document.createElement("div"); plannedSection.className = "section";
+  plannedSection.innerHTML = `<div class="section-title">Activities planned</div>`;
+  if(plannedCards.length){
+    plannedCards.forEach(c=>{
+      const item = document.createElement("div"); item.className = "activity-card";
+      const tagPills = (c.tags||[]).map(t=>`<span class="pill">${t}</span>`).join("");
+      item.innerHTML = `
+        <div class="activity-title">${c.title||"(untitled)"}</div>
+        <div class="activity-meta">${tagPills} ${c.period?("· targeting "+c.period):""}</div>
+        ${c.notes ? `<div class="activity-result"><div class="result-label">Plan</div>${c.notes}</div>` : ""}
+      `;
+      plannedSection.appendChild(item);
+    });
+  } else {
+    plannedSection.innerHTML += `<div class="empty-note">No planned activities logged yet.</div>`;
+  }
+  bodyWrap.appendChild(plannedSection);
+
   // Supporting materials — general notes & links (screenshots, docs) attached in Progress
   const generalNotes = (currentProgress.generalNotes || []).filter(n=>n.link && n.link.trim());
   if(generalNotes.length){
@@ -323,6 +516,30 @@ function renderReport(){
   }
 
   root.appendChild(report);
+}
+
+function buildComparisonChart(metrics, prevLabel, currLabel, title){
+  const wrap = document.createElement("div"); wrap.className = "section compare-chart";
+  wrap.innerHTML = `<div class="section-title">${title || "What changed vs last time"}</div>
+    <div class="compare-legend">
+      <span><span class="legend-dot" style="background:var(--line);"></span>${prevLabel}</span>
+      <span><span class="legend-dot" style="background:var(--brand);"></span>${currLabel}</span>
+    </div>`;
+  metrics.forEach(m=>{
+    const max = Math.max(m.curr, m.prev, 1);
+    const row = document.createElement("div"); row.className = "compare-row";
+    const pct = m.prev>0 ? Math.round((m.curr-m.prev)/m.prev*100) : null;
+    row.innerHTML = `
+      <div>${m.label}</div>
+      <div class="compare-bars">
+        <div class="compare-bar-track"><div class="compare-bar-fill prev" style="width:${(m.prev/max*100).toFixed(0)}%;"></div></div>
+        <div class="compare-bar-track"><div class="compare-bar-fill curr" style="width:${(m.curr/max*100).toFixed(0)}%;"></div></div>
+      </div>
+      <div style="text-align:right;font-weight:600;color:${pct===null?'var(--ink-soft)':pct>=0?'#8A3A18':'var(--ink-soft)'};">${pct===null?"—":(pct>=0?"+":"")+pct+"%"}</div>
+    `;
+    wrap.appendChild(row);
+  });
+  return wrap;
 }
 
 function isImageUrl(url){
