@@ -46,14 +46,19 @@
   .report-sub{font-size:13px;opacity:.9;}
   .report-body{padding:32px 40px 0;}
   .section{margin-bottom:30px;}
+  .layer-heading{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:600;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent-soft);}
+  .layer-heading:first-of-type{margin-top:4px;}
   .section-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin:0 0 14px;color:var(--brand);position:relative;padding-left:14px;}
+  .group-sublabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin:14px 0 8px;}
+  .group-sublabel:first-of-type{margin-top:0;}
   .section-title::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:4px;background:var(--accent);border-radius:3px;}
-  .glance-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:8px;}
+  .glance-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:8px;}
   .glance-item{background:var(--brand-soft);border-radius:12px;padding:16px 18px;text-align:center;}
   .glance-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--brand);font-weight:600;margin-bottom:6px;}
   .glance-val{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--brand-dark);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
   .glance-yoy{font-size:10.5px;color:var(--ink-soft);margin-top:6px;}
-  .delta-badge{font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;padding:3px 10px;border-radius:8px;vertical-align:middle;}
+  .glance-yoy .delta-badge{font-size:11px;padding:1px 7px;border-radius:6px;}
+  .delta-badge{font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;padding:3px 10px;border-radius:8px;vertical-align:middle;white-space:nowrap;display:inline-block;}
   .delta-badge.delta-up{background:var(--accent-soft);color:#8A3A18;}
   .delta-badge.delta-down{background:#E9E4EE;color:var(--ink-soft);}
   .kpi .delta-badge{font-size:11px;padding:1px 6px;border-radius:6px;margin-left:4px;}
@@ -120,9 +125,18 @@
       <span class="status-text" id="statusText"></span>
     </div>
     <div class="row" style="margin-top:12px;">
-      <div class="field" style="flex:1;">
-        <label>Periods to include</label>
-        <div class="tag-group" id="periodPicker"></div>
+      <div class="field">
+        <label>Report period</label>
+        <select id="periodSelect"></select>
+      </div>
+      <div class="field">
+        <label>Reporting basis</label>
+        <div class="toggle-row">
+          <select id="basisSelect">
+            <option value="overall">Overall (all sources)</option>
+            <option value="tracked">Tracked marketing only</option>
+          </select>
+        </div>
       </div>
       <div class="field">
         <label>Costs</label>
@@ -136,7 +150,7 @@
 </div>
 
 <script>
-const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxKHZNNI6QlVeyv9Q982-ErEYSXkIdD6vTt0Lpq5z2YMCA_-cR1KROjWjM_p_tzolDSVw/exec";
+const SHEETS_WEBAPP_URL = "PASTE_YOUR_DEPLOYED_WEB_APP_URL_HERE";
 const el = id => document.getElementById(id);
 
 function withTimeout(promise, ms, label){
@@ -166,7 +180,7 @@ let hotelIndex = [];
 let currentHotel = null;
 let currentResults = null;
 let currentProgress = null;
-let selectedPeriods = new Set();
+let primaryPeriodLabel = null;
 
 async function loadHotelIndex(){
   try{ hotelIndex = JSON.parse(await stGet("dmh-hotel-index")); } catch(e){ hotelIndex = []; }
@@ -190,30 +204,40 @@ async function loadAllForHotel(id){
   try{
     currentProgress = JSON.parse(await stGet(`dmh-progress:${id}`));
   } catch(e){ currentProgress = { cards: [] }; }
-  selectedPeriods = new Set((currentResults.periods||[]).map(p=>p.period));
+  const periods = sortPeriodsChronologically(currentResults.periods || []);
+  primaryPeriodLabel = periods.length ? periods[periods.length-1].period : null;
   el("statusText").textContent = "Loaded " + new Date().toLocaleTimeString('en-US');
-  renderPeriodPicker();
+  renderPeriodSelect();
   renderReport();
 }
 
 function getField(sectionId, key){ return currentHotel?.sections?.[sectionId]?.fields?.[key] || ""; }
 
-function renderPeriodPicker(){
-  const wrap = el("periodPicker");
-  wrap.innerHTML = "";
-  const periods = currentResults?.periods || [];
-  if(periods.length === 0){ wrap.innerHTML = '<span class="status-text">No periods logged for this hotel.</span>'; return; }
-  periods.forEach(p=>{
-    const tag = document.createElement("div");
-    tag.className = "tag" + (selectedPeriods.has(p.period) ? " selected" : "");
-    tag.textContent = p.period;
-    tag.addEventListener("click", ()=>{
-      if(selectedPeriods.has(p.period)) selectedPeriods.delete(p.period); else selectedPeriods.add(p.period);
-      renderPeriodPicker();
-      renderReport();
-    });
-    wrap.appendChild(tag);
-  });
+function parsePeriodDate(label){
+  const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const m = (label||"").trim().match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
+  if(!m) return null;
+  const key = m[1].slice(0,3).toLowerCase();
+  if(!(key in months)) return null;
+  return new Date(parseInt(m[2],10), months[key], 1).getTime();
+}
+function sortPeriodsChronologically(periods){
+  return periods.map((p,i)=>({p, i, t: parsePeriodDate(p.period)}))
+    .sort((a,b)=>{
+      if(a.t===null && b.t===null) return a.i-b.i;
+      if(a.t===null) return 1;
+      if(b.t===null) return -1;
+      return a.t-b.t;
+    })
+    .map(x=>x.p);
+}
+
+function renderPeriodSelect(){
+  const sel = el("periodSelect");
+  const periods = sortPeriodsChronologically(currentResults?.periods || []);
+  if(periods.length === 0){ sel.innerHTML = '<option value="">No periods logged</option>'; return; }
+  sel.innerHTML = periods.map(p=>`<option value="${p.period}" ${p.period===primaryPeriodLabel?"selected":""}>${p.period}</option>`).join("");
+  sel.onchange = ()=>{ primaryPeriodLabel = sel.value; renderReport(); };
 }
 
 function renderReport(){
@@ -221,29 +245,68 @@ function renderReport(){
   root.innerHTML = "";
   if(!currentHotel){ root.innerHTML = '<div class="empty-note">Select a hotel and click Load data.</div>'; return; }
 
-  const showSpend = el("showSpendToggle").checked;
-  const periods = (currentResults.periods||[]).filter(p=>selectedPeriods.has(p.period));
-  const allRows = periods.flatMap(p=>p.rows||[]);
-  const allVisMetrics = periods.flatMap(p=>p.visibilityMetrics||[]);
-  const seasonalNotes = periods.map(p=>p.seasonalNote).filter(Boolean);
+  // Sort chronologically by parsing "Mon YYYY" labels — periods can be added
+  // out of date order, so array/insertion order can't be trusted for
+  // "previous period" or trend-window logic. Unparseable labels fall back
+  // to the end, in their original relative order, rather than breaking.
+  function parsePeriodDate(label){
+    const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    const m = (label||"").trim().match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
+    if(!m) return null;
+    const key = m[1].slice(0,3).toLowerCase();
+    if(!(key in months)) return null;
+    return new Date(parseInt(m[2],10), months[key], 1).getTime();
+  }
+  const rawPeriods = currentResults.periods || [];
+  const allPeriods = rawPeriods.map((p,i)=>({p, i, t: parsePeriodDate(p.period)}))
+    .sort((a,b)=>{
+      if(a.t===null && b.t===null) return a.i-b.i;
+      if(a.t===null) return 1;
+      if(b.t===null) return -1;
+      return a.t-b.t;
+    })
+    .map(x=>x.p);
+  const primaryPeriod = allPeriods.find(p=>p.period===primaryPeriodLabel) || null;
+  if(!primaryPeriod){ root.innerHTML = '<div class="empty-note">Select a report period above.</div>'; return; }
 
+  const showSpend = el("showSpendToggle").checked;
+  const basis = el("basisSelect").value; // "overall" or "tracked"
+  const periodLabel = primaryPeriod.period;
+  const allRows = primaryPeriod.rows || [];
+  const notesText = [primaryPeriod.seasonalNote].filter(Boolean);
+
+  // Tracked (marketing-attributed) totals — only what's logged against a
+  // campaign/channel in the workspace.
   const totals = allRows.reduce((acc,r)=>({
     spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
   }), {spend:0,traffic:0,bookings:0,revenue:0});
   const roas = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
 
-  // Compare against the period right before the earliest selected one, so the
-  // reader sees "up/down vs last time" instead of only a flat snapshot.
-  const allPeriods = currentResults.periods || [];
-  const selectedIndexes = periods.map(p => allPeriods.findIndex(x=>x.period===p.period)).filter(i=>i>=0);
-  const earliestSelectedIndex = selectedIndexes.length ? Math.min(...selectedIndexes) : -1;
-  const previousPeriod = earliestSelectedIndex > 0 ? allPeriods[earliestSelectedIndex-1] : null;
+  // Overall hotel results — the whole property, organic + tracked combined.
+  const overallTotals = {
+    websiteTraffic: parseFloat(primaryPeriod.totalWebsiteTraffic)||0,
+    beTraffic: parseFloat(primaryPeriod.totalBeTraffic)||0,
+    bookings: parseFloat(primaryPeriod.totalBookings)||0,
+    revenue: parseFloat(primaryPeriod.totalRevenue)||0,
+  };
+  const hasOverallData = overallTotals.beTraffic>0 || overallTotals.bookings>0 || overallTotals.revenue>0;
+
+  const primaryIndex = allPeriods.findIndex(p=>p.period===periodLabel);
+  const previousPeriod = primaryIndex > 0 ? allPeriods[primaryIndex-1] : null;
   const prevTotals = previousPeriod ? (previousPeriod.rows||[]).reduce((acc,r)=>({
     spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
   }), {spend:0,traffic:0,bookings:0,revenue:0}) : null;
+  const prevOverallTotals = previousPeriod ? {
+    beTraffic: parseFloat(previousPeriod.totalBeTraffic)||0,
+    bookings: parseFloat(previousPeriod.totalBookings)||0,
+    revenue: parseFloat(previousPeriod.totalRevenue)||0,
+  } : null;
+
+  const TREND_WINDOW = 6;
+  const trendPeriods = primaryIndex >= 0 ? allPeriods.slice(Math.max(0, primaryIndex-TREND_WINDOW+1), primaryIndex+1) : [];
 
   function pctDelta(curr, prev){
-    if(prev===null || prev===undefined || prev===0) return null;
+    if(prev===null || prev===undefined || prev===0 || !curr) return null;
     return ((curr-prev)/prev*100);
   }
   function deltaBadge(curr, prev, goodWhenUp=true){
@@ -255,101 +318,96 @@ function renderReport(){
     const arrow = up ? "▲" : "▼";
     return `<span class="delta-badge ${cls}">${arrow} ${Math.abs(d).toFixed(0)}%</span>`;
   }
-  function parseMonthYear(label){
-    const m = (label||"").trim().match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
-    if(!m) return null;
-    return { month: m[1], year: parseInt(m[2],10) };
+
+  // Headline figures follow whichever basis is selected — this is the one
+  // switch that decides the whole story: a hotel on a full-booking
+  // commission model reads "Overall", one paying only for tracked
+  // marketing results reads "Tracked marketing only". YoY only applies to
+  // Overall — there was no tracking a year ago to compare against.
+  const isOverall = basis === "overall";
+  const head = isOverall ? {
+    revenue: overallTotals.revenue, bookings: overallTotals.bookings, traffic: overallTotals.beTraffic,
+    prevRevenue: prevOverallTotals?.revenue, prevBookings: prevOverallTotals?.bookings, prevTraffic: prevOverallTotals?.beTraffic,
+    hasPrev: !!prevOverallTotals, hasData: hasOverallData,
+    yoyRevenue: primaryPeriod.yoyRevenue, yoyBookings: primaryPeriod.yoyBookings, yoyTraffic: primaryPeriod.yoyTraffic,
+    hasYoy: ["yoyRevenue","yoyTraffic","yoyBookings"].some(k=>!isNaN(parseFloat(primaryPeriod[k]))),
+  } : {
+    revenue: totals.revenue, bookings: totals.bookings, traffic: totals.traffic,
+    prevRevenue: prevTotals?.revenue, prevBookings: prevTotals?.bookings, prevTraffic: prevTotals?.traffic,
+    hasPrev: !!previousPeriod, hasData: allRows.length>0,
+    hasYoy: false,
+  };
+  function yoyText(curr, manualPrev){
+    if(!head.hasYoy || !curr) return "";
+    const prevNum = parseFloat(manualPrev);
+    if(isNaN(prevNum)) return "";
+    const badge = deltaBadge(curr, prevNum);
+    return badge ? `<div class="glance-yoy">vs last year: ${badge}</div>` : "";
   }
-  function findYoYPeriod(label, allPeriodsList){
-    const parsed = parseMonthYear(label);
-    if(!parsed) return null;
-    const targetLabel = `${parsed.month} ${parsed.year-1}`;
-    return allPeriodsList.find(p => p.period.trim().toLowerCase() === targetLabel.toLowerCase()) || null;
-  }
-  function sumRows(rows){
-    return (rows||[]).reduce((acc,r)=>({
-      spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
-    }), {spend:0,traffic:0,bookings:0,revenue:0});
-  }
-  // YoY is only meaningful when a single, named period is selected — a range
-  // or an unparseable label ("Q3 push") can't be reliably matched a year back.
-  const yoyPeriod = (periods.length === 1) ? findYoYPeriod(periods[0].period, allPeriods) : null;
-  const yoyTotals = yoyPeriod ? sumRows(yoyPeriod.rows) : null;
-  function yoyLine(curr, prev){
-    if(!yoyPeriod || prev===null || prev===undefined) return "";
-    return `<div class="glance-yoy">vs ${yoyPeriod.period}: ${deltaBadge(curr, prev)}</div>`;
+  function momText(curr, prev){
+    if(!head.hasPrev || !curr) return "";
+    const badge = deltaBadge(curr, prev);
+    return badge ? `<div class="glance-yoy">vs last month: ${badge}</div>` : "";
   }
 
   const report = document.createElement("div");
   report.className = "report";
 
-  const periodLabel = periods.length ? periods.map(p=>p.period).join(", ") : "no period selected";
   report.innerHTML += `
     <div class="report-header">
       <div class="report-kicker">Exely Digital Marketing Hub</div>
       <div class="report-title">${getField("hotelData","name") || currentHotel.id}</div>
-      <div class="report-sub">${periodLabel}</div>
+      <div class="report-sub">${periodLabel} · ${isOverall?"Overall results":"Tracked marketing results"}</div>
     </div>`;
   const bodyWrap = document.createElement("div"); bodyWrap.className = "report-body";
   report.appendChild(bodyWrap);
 
-  // Activities this period — moved up so it can join the glance strip
-  const doneCards = (currentProgress.cards||[]).filter(c=>
-    selectedPeriods.has(c.period) && (c.stage==="Done/Paused" || c.stage==="Live")
-  );
-  const completedCount = doneCards.filter(c=>c.stage==="Done/Paused").length;
-  const ongoingCount = doneCards.filter(c=>c.stage==="Live").length;
-  const prevActivitiesCount = previousPeriod
-    ? (currentProgress.cards||[]).filter(c=> c.period===previousPeriod.period && (c.stage==="Done/Paused" || c.stage==="Live")).length
-    : null;
-
-  // At a glance — three co-equal figures, so a dip in one doesn't read as
-  // "everything failed." Revenue here is only what's attributed to tracked
-  // marketing activity, not the hotel's total direct revenue.
-  const glance = document.createElement("div"); glance.className = "glance-strip";
-  glance.innerHTML = `
-    <div class="glance-item">
-      <div class="glance-label">Revenue from tracked campaigns</div>
-      <div class="glance-val">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div>
-      ${yoyLine(totals.revenue, yoyTotals?.revenue)}
-    </div>
-    <div class="glance-item">
-      <div class="glance-label">Traffic reached from tracked campaigns</div>
-      <div class="glance-val">${totals.traffic} ${deltaBadge(totals.traffic, prevTotals?.traffic)}</div>
-      ${yoyLine(totals.traffic, yoyTotals?.traffic)}
-    </div>
-    <div class="glance-item">
-      <div class="glance-label">Activities</div>
-      <div class="glance-val">${doneCards.length} ${deltaBadge(doneCards.length, prevActivitiesCount)}</div>
-      <div class="glance-yoy">${completedCount} completed · ${ongoingCount} ongoing</div>
-    </div>
-  `;
-  bodyWrap.appendChild(glance);
-  if(!previousPeriod){
-    const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.marginTop = "-14px"; note.style.marginBottom = "18px";
+  if(!head.hasData){
+    const note = document.createElement("div"); note.className = "empty-note";
+    note.textContent = isOverall
+      ? "Overall hotel results haven't been filled in for this period yet — add them in the main workspace, or switch to Tracked marketing above."
+      : "No tracked campaigns logged for this period yet.";
     bodyWrap.appendChild(note);
+  } else {
+    const glance = document.createElement("div"); glance.className = "glance-strip";
+    glance.innerHTML = `
+      <div class="glance-item">
+        <div class="glance-label">Revenue</div>
+        <div class="glance-val">$${head.revenue}</div>
+        ${momText(head.revenue, head.prevRevenue)}
+        ${yoyText(head.revenue, head.yoyRevenue)}
+      </div>
+      <div class="glance-item">
+        <div class="glance-label">Bookings</div>
+        <div class="glance-val">${head.bookings}</div>
+        ${momText(head.bookings, head.prevBookings)}
+        ${yoyText(head.bookings, head.yoyBookings)}
+      </div>
+      <div class="glance-item">
+        <div class="glance-label">Traffic</div>
+        <div class="glance-val">${head.traffic}</div>
+        ${momText(head.traffic, head.prevTraffic)}
+        ${yoyText(head.traffic, head.yoyTraffic)}
+      </div>
+    `;
+    bodyWrap.appendChild(glance);
+    if(!head.hasPrev && !head.hasYoy){
+      const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.margin = "10px 0 4px";
+      note.textContent = "No prior period to compare yet — comparisons will appear once a second period is logged.";
+      bodyWrap.appendChild(note);
+    }
+    if(head.hasPrev){
+      bodyWrap.appendChild(buildComparisonChart([
+        {label:"Bookings", curr:head.bookings, prev:head.prevBookings},
+        {label:"Revenue", curr:head.revenue, prev:head.prevRevenue},
+      ], previousPeriod.period, periodLabel));
+    }
   }
 
-  if(previousPeriod){
-    bodyWrap.appendChild(buildComparisonChart([
-      {label:"Traffic", curr:totals.traffic, prev:prevTotals.traffic},
-      {label:"Bookings", curr:totals.bookings, prev:prevTotals.bookings},
-      {label:"Revenue", curr:totals.revenue, prev:prevTotals.revenue},
-    ], previousPeriod.period, periodLabel));
-  }
-
-  // Results section
+  // Campaign performance — the detail behind the tracked side of the
+  // headline above, regardless of which basis is selected.
   const resultsSection = document.createElement("div"); resultsSection.className = "section";
-  const kpiGrid = document.createElement("div"); kpiGrid.className = "kpi-grid";
-  kpiGrid.innerHTML = `
-    <div class="kpi"><div class="kpi-label">Traffic</div><div class="kpi-val">${totals.traffic} ${deltaBadge(totals.traffic, prevTotals?.traffic)}</div></div>
-    <div class="kpi"><div class="kpi-label">Bookings</div><div class="kpi-val accent">${totals.bookings} ${deltaBadge(totals.bookings, prevTotals?.bookings)}</div></div>
-    ${showSpend ? `<div class="kpi"><div class="kpi-label">Marketing spend</div><div class="kpi-val">$${totals.spend} ${deltaBadge(totals.spend, prevTotals?.spend, false)}</div></div>
-    <div class="kpi"><div class="kpi-label">Return on spend</div><div class="kpi-val accent">${roas}×</div></div>` : ""}
-  `;
-  resultsSection.innerHTML = `<div class="section-title">Results in detail</div>`;
-  resultsSection.appendChild(kpiGrid);
-
+  resultsSection.innerHTML = `<div class="section-title">Campaign performance</div>`;
   if(allRows.length){
     const byCampaign = {};
     allRows.forEach(r=>{
@@ -363,78 +421,85 @@ function renderReport(){
       Object.keys(byCampaign).sort((a,b)=>byCampaign[b].revenue-byCampaign[a].revenue).map(name=>{
         const c = byCampaign[name];
         const r = c.spend>0 ? (c.revenue/c.spend).toFixed(2)+"×" : "—";
-        const revShare = totals.revenue>0 ? Math.round(c.revenue/totals.revenue*100)+"%" : "—";
         const channelNote = c.channel ? `<div style="font-size:10.5px;color:var(--ink-soft);">${c.channel}</div>` : "";
-        return `<tr><td>${name}${channelNote}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td></td>${showSpend?`<td>$${c.spend}</td><td>${r}</td>`:""}</tr>`;
+        return `<tr><td>${name}${channelNote}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td>${showSpend?`<td>$${c.spend}</td><td>${r}</td>`:""}</tr>`;
       }).join("");
     resultsSection.appendChild(table);
   } else {
-    resultsSection.innerHTML += `<div class="empty-note">No results logged for the selected period(s).</div>`;
+    resultsSection.innerHTML += `<div class="empty-note">No tracked campaigns logged for this period.</div>`;
   }
   bodyWrap.appendChild(resultsSection);
 
-  // Investment summary — only when the team has chosen to show spend for
-  // this export. Budget, revenue, and ROI in one focused block, distinct
-  // from the always-visible KPI grid above.
+  // Investment & return — always tracked-specific, since spend is
+  // inherently a tracked-marketing concept regardless of reporting basis.
   if(showSpend){
-    const roiPct = totals.spend>0 ? Math.round((totals.revenue-totals.spend)/totals.spend*100) : null;
     const investSection = document.createElement("div"); investSection.className = "section";
     investSection.innerHTML = `<div class="section-title">Investment &amp; return</div>`;
     const grid = document.createElement("div"); grid.className = "kpi-grid";
     grid.innerHTML = `
       <div class="kpi"><div class="kpi-label">Budget spent</div><div class="kpi-val">$${totals.spend} ${deltaBadge(totals.spend, prevTotals?.spend, false)}</div></div>
-      <div class="kpi"><div class="kpi-label">Revenue generated</div><div class="kpi-val accent">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div></div>
-      <div class="kpi"><div class="kpi-label">ROI</div><div class="kpi-val accent">${roiPct===null?"—":(roiPct>=0?"+":"")+roiPct+"%"}</div></div>
+      <div class="kpi"><div class="kpi-label">Tracked bookings</div><div class="kpi-val">${totals.bookings} ${deltaBadge(totals.bookings, prevTotals?.bookings)}</div></div>
+      <div class="kpi"><div class="kpi-label">Tracked revenue</div><div class="kpi-val accent">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div></div>
+      <div class="kpi"><div class="kpi-label">ROAS</div><div class="kpi-val accent">${roas}×</div></div>
     `;
     investSection.appendChild(grid);
     bodyWrap.appendChild(investSection);
   }
 
-  // Visibility metrics — a chart where the same metric name and a numeric
-  // value exist in both this period and the last one; otherwise, a plain
-  // list. Raw absolute numbers side-by-side aren't reliable here since
-  // metric names and formats can vary period to period.
-  if(allVisMetrics.length){
-    function parseNumeric(str){
-      if(str===null || str===undefined) return null;
-      const cleaned = String(str).replace(/[^0-9.\-]/g,"");
-      if(cleaned==="" || cleaned==="-") return null;
-      const n = parseFloat(cleaned);
-      return isNaN(n) ? null : n;
-    }
-    const currentVisMap = {};
-    allVisMetrics.forEach(m=>{ if(m.name && m.name.trim()) currentVisMap[m.name.trim()] = m.value; });
-    const prevVisMap = {};
-    if(previousPeriod){
-      (previousPeriod.visibilityMetrics||[]).forEach(m=>{ if(m.name && m.name.trim()) prevVisMap[m.name.trim()] = m.value; });
-    }
-    const chartable = [];
-    const plain = [];
-    Object.keys(currentVisMap).forEach(name=>{
-      const currNum = parseNumeric(currentVisMap[name]);
-      const prevRaw = prevVisMap[name];
-      const prevNum = prevRaw!==undefined ? parseNumeric(prevRaw) : null;
-      if(currNum!==null && prevNum!==null){
-        chartable.push({label:name, curr:currNum, prev:prevNum});
+  // Visibility — a simple trend line per source, latest value labeled.
+  // A metric with even a single logged value is drawn from a zero
+  // baseline — absence in earlier months usually means "wasn't happening
+  // yet," a real zero, not missing data.
+  function parseNumeric(str){
+    if(str===null || str===undefined) return null;
+    const cleaned = String(str).replace(/[^0-9.\-]/g,"");
+    if(cleaned==="" || cleaned==="-") return null;
+    const n = parseFloat(cleaned);
+    return isNaN(n) ? null : n;
+  }
+  if(trendPeriods.length){
+    const trendPeriodLabels = trendPeriods.map(p=>p.period);
+    const metricNames = new Set();
+    trendPeriods.forEach(p=>(p.visibilityMetrics||[]).forEach(m=>{ if(m.name && m.name.trim()) metricNames.add(m.name.trim()); }));
+    const seriesMap = {};
+    const plainMetrics = [];
+    metricNames.forEach(name=>{
+      const values = trendPeriods.map(p=>{
+        const found = (p.visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name);
+        return found ? parseNumeric(found.value) : null;
+      });
+      if(values.some(v=>v!==null)){
+        seriesMap[name] = values.map(v=>v===null?0:v);
       } else {
-        plain.push({name, value: currentVisMap[name]});
+        for(let i=trendPeriods.length-1; i>=0; i--){
+          const found = (trendPeriods[i].visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name);
+          if(found){ plainMetrics.push(found); break; }
+        }
       }
     });
-    if(chartable.length){
-      bodyWrap.appendChild(buildComparisonChart(chartable, previousPeriod.period, periodLabel, "Visibility — what changed"));
-    }
-    if(plain.length){
+    if(Object.keys(seriesMap).length || plainMetrics.length){
       const visSection = document.createElement("div"); visSection.className = "section";
-      visSection.innerHTML = `<div class="section-title">Visibility — other metrics</div>`;
-      const table = document.createElement("table"); table.className = "rtable";
-      table.innerHTML = `<tr><th>Metric</th><th>Value</th></tr>` +
-        plain.map(m=>`<tr><td>${m.name||""}</td><td>${m.value||""}</td></tr>`).join("");
-      visSection.appendChild(table);
+      visSection.innerHTML = `<div class="section-title">Visibility</div>`;
+      const hasTrend = Object.keys(seriesMap).length > 0;
+      if(hasTrend){
+        visSection.appendChild(buildLineChart(seriesMap, trendPeriodLabels, false));
+      }
+      if(plainMetrics.length){
+        const table = document.createElement("table"); table.className = "rtable";
+        table.innerHTML = `<tr><th>Signal</th><th>This period</th></tr>` +
+          plainMetrics.map(m=>`<tr><td>${m.name||""}</td><td>${m.value||""}</td></tr>`).join("");
+        table.style.marginTop = hasTrend ? "10px" : "0";
+        visSection.appendChild(table);
+      }
       bodyWrap.appendChild(visSection);
     }
   }
 
-  // What we did — from Progress cards in the selected periods
+  // Activities this period, for the glance/detail below.
+  const doneCards = (currentProgress.cards||[]).filter(c=>
+    c.period===periodLabel && (c.stage==="Done/Paused" || c.stage==="Live")
+  );
+
   const activitySection = document.createElement("div"); activitySection.className = "section";
   activitySection.innerHTML = `<div class="section-title">Activities</div>`;
   if(doneCards.length){
@@ -463,12 +528,10 @@ function renderReport(){
       activitySection.appendChild(item);
     });
   } else {
-    activitySection.innerHTML += `<div class="empty-note">No activities logged for the selected period(s) yet.</div>`;
+    activitySection.innerHTML += `<div class="empty-note">No activities logged for this period yet.</div>`;
   }
   bodyWrap.appendChild(activitySection);
 
-  // Activities planned — a light look-ahead, not an approval request. Just
-  // enough for the team to discuss "here's the direction" at a review call.
   const plannedCards = (currentProgress.cards||[]).filter(c=> c.stage==="Planned");
   const plannedSection = document.createElement("div"); plannedSection.className = "section";
   plannedSection.innerHTML = `<div class="section-title">Activities planned</div>`;
@@ -488,7 +551,6 @@ function renderReport(){
   }
   bodyWrap.appendChild(plannedSection);
 
-  // Supporting materials — general notes & links (screenshots, docs) attached in Progress
   const generalNotes = (currentProgress.generalNotes || []).filter(n=>n.link && n.link.trim());
   if(generalNotes.length){
     const materialsSection = document.createElement("div"); materialsSection.className = "section";
@@ -507,15 +569,84 @@ function renderReport(){
     bodyWrap.appendChild(materialsSection);
   }
 
-  // Seasonal context
-  if(seasonalNotes.length){
-    const seasonSection = document.createElement("div"); seasonSection.className = "section";
-    seasonSection.innerHTML = `<div class="section-title">Season context</div>` +
-      seasonalNotes.map(n=>`<div class="season-note" style="margin-bottom:8px;">${n}</div>`).join("");
-    bodyWrap.appendChild(seasonSection);
+  if(notesText.length){
+    const notesSection = document.createElement("div"); notesSection.className = "section";
+    notesSection.innerHTML = `<div class="section-title">Notes</div>` +
+      notesText.map(n=>`<div class="season-note" style="margin-bottom:8px;">${n}</div>`).join("");
+    bodyWrap.appendChild(notesSection);
   }
 
   root.appendChild(report);
+}
+
+function buildLineChart(seriesMap, periodLabels, showPct){
+  if(showPct === undefined) showPct = true;
+  const wrap = document.createElement("div");
+  const width = 640, height = 260, padL = 44, padR = 50, padT = 16, padB = 34;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+  const allValues = Object.values(seriesMap).flat().filter(v=>v!==null && v!==undefined);
+  const maxVal = Math.max(...allValues, 1);
+  const n = periodLabels.length;
+  const xStep = n > 1 ? plotW / (n - 1) : 0;
+  const colors = ["#4D1774", "#F65925", "#2E5FA3", "#1D9E75", "#993556", "#A9791B"];
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;" role="img" aria-label="Visibility trend by source">`;
+  svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${height-padB}" stroke="var(--line)" stroke-width="1"/>`;
+  svg += `<line x1="${padL}" y1="${height-padB}" x2="${width-padR}" y2="${height-padB}" stroke="var(--line)" stroke-width="1"/>`;
+  periodLabels.forEach((label,i)=>{
+    const x = padL + i*xStep;
+    svg += `<text x="${x}" y="${height-padB+18}" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)">${label}</text>`;
+  });
+  [0, 0.5, 1].forEach(frac=>{
+    const y = padT + plotH - frac*plotH;
+    const val = Math.round(frac*maxVal);
+    svg += `<text x="${padL-8}" y="${y+3}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${val}</text>`;
+  });
+
+  const legendItems = [];
+  let colorIdx = 0;
+  Object.keys(seriesMap).forEach(name=>{
+    const color = colors[colorIdx % colors.length]; colorIdx++;
+    legendItems.push({name, color});
+    const values = seriesMap[name];
+    const points = [];
+    values.forEach((v,i)=>{
+      if(v===null || v===undefined) return;
+      const x = padL + i*xStep;
+      const y = padT + plotH - (v/maxVal*plotH);
+      points.push([x,y,v]);
+    });
+    if(points.length){
+      const path = points.map((p,i)=> (i===0?"M":"L")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+      svg += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
+      points.forEach(p=>{ svg += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="${color}"/>`; });
+      // Label the most recent point with its exact figure, plus the %
+      // change from the first point in the window — labeling every point
+      // gets cluttered once there are several months and series; the
+      // gridlines on the left give a rough read on the rest.
+      const first = points[0];
+      const last = points[points.length-1];
+      let pctText = "";
+      if(showPct && points.length > 1){
+        if(first[2] === 0){
+          pctText = last[2] > 0 ? " (new)" : "";
+        } else {
+          const pct = Math.round((last[2]-first[2])/first[2]*100);
+          pctText = ` (${pct>=0?"▲":"▼"}${Math.abs(pct)}%)`;
+        }
+      }
+      svg += `<text x="${(last[0]-4).toFixed(1)}" y="${(last[1]-9).toFixed(1)}" font-size="10.5" text-anchor="end" fill="${color}" font-weight="600">${Math.round(last[2])}${pctText}</text>`;
+    }
+  });
+  svg += `</svg>`;
+
+  const legendHtml = legendItems.map(li=>
+    `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:16px;font-size:11.5px;color:var(--ink-soft);"><span style="width:9px;height:9px;border-radius:50%;background:${li.color};display:inline-block;"></span>${li.name}</span>`
+  ).join("");
+
+  wrap.innerHTML = `<div style="margin-bottom:10px;">${legendHtml}</div>`;
+  wrap.innerHTML += svg;
+  return wrap;
 }
 
 function buildComparisonChart(metrics, prevLabel, currLabel, title){
@@ -552,6 +683,7 @@ el("loadBtn").addEventListener("click", ()=>{
   loadAllForHotel(id);
 });
 el("showSpendToggle").addEventListener("change", renderReport);
+el("basisSelect").addEventListener("change", renderReport);
 el("printBtn").addEventListener("click", ()=> window.print());
 
 (async function init(){
