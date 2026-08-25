@@ -122,9 +122,9 @@
       <span class="status-text" id="statusText"></span>
     </div>
     <div class="row" style="margin-top:12px;">
-      <div class="field" style="flex:1;">
-        <label>Periods to include</label>
-        <div class="tag-group" id="periodPicker"></div>
+      <div class="field">
+        <label>Report period</label>
+        <select id="periodSelect"></select>
       </div>
       <div class="field">
         <label>Costs</label>
@@ -168,7 +168,7 @@ let hotelIndex = [];
 let currentHotel = null;
 let currentResults = null;
 let currentProgress = null;
-let selectedPeriods = new Set();
+let primaryPeriodLabel = null;
 
 async function loadHotelIndex(){
   try{ hotelIndex = JSON.parse(await stGet("dmh-hotel-index")); } catch(e){ hotelIndex = []; }
@@ -192,30 +192,21 @@ async function loadAllForHotel(id){
   try{
     currentProgress = JSON.parse(await stGet(`dmh-progress:${id}`));
   } catch(e){ currentProgress = { cards: [] }; }
-  selectedPeriods = new Set((currentResults.periods||[]).map(p=>p.period));
+  const periods = currentResults.periods || [];
+  primaryPeriodLabel = periods.length ? periods[periods.length-1].period : null;
   el("statusText").textContent = "Loaded " + new Date().toLocaleTimeString('en-US');
-  renderPeriodPicker();
+  renderPeriodSelect();
   renderReport();
 }
 
 function getField(sectionId, key){ return currentHotel?.sections?.[sectionId]?.fields?.[key] || ""; }
 
-function renderPeriodPicker(){
-  const wrap = el("periodPicker");
-  wrap.innerHTML = "";
+function renderPeriodSelect(){
+  const sel = el("periodSelect");
   const periods = currentResults?.periods || [];
-  if(periods.length === 0){ wrap.innerHTML = '<span class="status-text">No periods logged for this hotel.</span>'; return; }
-  periods.forEach(p=>{
-    const tag = document.createElement("div");
-    tag.className = "tag" + (selectedPeriods.has(p.period) ? " selected" : "");
-    tag.textContent = p.period;
-    tag.addEventListener("click", ()=>{
-      if(selectedPeriods.has(p.period)) selectedPeriods.delete(p.period); else selectedPeriods.add(p.period);
-      renderPeriodPicker();
-      renderReport();
-    });
-    wrap.appendChild(tag);
-  });
+  if(periods.length === 0){ sel.innerHTML = '<option value="">No periods logged</option>'; return; }
+  sel.innerHTML = periods.map(p=>`<option value="${p.period}" ${p.period===primaryPeriodLabel?"selected":""}>${p.period}</option>`).join("");
+  sel.onchange = ()=>{ primaryPeriodLabel = sel.value; renderReport(); };
 }
 
 function renderReport(){
@@ -223,11 +214,14 @@ function renderReport(){
   root.innerHTML = "";
   if(!currentHotel){ root.innerHTML = '<div class="empty-note">Select a hotel and click Load data.</div>'; return; }
 
+  const allPeriods = currentResults.periods || [];
+  const primaryPeriod = allPeriods.find(p=>p.period===primaryPeriodLabel) || null;
+  if(!primaryPeriod){ root.innerHTML = '<div class="empty-note">Select a report period above.</div>'; return; }
+
   const showSpend = el("showSpendToggle").checked;
-  const periods = (currentResults.periods||[]).filter(p=>selectedPeriods.has(p.period));
-  const allRows = periods.flatMap(p=>p.rows||[]);
-  const allVisMetrics = periods.flatMap(p=>p.visibilityMetrics||[]);
-  const seasonalNotes = periods.map(p=>p.seasonalNote).filter(Boolean);
+  const periodLabel = primaryPeriod.period;
+  const allRows = primaryPeriod.rows || [];
+  const seasonalNotes = [primaryPeriod.seasonalNote].filter(Boolean);
 
   const totals = allRows.reduce((acc,r)=>({
     spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
@@ -237,23 +231,29 @@ function renderReport(){
   // Overall hotel results (organic + tracked combined) — entered separately
   // per period in the main workspace. Lets us show what share of total
   // performance tracked marketing actually represents, not just tracked
-  // numbers in isolation.
-  const overallTotals = periods.reduce((acc,p)=>({
-    websiteTraffic: acc.websiteTraffic + (parseFloat(p.totalWebsiteTraffic)||0),
-    beTraffic: acc.beTraffic + (parseFloat(p.totalBeTraffic)||0),
-    bookings: acc.bookings + (parseFloat(p.totalBookings)||0),
-  }), {websiteTraffic:0, beTraffic:0, bookings:0});
+  // numbers in isolation. This is for the report period only, not summed
+  // across a range — mixing months here would misrepresent the share.
+  const overallTotals = {
+    websiteTraffic: parseFloat(primaryPeriod.totalWebsiteTraffic)||0,
+    beTraffic: parseFloat(primaryPeriod.totalBeTraffic)||0,
+    bookings: parseFloat(primaryPeriod.totalBookings)||0,
+  };
   const hasOverallData = overallTotals.websiteTraffic>0 || overallTotals.beTraffic>0 || overallTotals.bookings>0;
 
-  // Compare against the period right before the earliest selected one, so the
+  // Compare against the period right before the report period, so the
   // reader sees "up/down vs last time" instead of only a flat snapshot.
-  const allPeriods = currentResults.periods || [];
-  const selectedIndexes = periods.map(p => allPeriods.findIndex(x=>x.period===p.period)).filter(i=>i>=0);
-  const earliestSelectedIndex = selectedIndexes.length ? Math.min(...selectedIndexes) : -1;
-  const previousPeriod = earliestSelectedIndex > 0 ? allPeriods[earliestSelectedIndex-1] : null;
+  const primaryIndex = allPeriods.findIndex(p=>p.period===periodLabel);
+  const previousPeriod = primaryIndex > 0 ? allPeriods[primaryIndex-1] : null;
   const prevTotals = previousPeriod ? (previousPeriod.rows||[]).reduce((acc,r)=>({
     spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
   }), {spend:0,traffic:0,bookings:0,revenue:0}) : null;
+
+  // Trend window for the charts below — always the last few months leading
+  // up to and including the report period, independent of which single
+  // period the rest of the report is about. This is what keeps "I want to
+  // see a trend" from fighting with "I want one clean period's numbers."
+  const TREND_WINDOW = 6;
+  const trendPeriods = primaryIndex >= 0 ? allPeriods.slice(Math.max(0, primaryIndex-TREND_WINDOW+1), primaryIndex+1) : [];
 
   function pctDelta(curr, prev){
     if(prev===null || prev===undefined || prev===0) return null;
@@ -272,7 +272,7 @@ function renderReport(){
   // finding a matching period a year back — most accounts won't have a
   // full tracked year yet, and the client's own numbers are the real
   // reference point anyway. Only meaningful for a single selected period.
-  const yoyManual = (periods.length === 1) ? periods[0] : null;
+  const yoyManual = primaryPeriod;
   function yoyLine(curr, manualPrev){
     const prevNum = parseFloat(manualPrev);
     if(!yoyManual || isNaN(prevNum)) return "";
@@ -282,7 +282,6 @@ function renderReport(){
   const report = document.createElement("div");
   report.className = "report";
 
-  const periodLabel = periods.length ? periods.map(p=>p.period).join(", ") : "no period selected";
   report.innerHTML += `
     <div class="report-header">
       <div class="report-kicker">Exely Digital Marketing Hub</div>
@@ -294,7 +293,7 @@ function renderReport(){
 
   // Activities this period — moved up so it can join the glance strip
   const doneCards = (currentProgress.cards||[]).filter(c=>
-    selectedPeriods.has(c.period) && (c.stage==="Done/Paused" || c.stage==="Live")
+    c.period===periodLabel && (c.stage==="Done/Paused" || c.stage==="Live")
   );
   const completedCount = doneCards.filter(c=>c.stage==="Done/Paused").length;
   const ongoingCount = doneCards.filter(c=>c.stage==="Live").length;
@@ -326,6 +325,7 @@ function renderReport(){
   bodyWrap.appendChild(glance);
   if(!previousPeriod){
     const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.marginTop = "-14px"; note.style.marginBottom = "18px";
+    note.textContent = "No prior period to compare yet.";
     bodyWrap.appendChild(note);
   }
 
@@ -404,11 +404,12 @@ function renderReport(){
     bodyWrap.appendChild(investSection);
   }
 
-  // Visibility trend — one line per source/metric, plotted across every
-  // selected period in order (like GA's traffic-over-time view), not just a
-  // two-point comparison. A metric needs at least 2 numeric data points
-  // across the selected periods to be worth drawing as a trend; anything
-  // with fewer just gets listed with its latest value.
+  // Visibility trend — one line per source/metric, plotted across the trend
+  // window (last few months up to the report period), like GA's
+  // traffic-over-time view — independent of which single period the rest
+  // of the report is about. A metric needs at least 2 numeric data points
+  // in that window to be worth drawing as a trend; anything with fewer
+  // just gets listed with its latest value.
   function parseNumeric(str){
     if(str===null || str===undefined) return null;
     const cleaned = String(str).replace(/[^0-9.\-]/g,"");
@@ -416,23 +417,22 @@ function renderReport(){
     const n = parseFloat(cleaned);
     return isNaN(n) ? null : n;
   }
-  const orderedSelected = allPeriods.filter(p=>selectedPeriods.has(p.period));
-  if(orderedSelected.length){
-    const trendPeriodLabels = orderedSelected.map(p=>p.period);
+  if(trendPeriods.length){
+    const trendPeriodLabels = trendPeriods.map(p=>p.period);
     const metricNames = new Set();
-    orderedSelected.forEach(p=>(p.visibilityMetrics||[]).forEach(m=>{ if(m.name && m.name.trim()) metricNames.add(m.name.trim()); }));
+    trendPeriods.forEach(p=>(p.visibilityMetrics||[]).forEach(m=>{ if(m.name && m.name.trim()) metricNames.add(m.name.trim()); }));
     const seriesMap = {};
     const plainMetrics = [];
     metricNames.forEach(name=>{
-      const values = orderedSelected.map(p=>{
+      const values = trendPeriods.map(p=>{
         const found = (p.visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name);
         return found ? parseNumeric(found.value) : null;
       });
       if(values.filter(v=>v!==null).length >= 2){
         seriesMap[name] = values;
       } else {
-        for(let i=orderedSelected.length-1; i>=0; i--){
-          const found = (orderedSelected[i].visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name);
+        for(let i=trendPeriods.length-1; i>=0; i--){
+          const found = (trendPeriods[i].visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name);
           if(found){ plainMetrics.push(found); break; }
         }
       }
