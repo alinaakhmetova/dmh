@@ -120,7 +120,7 @@
     .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
-        /* ---- Builder UI ---- */
+          /* ---- Builder UI ---- */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
   .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
   .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
@@ -176,6 +176,13 @@
   .ed-row{grid-template-columns:auto auto minmax(0,1fr) auto auto;}
   .ed-move{display:inline-flex;gap:3px;white-space:nowrap;}
   .ed-type{max-width:118px;overflow:hidden;text-overflow:ellipsis;}
+
+  .card-img{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:#fcfbfe;}
+  .ci-title{font-size:12.5px;font-weight:600;color:var(--brand-dark);margin-bottom:6px;}
+  .dropzone.small{padding:7px;font-size:11.5px;}
+  .act-fig{margin:0;max-width:100%;}
+  .act-fig img{max-width:100%;max-height:300px;width:auto;height:auto;border-radius:8px;border:1px solid var(--line);background:#fff;display:block;}
+  .act-fig figcaption{font-size:11px;color:var(--ink-soft);margin-top:4px;}
 </style>
 </head>
 <body>
@@ -351,7 +358,7 @@ function imgEl(link, alt){
 
 /* ================= state ================= */
 let hotelIndex = [], currentHotel = null, currentResults = null, currentProgress = null;
-let primaryPeriodLabel = null, report = null, editMode = false, saveTimer = null, lastScreenshotBlock = null;
+let primaryPeriodLabel = null, report = null, editMode = false, saveTimer = null, lastTarget = null;
 const setStatus = m => { el("statusText").textContent = m; };
 let loadedAt = "";
 function setSave(state, text){ const b = el("saveBadge"); b.className = "save-badge " + state; b.textContent = text; }
@@ -755,17 +762,32 @@ function activityCard(c, kind){
     (c.notes ? `<div class="activity-result"><div class="result-label">${kind==="plan"?"Plan":"Result"}</div>${esc(c.notes)}</div>` : "");
   const links = (c.subtasks||[]).filter(s=>s.link && s.link.trim());
   if(links.length){ const m = document.createElement("div"); m.className = "activity-media"; links.forEach(s=>m.appendChild(mediaNode(s.link, s.text))); item.appendChild(m); }
+  // Screenshots attached to the card itself (from the report editor) — they live with the activity, so later reports keep showing them.
+  const shots = (c.images||[]);
+  if(shots.length){
+    const m = document.createElement("div"); m.className = "activity-media";
+    shots.forEach(im=>{
+      const f = document.createElement("figure"); f.className = "act-fig";
+      const img = document.createElement("img"); img.dataset.imgid = im.id; img.alt = im.caption || "screenshot"; f.appendChild(img);
+      if(im.caption && im.caption.trim()){ const fc = document.createElement("figcaption"); fc.textContent = im.caption; f.appendChild(fc); }
+      m.appendChild(f);
+    });
+    item.appendChild(m);
+  }
   return item;
 }
-R.activities = (ctx, b) => {
+function activityCardsFor(ctx){
   const scope = ctx.st.activityScope, pt = parsePeriodDate(ctx.periodLabel);
-  const cards = (currentProgress.cards||[]).filter(c=>{
+  return (currentProgress.cards||[]).filter(c=>{
     if(!(c.stage==="Done/Paused" || c.stage==="Live")) return false;
     if(scope !== "all") return c.period === ctx.periodLabel;
     if(!c.period) return true;
     const t = parsePeriodDate(c.period);
     return (t===null || pt===null) ? c.period === ctx.periodLabel : t <= pt;
   });
+}
+R.activities = (ctx, b) => {
+  const cards = activityCardsFor(ctx);
   const sec = section(b);
   if(!cards.length) sec.innerHTML += `<div class="empty-note">No activities logged for this period yet.</div>`;
   cards.forEach(c=>sec.appendChild(activityCard(c, "done")));
@@ -1021,6 +1043,15 @@ function renderEditor(){
     if(b.type === "activities" || b.type === "planned"){
       const hb = document.createElement("div"); hb.className = "ed-body"; hb.innerHTML = `<div class="ed-hint" style="margin:0;">${esc(cardHint(b.type))}</div>`; row.appendChild(hb);
     }
+    if(b.type === "activities"){
+      const ctx2 = buildCtx(), shown = ctx2 ? activityCardsFor(ctx2) : [];
+      if(shown.length){
+        const lb = document.createElement("div"); lb.className = "ed-body";
+        lb.innerHTML = `<div class="ed-hint" style="margin:0 0 6px;"><b>Screenshots per activity.</b> A screenshot attached here appears inside that activity and stays with it in later reports.</div>`;
+        shown.forEach(c=>lb.appendChild(cardImageEditor(c)));
+        row.appendChild(lb);
+      }
+    }
     card.appendChild(row);
   });
   // add block
@@ -1107,24 +1138,79 @@ function renderScreenshotEditor(body, b){
       changed(true);
     }catch(e){ setStatus("⚠ Image failed: " + e.message); }
   };
-  dz.addEventListener("click", ()=>{ lastScreenshotBlock = b.id; fi.click(); });
-  dz.addEventListener("focus", ()=>{ lastScreenshotBlock = b.id; });
+  dz.addEventListener("click", ()=>{ lastTarget = "block:" + b.id; fi.click(); });
+  dz.addEventListener("focus", ()=>{ lastTarget = "block:" + b.id; });
   fi.addEventListener("change", ()=>{ addFiles(fi.files); fi.value = ""; });
   dz.addEventListener("dragover", e=>{ e.preventDefault(); dz.classList.add("over"); });
   dz.addEventListener("dragleave", ()=>dz.classList.remove("over"));
   dz.addEventListener("drop", e=>{ e.preventDefault(); dz.classList.remove("over"); addFiles(e.dataTransfer.files); });
-  body._addFiles = addFiles; body.dataset.blockId = b.id;
+  body._addFiles = addFiles; body.dataset.target = "block:" + b.id;
   drawThumbs();
 }
 document.addEventListener("paste", e=>{
   if(!editMode || !report) return;
   const files = [...(e.clipboardData?.files || [])].filter(f=>f.type.startsWith("image/")); if(!files.length) return;
-  const shots = report.blocks.filter(b=>b.type==="screenshot");
-  const target = shots.find(b=>b.id===lastScreenshotBlock) || (shots.length === 1 ? shots[0] : null);
-  if(!target){ setStatus("Click a screenshot block's drop area first, then paste."); return; }
-  const body = [...document.querySelectorAll(".ed-body")].find(x=>x.dataset.blockId === target.id);
-  if(body && body._addFiles){ e.preventDefault(); body._addFiles(files); }
+  let node = lastTarget ? document.querySelector(`[data-target="${lastTarget}"]`) : null;
+  if(!node){ const all = [...document.querySelectorAll("[data-target]")]; if(all.length === 1) node = all[0]; }
+  if(!node || !node._addFiles){ setStatus("Click a screenshot drop area first, then paste (Ctrl+V)."); return; }
+  e.preventDefault(); node._addFiles(files);
 });
+
+// Screenshots attached to an activity card live on the Progress card (card.images). Read-modify-write the latest
+// Progress record so edits made in the workspace in the meantime aren't overwritten.
+const capTimers = {};
+async function persistCardImages(cardId){
+  const local = (currentProgress.cards || []).find(c=>c.id === cardId); if(!local) return;
+  setSave("saving", "Saving…");
+  try{
+    let latest; try{ latest = JSON.parse(await stGet(`dmh-progress:${currentHotel.id}`)); }catch(e){ latest = currentProgress; }
+    const t = (latest.cards || []).find(c=>c.id === cardId); if(t) t.images = local.images;
+    await stSet(`dmh-progress:${currentHotel.id}`, JSON.stringify(latest));
+    setSave("ok", "✓ Screenshots saved " + new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"}));
+  }catch(e){ setSave("err", "⚠ Not saved — " + e.message); }
+}
+function cardImageEditor(c){
+  const w = document.createElement("div"); w.className = "card-img"; w.dataset.target = "card:" + c.id;
+  if(!Array.isArray(c.images)) c.images = [];
+  w.innerHTML = `<div class="ci-title">${esc(c.title || "(untitled)")} <span class="ed-type">${c.stage === "Live" ? "ongoing" : "completed"}</span></div>
+    <div class="dropzone small" tabindex="0">+ Screenshot — click here, then paste (Ctrl+V), drop a file, or click to choose</div>
+    <input type="file" accept="image/*" multiple style="display:none"><div class="thumbs"></div>`;
+  const dz = w.querySelector(".dropzone"), fi = w.querySelector("input[type=file]"), th = w.querySelector(".thumbs");
+  const draw = () => {
+    th.innerHTML = "";
+    c.images.forEach((im, k)=>{
+      const r = document.createElement("div"); r.className = "thumb-row";
+      r.innerHTML = `<img data-imgid="${esc(im.id)}" alt=""><input type="text" class="cap" placeholder="Caption (optional)" value="${esc(im.caption||"")}"><button class="ed-del">✕</button>`;
+      r.querySelector("input").addEventListener("input", e=>{
+        im.caption = e.target.value; renderReport();
+        clearTimeout(capTimers[c.id]); setSave("saving", "Saving…"); capTimers[c.id] = setTimeout(()=>persistCardImages(c.id), 900);
+      });
+      r.querySelector("button").addEventListener("click", async ()=>{ c.images.splice(k, 1); await persistCardImages(c.id); renderEditor(); renderReport(); });
+      th.appendChild(r);
+    });
+    hydrateImages(th);
+  };
+  const addFiles = async files => {
+    const imgs = [...files].filter(f=>f.type.startsWith("image/")); if(!imgs.length) return;
+    try{
+      for(const f of imgs){
+        setStatus("Compressing image…"); const url = await compressImage(f);
+        setStatus("Saving image…"); const id = await storeImage(url);
+        c.images.push({id, caption:""});
+      }
+      setStatus(""); await persistCardImages(c.id); renderEditor(); renderReport();
+    }catch(e){ setSave("err", "⚠ Image failed — " + e.message); }
+  };
+  dz.addEventListener("click", ()=>{ lastTarget = "card:" + c.id; fi.click(); });
+  dz.addEventListener("focus", ()=>{ lastTarget = "card:" + c.id; });
+  fi.addEventListener("change", ()=>{ addFiles(fi.files); fi.value = ""; });
+  dz.addEventListener("dragover", e=>{ e.preventDefault(); dz.classList.add("over"); });
+  dz.addEventListener("dragleave", ()=>dz.classList.remove("over"));
+  dz.addEventListener("drop", e=>{ e.preventDefault(); dz.classList.remove("over"); addFiles(e.dataTransfer.files); });
+  w._addFiles = addFiles;
+  draw();
+  return w;
+}
 
 /* ================= load / controls / import ================= */
 async function loadHotelIndex(){ try{ hotelIndex = JSON.parse(await stGet("dmh-hotel-index")); }catch(e){ hotelIndex = []; } }
