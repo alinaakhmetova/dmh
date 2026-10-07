@@ -120,7 +120,7 @@
     .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
-  /* ---- Builder UI ---- */
+      /* ---- Builder UI ---- */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
   .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
   .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
@@ -153,6 +153,29 @@
   .ss-fig figcaption{font-size:11.5px;color:var(--ink-soft);margin-top:5px;}
   .rtable.custom td, .rtable.custom th{white-space:pre-wrap;}
   .delta-badge.delta-abs{background:var(--slate-soft);color:var(--ink);}
+
+  /* ---- editor beside the report, save state, placeholders ---- */
+  #workArea{display:block;}
+  .shell.editing{max-width:1420px;}
+  @media (min-width:1150px){
+    .shell.editing #workArea{display:grid;grid-template-columns:450px minmax(0,1fr);gap:22px;align-items:start;}
+    .shell.editing #sideCol{position:sticky;top:10px;max-height:calc(100vh - 20px);overflow-y:auto;padding-right:4px;}
+  }
+  .save-badge{font-size:11.5px;font-weight:600;padding:3px 11px;border-radius:12px;background:var(--slate-soft);color:var(--ink-soft);}
+  .save-badge:empty{display:none;}
+  .save-badge.ok{background:#E3F3EA;color:#1D6B43;}
+  .save-badge.saving{background:var(--brand-soft);color:var(--brand);}
+  .save-badge.err{background:#FBE3E0;color:#A12B1F;}
+  .block-ph{border:1.5px dashed var(--line);border-radius:10px;padding:16px;margin-bottom:24px;color:var(--ink-soft);font-size:12.5px;text-align:center;background:#fbfafd;}
+  .flash{animation:flashbox 1.8s ease;}
+  @keyframes flashbox{0%{box-shadow:0 0 0 4px var(--accent);}100%{box-shadow:0 0 0 4px rgba(246,89,37,0);}}
+  .ed-move .go{color:var(--brand);}
+  .ed-note{font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.45;}
+  @media print{ #workArea{display:block !important;} #sideCol{display:none !important;} .block-ph{display:none !important;} }
+
+  .ed-row{grid-template-columns:auto auto minmax(0,1fr) auto auto;}
+  .ed-move{display:inline-flex;gap:3px;white-space:nowrap;}
+  .ed-type{max-width:118px;overflow:hidden;text-overflow:ellipsis;}
 </style>
 </head>
 <body>
@@ -169,7 +192,7 @@
       <button class="btn" id="printBtn">Print / Export PDF</button>
       <button class="btn secondary" id="importBtn" title="Import a hotel's data from a JSON file">Import data</button>
       <input type="file" id="importFile" accept=".json,application/json" style="display:none">
-      <span class="status-text" id="statusText"></span>
+      <span class="save-badge" id="saveBadge"></span><span class="status-text" id="statusText"></span>
     </div>
     <div class="row" style="margin-top:12px;">
       <div class="field">
@@ -214,9 +237,13 @@
     </div>
   </div>
 
-  <div id="editorRoot" class="no-print" style="display:none;"></div>
-  <div id="checksRoot" class="no-print"></div>
-  <div id="reportRoot"></div>
+  <div id="workArea">
+    <div id="sideCol" class="no-print">
+      <div id="editorRoot" style="display:none;"></div>
+      <div id="checksRoot"></div>
+    </div>
+    <div id="reportRoot"></div>
+  </div>
 
 </div>
 
@@ -326,6 +353,8 @@ function imgEl(link, alt){
 let hotelIndex = [], currentHotel = null, currentResults = null, currentProgress = null;
 let primaryPeriodLabel = null, report = null, editMode = false, saveTimer = null, lastScreenshotBlock = null;
 const setStatus = m => { el("statusText").textContent = m; };
+let loadedAt = "";
+function setSave(state, text){ const b = el("saveBadge"); b.className = "save-badge " + state; b.textContent = text; }
 
 function parsePeriodDate(label){
   const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
@@ -413,13 +442,14 @@ async function loadReportForPeriod(){
   normalizeReport(report);
   applySettings(report.settings);
 }
-function scheduleSave(){ clearTimeout(saveTimer); setStatus("Unsaved changes…"); saveTimer = setTimeout(saveReport, 1200); }
+function scheduleSave(){ clearTimeout(saveTimer); setSave("saving", "Saving…"); saveTimer = setTimeout(saveReport, 900); }
 async function saveReport(){
   clearTimeout(saveTimer); saveTimer = null;
   if(!report || !currentHotel || !primaryPeriodLabel) return;
   report.settings = readSettings();
-  try{ await stSet(reportKey(currentHotel.id, primaryPeriodLabel), JSON.stringify(report)); setStatus("Saved " + new Date().toLocaleTimeString("en-US")); }
-  catch(e){ setStatus("⚠ Save failed: " + e.message); }
+  setSave("saving", "Saving…");
+  try{ await stSet(reportKey(currentHotel.id, primaryPeriodLabel), JSON.stringify(report)); setSave("ok", "✓ Layout saved " + new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"})); }
+  catch(e){ setSave("err", "⚠ Not saved — " + e.message); }
 }
 function changed(structural){
   scheduleSave(); renderReport(); renderChecks();
@@ -770,14 +800,24 @@ function renderReport(){
   rep.innerHTML = (ctx.isInternal ? `<div class="internal-banner">Internal view — contains data that is not for the client</div>` : "") +
     `<div class="report-header"><div class="report-kicker">Exely Digital Marketing Hub</div><div class="report-title">${esc(getField("hotelData","name") || currentHotel.id)}</div><div class="report-sub">${esc(ctx.periodLabel)} · ${ctx.isOverall?"Overall results":"Tracked marketing results"}</div></div>`;
   const body = document.createElement("div"); body.className = "report-body"; rep.appendChild(body);
+  const EMPTY_MSG = {text:"is empty — write it in the editor.", screenshot:"has no screenshots yet — paste one (Ctrl+V) or drop a file in the editor.", table:"is empty — paste rows from a spreadsheet in the editor."};
   report.blocks.forEach(b=>{
     if(!isBlockVisible(b, ctx) || !R[b.type]) return;
     let node = null; try{ node = R[b.type](ctx, b); }catch(e){ console.error("block "+b.type, e); }
-    if(node) body.appendChild(node);
+    // While editing, an empty custom block shows where it will appear (never printed).
+    if(!node && editMode && EMPTY_MSG[b.type]){
+      node = document.createElement("div"); node.className = "block-ph no-print";
+      node.textContent = `“${(b.title && b.title.trim()) || TYPE_LABELS[b.type]}” ${EMPTY_MSG[b.type]}`;
+    }
+    if(node){ node.dataset.blockId = b.id; body.appendChild(node); }
   });
   root.appendChild(rep);
   hydrateImages(rep);
+  if(pendingScroll){ const n = root.querySelector(`[data-block-id="${pendingScroll}"]`); pendingScroll = null; if(n) showBlock(n); }
 }
+
+let pendingScroll = null;
+function showBlock(n){ n.scrollIntoView({behavior:"smooth", block:"center"}); n.classList.remove("flash"); void n.offsetWidth; n.classList.add("flash"); }
 
 function buildLineChart(seriesMap, periodLabels){
   const wrap = document.createElement("div");
@@ -886,8 +926,8 @@ function renderChecks(){
 
 /* ================= Layout editor ================= */
 function typeBadge(b){
-  if(b.type === "investment") return "Spend & ROAS · internal, client opt-in";
-  if(b.type === "datanotes") return "Data notes · client opt-in";
+  if(b.type === "investment") return "Spend (opt-in)";
+  if(b.type === "datanotes") return "Data notes (opt-in)";
   return TYPE_LABELS[b.type] || b.type;
 }
 function titleOf(b){ return (b.title && b.title.trim()) || DEFAULT_TITLES[b.type] || TYPE_LABELS[b.type] || b.type; }
@@ -899,19 +939,24 @@ function renderEditor(){
   const card = document.createElement("div"); card.className = "ed-card";
   card.innerHTML = `<div class="ed-head"><span class="ed-title">Report layout</span>
     <select id="presetSel"><option value="">Apply preset…</option><option value="first">First report</option><option value="monthly">Monthly</option></select>
-    <span class="ed-hint">Changes save automatically. A new month starts from last month's layout.</span></div>`;
+    <button class="btn secondary" id="saveNowBtn">Save now</button></div>
+    <div class="ed-note"><b>How this works:</b> tick a block to show it in the report, use ↑ ↓ to move it, ↗ to jump to it in the report. Text, screenshot and table blocks stay invisible until they have content. Layout saves automatically (badge at the top). Numbers come from the workspace as of ${esc(loadedAt || "—")} — if you changed them there, click “Reload data”. A new month starts from last month's layout.</div>`;
   report.blocks.forEach((b, i)=>{
     const custom = ["text","screenshot","table"].includes(b.type);
     const row = document.createElement("div"); row.className = "ed-row" + (b.enabled ? "" : " off");
     row.innerHTML = `<input type="checkbox" ${b.enabled?"checked":""} title="Show in report">
-      <span class="ed-move"><button data-d="-1" title="Move up">↑</button> <button data-d="1" title="Move down">↓</button></span>
+      <span class="ed-move"><button data-d="-1" title="Move up">↑</button> <button data-d="1" title="Move down">↓</button> <button class="go" data-go="1" title="Show in the report">↗</button></span>
       <input type="text" value="${esc(b.title||"")}" placeholder="${esc(DEFAULT_TITLES[b.type] || TYPE_LABELS[b.type])}" ${b.type==="headline"?"disabled":""}>
-      <span class="ed-type">${esc(typeBadge(b))}</span>
+      <span class="ed-type" title="${b.type==="investment"||b.type==="datanotes" ? "Shown in Internal view; in Client view only when ticked under ‘Client view also shows’" : ""}">${esc(typeBadge(b))}</span>
       ${custom ? `<button class="ed-del" title="Delete block">✕</button>` : "<span></span>"}`;
     const [chk, tin] = row.querySelectorAll("input");
     chk.addEventListener("change", ()=>{ b.enabled = chk.checked; changed(true); });
     tin.addEventListener("input", ()=>{ b.title = tin.value; changed(false); });
-    row.querySelectorAll(".ed-move button").forEach(btn=>btn.addEventListener("click", ()=>{
+    row.querySelector("[data-go]").addEventListener("click", ()=>{
+      const n = document.querySelector(`#reportRoot [data-block-id="${b.id}"]`);
+      if(n) showBlock(n); else setStatus("That block isn't visible in the report right now (switched off, empty, or hidden for this audience).");
+    });
+    row.querySelectorAll(".ed-move button[data-d]").forEach(btn=>btn.addEventListener("click", ()=>{
       const j = i + parseInt(btn.dataset.d, 10); if(j < 0 || j >= report.blocks.length) return;
       [report.blocks[i], report.blocks[j]] = [report.blocks[j], report.blocks[i]]; changed(true);
     }));
@@ -932,12 +977,15 @@ function renderEditor(){
       }
       row.appendChild(body);
     }
+    if(b.type === "activities" || b.type === "planned"){
+      const hb = document.createElement("div"); hb.className = "ed-body"; hb.innerHTML = `<div class="ed-hint" style="margin:0;">${esc(cardHint(b.type))}</div>`; row.appendChild(hb);
+    }
     card.appendChild(row);
   });
   // add block
   const add = document.createElement("div"); add.className = "ed-add";
   const missing = BUILTINS.filter(t=>!report.blocks.some(b=>b.type===t));
-  add.innerHTML = `<select id="addType"><option value="text">+ Text block</option><option value="screenshot">+ Screenshots</option><option value="table">+ Table (paste)</option>${missing.map(t=>`<option value="${t}">Restore: ${esc(DEFAULT_TITLES[t]||TYPE_LABELS[t])}</option>`).join("")}</select><button class="btn secondary" id="addBtn">Add</button>`;
+  add.innerHTML = `<select id="addType"><option value="text">+ Text block</option><option value="screenshot">+ Screenshots</option><option value="table">+ Table (paste)</option>${missing.map(t=>`<option value="${t}">Restore: ${esc(DEFAULT_TITLES[t]||TYPE_LABELS[t])}</option>`).join("")}</select><span class="ed-hint" style="margin:0;">place</span><select id="addAfter"><option value="-1">at the end</option>${report.blocks.map((x,k)=>`<option value="${k}">after “${esc(titleOf(x))}”</option>`).join("")}</select><button class="btn secondary" id="addBtn">Add</button>`;
   card.appendChild(add);
   // channel labels
   const chans = [...new Set(((ctxRowsForEditor())||[]).map(r=>(r.channel||"").trim()).filter(Boolean))];
@@ -962,8 +1010,32 @@ function renderEditor(){
   card.querySelector("#addBtn").addEventListener("click", ()=>{
     const t = card.querySelector("#addType").value;
     const b = t==="text" ? mkBlock("text",{title:"", text:""}) : t==="screenshot" ? mkBlock("screenshot",{title:"Screenshots", images:[]}) : t==="table" ? mkBlock("table",{title:"", tableText:""}) : mkBlock(t);
-    report.blocks.push(b); changed(true);
+    const at = parseInt(card.querySelector("#addAfter").value, 10);
+    if(at < 0) report.blocks.push(b); else report.blocks.splice(at+1, 0, b);
+    pendingScroll = b.id; changed(true);
   });
+  card.querySelector("#saveNowBtn").addEventListener("click", saveReport);
+}
+// Why a Progress card does or doesn't appear in the report — the most common "it's not showing" question.
+function cardHint(type){
+  const cards = currentProgress?.cards || [];
+  if(!cards.length) return "No cards in this hotel's Progress tab yet.";
+  const ctx = buildCtx(); if(!ctx) return "";
+  if(type === "planned"){
+    const n = cards.filter(c=>c.stage==="Planned").length;
+    return `Shows cards with stage “Planned”: ${n} now.`;
+  }
+  const scope = ctx.st.activityScope, pt = parsePeriodDate(ctx.periodLabel), hidden = []; let shown = 0;
+  cards.forEach(c=>{
+    if(c.stage === "Planned") return;
+    if(!(c.stage === "Done/Paused" || c.stage === "Live")){ hidden.push(`“${c.title||"untitled"}” — stage “${c.stage||"none"}” (only Done/Paused and Live are shown)`); return; }
+    let ok;
+    if(scope !== "all") ok = c.period === ctx.periodLabel;
+    else if(!c.period) ok = true;
+    else { const t = parsePeriodDate(c.period); ok = (t===null || pt===null) ? c.period === ctx.periodLabel : t <= pt; }
+    if(ok) shown++; else hidden.push(`“${c.title||"untitled"}” — period “${c.period||"none"}”` + (scope !== "all" ? ` (set Activities to “Since start”, or give the card the period “${ctx.periodLabel}”)` : " is later than this report"));
+  });
+  return `Showing ${shown} of ${shown + hidden.length} cards.` + (hidden.length ? " Not shown: " + hidden.join("; ") + "." : "");
 }
 function ctxRowsForEditor(){
   const p = (currentResults?.periods||[]).find(x=>x.period===primaryPeriodLabel);
@@ -1033,14 +1105,15 @@ async function loadAllForHotel(id){
   const periods = sortPeriodsChronologically(currentResults.periods || []);
   primaryPeriodLabel = periods.length ? periods[periods.length-1].period : null;
   await loadReportForPeriod();
-  setStatus("Loaded " + new Date().toLocaleTimeString("en-US"));
-  renderPeriodSelect(); renderAll();
+  loadedAt = new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"});
+  setStatus("Loaded " + loadedAt); el("loadBtn").textContent = "Reload data";
+  setSave("", ""); renderPeriodSelect(); renderAll();
 }
 function syncAudienceUi(){ el("clientShowRow").style.display = el("audienceSelect").value === "client" ? "flex" : "none"; }
 function settingsChanged(){ if(report){ report.settings = readSettings(); scheduleSave(); } renderChecks(); renderReport(); }
 
 el("loadBtn").addEventListener("click", ()=>{ const id = el("hotelSelect").value; if(id) loadAllForHotel(id); });
-el("editBtn").addEventListener("click", ()=>{ editMode = !editMode; el("editBtn").textContent = editMode ? "Done editing" : "Edit layout"; renderEditor(); });
+el("editBtn").addEventListener("click", ()=>{ editMode = !editMode; el("editBtn").textContent = editMode ? "Done editing" : "Edit layout"; document.querySelector(".shell").classList.toggle("editing", editMode); renderEditor(); renderReport(); });
 el("printBtn").addEventListener("click", ()=>{
   if(el("audienceSelect").value === "internal" && !confirm("You're in Internal view — the PDF will include internal data and a banner. Print anyway?")) return;
   window.print();
