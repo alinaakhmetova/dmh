@@ -1330,7 +1330,7 @@ async function renderResultsTab(){
   overallCard.innerHTML = `<div class="card-title">Overall hotel results — ${periodObj.period}</div><div class="card-note">Website and Booking Engine traffic, plus bookings and revenue, for this period — all sources, organic and tracked combined. This is the number that carries the YoY story in the report — last year had no tracked marketing at all, so YoY only makes sense against overall totals, not tracked ones.</div>`;
   const overallGrid = document.createElement("div"); overallGrid.className = "form-grid";
   overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalWebsiteTraffic", label:"Total website traffic (all sources)", type:"number"}));
-  overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalBeTraffic", label:"Total Booking Engine traffic (all sources)", type:"number"}));
+  overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalBeTraffic", label:"Total visits to the booking form / Booking Engine (all sources)", type:"number"}));
   overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalBookings", label:"Total bookings (all sources)", type:"number"}));
   overallGrid.appendChild(makeFieldInput(periodObj, {key:"totalRevenue", label:"Total revenue (all sources)", type:"number"}));
   overallCard.appendChild(overallGrid);
@@ -1357,15 +1357,16 @@ async function renderResultsTab(){
   // to a campaign. Feeds the "Traffic by channel" table in the report.
   if(!Array.isArray(periodObj.channels)) periodObj.channels = [];
   const chCard = document.createElement("div"); chCard.className = "card";
-  chCard.innerHTML = `<div class="card-title">Traffic by channel (GA4) — ${periodObj.period}</div><div class="card-note">Hotel-wide sessions, bookings and revenue per acquisition channel (Organic, Direct, Paid, Unassigned…) — straight from GA4, not tied to a campaign. Feeds the "Traffic by channel" table in the report.</div>`;
+  chCard.innerHTML = `<div class="card-title">Traffic by channel (GA4) — ${periodObj.period}</div><div class="card-note">Hotel-wide sessions, visits to the booking form (Booking Engine sessions), bookings and revenue per acquisition channel (Organic, Direct, Paid, Unassigned…) — straight from GA4, not tied to a campaign. "To booking form" is optional. Feeds the "Traffic by channel" table in the report.</div>`;
   const chTable = document.createElement("table"); chTable.className = "rep";
-  chTable.innerHTML = `<tr><th>Channel</th><th>Sessions</th><th>Bookings</th><th>Revenue</th><th>CR</th><th></th></tr>`;
+  chTable.innerHTML = `<tr><th>Channel</th><th>Sessions</th><th>To booking form</th><th>Bookings</th><th>Revenue</th><th>CR</th><th></th></tr>`;
   periodObj.channels.forEach((row,i)=>{
     const cr = (parseFloat(row.sessions)>0) ? ((parseFloat(row.bookings)||0)/parseFloat(row.sessions)*100).toFixed(1)+"%" : "—";
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><input type="text" value="${(row.channel||"").replace(/"/g,"&quot;")}" data-ci="${i}" data-cf="channel" placeholder="e.g. Organic Search"></td>
       <td><input type="number" value="${row.sessions||""}" data-ci="${i}" data-cf="sessions" style="width:90px;"></td>
+      <td><input type="number" value="${row.form||""}" data-ci="${i}" data-cf="form" style="width:90px;"></td>
       <td><input type="number" value="${row.bookings||""}" data-ci="${i}" data-cf="bookings" style="width:80px;"></td>
       <td><input type="number" value="${row.revenue||""}" data-ci="${i}" data-cf="revenue" style="width:90px;"></td>
       <td>${cr}</td>
@@ -1374,7 +1375,7 @@ async function renderResultsTab(){
   });
   chCard.appendChild(chTable);
   const addChBtn = document.createElement("button"); addChBtn.className = "btn secondary sm"; addChBtn.textContent = "+ Add channel";
-  addChBtn.addEventListener("click", ()=>{ periodObj.channels.push({channel:"",sessions:"",bookings:"",revenue:""}); renderResultsTab(); });
+  addChBtn.addEventListener("click", ()=>{ periodObj.channels.push({channel:"",sessions:"",form:"",bookings:"",revenue:""}); renderResultsTab(); });
   chCard.appendChild(addChBtn);
   root.appendChild(chCard);
   chTable.querySelectorAll("input").forEach(inp=>{
@@ -1408,7 +1409,7 @@ async function renderResultsTab(){
   yoyCard.innerHTML = `<div class="card-title">Year-over-year reference (optional)</div><div class="card-note">Type in what the hotel's own analytics showed for this same period last year — not something we auto-calculate, since we may not have tracked it ourselves back then.</div>`;
   const yGrid = document.createElement("div"); yGrid.className = "form-grid";
   yGrid.appendChild(makeFieldInput(periodObj, {key:"yoyRevenue", label:"Revenue, same period last year", type:"number"}));
-  yGrid.appendChild(makeFieldInput(periodObj, {key:"yoyTraffic", label:"Traffic, same period last year", type:"number"}));
+  yGrid.appendChild(makeFieldInput(periodObj, {key:"yoyTraffic", label:"Website sessions, same period last year", type:"number"}));
   yGrid.appendChild(makeFieldInput(periodObj, {key:"yoyBookings", label:"Bookings, same period last year", type:"number"}));
   yoyCard.appendChild(yGrid);
   root.appendChild(yoyCard);
