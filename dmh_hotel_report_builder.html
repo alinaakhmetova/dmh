@@ -120,7 +120,7 @@
     .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
-      /* ---- Builder UI ---- */
+        /* ---- Builder UI ---- */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
   .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
   .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
@@ -374,28 +374,28 @@ const getField = (sec, key) => currentHotel?.sections?.[sec]?.fields?.[key] || "
 
 /* ================= report model: blocks, presets, settings ================= */
 const DEFAULT_TITLES = {
-  channels:"Traffic by channel", campaigns:"Campaign performance", investment:"Investment & return",
+  channels:"Traffic by channel", ads:"From advertising", campaigns:"Campaign performance", investment:"Investment & return",
   gsc:"Organic search (Google Search Console)", visibility:"Visibility", activities:"Activities",
   planned:"Activities planned", materials:"Supporting materials", notes:"Notes", datanotes:"Data notes"
 };
 const TYPE_LABELS = {
-  headline:"Headline numbers", channels:"Channels (GA4)", campaigns:"Campaigns", investment:"Spend & ROAS", gsc:"Search Console",
+  headline:"Headline numbers", ads:"From advertising", channels:"Channels (GA4)", campaigns:"Campaigns", investment:"Spend & ROAS", gsc:"Search Console",
   visibility:"Visibility", activities:"Activities", planned:"Planned", materials:"Materials", notes:"Period note", datanotes:"Data notes",
   text:"Text", screenshot:"Screenshots", table:"Table"
 };
-const BUILTINS = ["headline","channels","campaigns","investment","gsc","visibility","activities","planned","materials","notes","datanotes"];
+const BUILTINS = ["headline","ads","channels","campaigns","investment","gsc","visibility","activities","planned","materials","notes","datanotes"];
 const mkBlock = (type, extra) => Object.assign({id:newId(), type, enabled:true, title:""}, extra||{});
 
 function presetLayout(name){
   if(name === "first"){
     return {
-      blocks:[mkBlock("headline"), mkBlock("channels"), mkBlock("campaigns"), mkBlock("gsc"), mkBlock("activities"), mkBlock("planned"),
+      blocks:[mkBlock("headline"), mkBlock("ads"), mkBlock("channels"), mkBlock("campaigns"), mkBlock("gsc"), mkBlock("activities"), mkBlock("planned"),
               mkBlock("text",{title:"Key takeaways", text:""}), mkBlock("text",{title:"Data limitations", text:""}), mkBlock("datanotes"), mkBlock("notes")],
       settings:{basis:"overall", comparisons:false, activityScope:"all", clientShow:{spend:false, brand:false, diag:false}}
     };
   }
   return {
-    blocks:[mkBlock("headline"), mkBlock("channels"), mkBlock("campaigns"), mkBlock("investment"), mkBlock("gsc"), mkBlock("visibility"),
+    blocks:[mkBlock("headline"), mkBlock("ads"), mkBlock("channels"), mkBlock("campaigns"), mkBlock("investment"), mkBlock("gsc"), mkBlock("visibility"),
             mkBlock("activities"), mkBlock("planned"), mkBlock("materials"), mkBlock("datanotes"), mkBlock("notes")],
     settings:{basis:"overall", comparisons:true, activityScope:"period", clientShow:{spend:false, brand:false, diag:false}}
   };
@@ -537,27 +537,35 @@ const R = {};
 
 R.headline = (ctx, b) => {
   const wrap = document.createElement("div"); wrap.className = "block-headline";
-  const h = ctx.head;
+  const h = ctx.head, P = ctx.primary;
   if(!h.hasData){
     wrap.innerHTML = `<div class="empty-note">${ctx.isOverall ? "Overall hotel results haven't been filled in for this period yet — add them in the main workspace, or switch the basis to Tracked marketing." : "No tracked campaigns logged for this period yet."}</div>`;
     return wrap;
   }
-  const mom = (curr, prev, small) => {
-    if(!ctx.showComparisons || !h.hasPrev || !curr) return "";
-    const badge = small ? countBadge(curr, prev) : deltaBadge(curr, prev);
-    return badge ? `<div class="glance-yoy">vs last month: ${badge}</div>` : "";
-  };
-  const yoy = (curr, manual) => {
-    if(!ctx.showComparisons || !h.hasYoy || !curr) return "";
-    const p = parseFloat(manual); if(isNaN(p)) return "";
-    const badge = deltaBadge(curr, p);
-    return badge ? `<div class="glance-yoy">vs last year: ${badge}</div>` : "";
+  const tiles = [
+    {label:"Revenue", cur:h.revenue, prev:h.prevRevenue, yoy:h.yoyRevenue, money:true},
+    {label:"Bookings", cur:h.bookings, prev:h.prevBookings, yoy:h.yoyBookings, small:true},
+  ];
+  if(ctx.isOverall){
+    // "Total" and "to the booking form" are two different traffic numbers, so they get two tiles.
+    const hasSite = ctx.ov.websiteTraffic > 0, hasForm = ctx.ov.beTraffic > 0;
+    if(hasSite) tiles.push({label:"Website sessions", cur:ctx.ov.websiteTraffic, prev:ctx.prevOv?.websiteTraffic, yoy:P.yoyTraffic});
+    if(hasForm) tiles.push({label:"To booking form", cur:ctx.ov.beTraffic, prev:ctx.prevOv?.beTraffic, yoy:hasSite ? undefined : P.yoyTraffic});
+  } else tiles.push({label:"Traffic", cur:h.traffic, prev:h.prevTraffic});
+  const lines = t => {
+    let out = "";
+    if(ctx.showComparisons && h.hasPrev && t.cur && t.prev !== undefined){
+      const badge = t.small ? countBadge(t.cur, t.prev) : deltaBadge(t.cur, t.prev);
+      if(badge) out += `<div class="glance-yoy">vs last month: ${badge}</div>`;
+    }
+    if(ctx.showComparisons && h.hasYoy && t.cur && t.yoy !== undefined){
+      const p = parseFloat(t.yoy), badge = isNaN(p) ? "" : deltaBadge(t.cur, p);
+      if(badge) out += `<div class="glance-yoy">vs last year: ${badge}</div>`;
+    }
+    return out;
   };
   const g = document.createElement("div"); g.className = "glance-strip";
-  g.innerHTML = `
-    <div class="glance-item"><div class="glance-label">Revenue</div><div class="glance-val">${money(h.revenue)}</div>${mom(h.revenue,h.prevRevenue)}${yoy(h.revenue,h.yoyRevenue)}</div>
-    <div class="glance-item"><div class="glance-label">Bookings</div><div class="glance-val">${fmt(h.bookings)}</div>${mom(h.bookings,h.prevBookings,true)}${yoy(h.bookings,h.yoyBookings)}</div>
-    <div class="glance-item"><div class="glance-label">${h.trafficLabel}</div><div class="glance-val">${fmt(h.traffic)}</div>${mom(h.traffic,h.prevTraffic)}${yoy(h.traffic,h.yoyTraffic)}</div>`;
+  g.innerHTML = tiles.map(t=>`<div class="glance-item"><div class="glance-label">${t.label}</div><div class="glance-val">${t.money ? money(t.cur) : fmt(t.cur)}</div>${lines(t)}</div>`).join("");
   wrap.appendChild(g);
   if(ctx.showComparisons && !h.hasPrev && !h.hasYoy){
     const n = document.createElement("div"); n.className = "empty-note"; n.style.cssText = "text-align:center;margin:10px 0 4px;";
@@ -568,13 +576,39 @@ R.headline = (ctx, b) => {
   return wrap;
 };
 
-R.channels = (ctx, b) => {
-  const rows = chRowsOf(ctx.primary);
-  if(!ctx.isOverall || !rows.length) return null;
+// The advertising slice of the headline: what the tracked campaigns brought, and how much of the hotel's total that is.
+R.ads = (ctx, b) => {
+  if(!ctx.isOverall || !ctx.rows.length) return null;
+  const T = ctx.totals, O = ctx.ov;
+  const of = (a, tot, what) => tot > 0 ? `<div class="glance-yoy">${Math.round(a/tot*100)}% of all ${what}</div>` : "";
   const sec = section(b);
-  const prevCh = {}; chRowsOf(ctx.previous).forEach(r=>{ prevCh[String(r.channel).trim().toLowerCase()] = r; });
-  const hasPrev = ctx.showComparisons && Object.keys(prevCh).length > 0;
-  const sumC = rs => rs.reduce((a,r)=>({sessions:a.sessions+num(r.sessions), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {sessions:0,bookings:0,revenue:0});
+  const g = document.createElement("div"); g.className = "glance-strip";
+  g.innerHTML = `
+    <div class="glance-item"><div class="glance-label">Revenue from ads</div><div class="glance-val">${money(T.revenue)}</div>${of(T.revenue, O.revenue, "revenue")}</div>
+    <div class="glance-item"><div class="glance-label">Bookings from ads</div><div class="glance-val">${fmt(T.bookings)}</div>${of(T.bookings, O.bookings, "bookings")}</div>
+    <div class="glance-item"><div class="glance-label">Visits from ads</div><div class="glance-val">${fmt(T.traffic)}</div>${of(T.traffic, O.websiteTraffic, "website sessions")}</div>`;
+  sec.appendChild(g);
+  return sec;
+};
+
+R.channels = (ctx, b) => {
+  let rows = chRowsOf(ctx.primary);
+  if(!ctx.isOverall || !rows.length) return null;
+  let prevRows = chRowsOf(ctx.previous);
+  const key = c => String(c).trim().toLowerCase();
+  // "Main channels only": keep the top N by sessions and fold the rest into one row.
+  const N = parseInt(b.topN, 10);
+  if(N > 0 && rows.length > N + 1){
+    const keep = new Set(rows.slice().sort((a,c)=>num(c.sessions)-num(a.sessions)).slice(0, N).map(r=>key(r.channel)));
+    const merge = rs => rs.reduce((a,r)=>({channel:"Other channels", sessions:a.sessions+num(r.sessions), form:a.form+num(r.form), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {channel:"Other channels", sessions:0, form:0, bookings:0, revenue:0});
+    const group = rs => { const kept = rs.filter(r=>keep.has(key(r.channel))), rest = rs.filter(r=>!keep.has(key(r.channel))); return rest.length ? kept.concat([merge(rest)]) : kept; };
+    rows = group(rows); prevRows = group(prevRows);
+  }
+  const sec = section(b);
+  const prevCh = {}; prevRows.forEach(r=>{ prevCh[key(r.channel)] = r; });
+  const hasPrev = ctx.showComparisons && prevRows.length > 0;
+  const hasForm = rows.some(r=>num(r.form) > 0);
+  const sumC = rs => rs.reduce((a,r)=>({sessions:a.sessions+num(r.sessions), form:a.form+num(r.form), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {sessions:0,form:0,bookings:0,revenue:0});
   const cell = (curr, prev, kind) => {
     const shown = kind === "money" ? money(curr) : fmt(curr);
     if(!hasPrev || prev === undefined) return shown;
@@ -583,17 +617,18 @@ R.channels = (ctx, b) => {
   };
   let crHidden = false;
   const cr = (bk, s) => { if(s < MIN_CR_SESSIONS){ crHidden = crHidden || s > 0; return "—"; } return (bk/s*100).toFixed(1) + "%"; };
-  const curTot = sumC(rows), prevTotC = sumC(Object.values(prevCh));
-  const tot = {sessions:ctx.ov.websiteTraffic || curTot.sessions, bookings:ctx.ov.bookings || curTot.bookings, revenue:ctx.ov.revenue || curTot.revenue};
-  const prevTot = ctx.previous ? {sessions:ctx.prevOv?.websiteTraffic || prevTotC.sessions, bookings:ctx.prevOv?.bookings || prevTotC.bookings, revenue:ctx.prevOv?.revenue || prevTotC.revenue} : null;
-  const pv = (pr, f, zero) => pr ? num(pr[f]) : (hasPrev ? 0 : undefined);
+  const curTot = sumC(rows), prevTotC = sumC(prevRows);
+  const tot = {sessions:ctx.ov.websiteTraffic || curTot.sessions, form:ctx.ov.beTraffic || curTot.form, bookings:ctx.ov.bookings || curTot.bookings, revenue:ctx.ov.revenue || curTot.revenue};
+  const prevTot = ctx.previous ? {sessions:ctx.prevOv?.websiteTraffic || prevTotC.sessions, form:ctx.prevOv?.beTraffic || prevTotC.form, bookings:ctx.prevOv?.bookings || prevTotC.bookings, revenue:ctx.prevOv?.revenue || prevTotC.revenue} : null;
+  const pv = (pr, f) => pr ? num(pr[f]) : (hasPrev ? 0 : undefined);
+  const formCell = (r, pr) => hasForm ? `<td>${cell(num(r.form), pv(pr,"form"), "n")}</td>` : "";
   const t = document.createElement("table"); t.className = "rtable";
-  t.innerHTML = `<tr><th>Channel</th><th>Sessions</th><th>Bookings</th><th>Revenue</th><th>CR</th></tr>` +
+  t.innerHTML = `<tr><th>Channel</th><th>Sessions</th>${hasForm?"<th>To booking form</th>":""}<th>Bookings</th><th>Revenue</th><th>CR</th></tr>` +
     rows.map(r=>{
-      const pr = prevCh[String(r.channel).trim().toLowerCase()];
-      return `<tr${/paid/i.test(r.channel)?' class="row-hl"':""}><td>${esc(r.channel)}</td><td>${cell(num(r.sessions), pv(pr,"sessions"), "n")}</td><td>${cell(num(r.bookings), pv(pr,"bookings"), "count")}</td><td>${cell(num(r.revenue), pv(pr,"revenue"), "money")}</td><td>${cr(num(r.bookings), num(r.sessions))}</td></tr>`;
+      const pr = prevCh[key(r.channel)];
+      return `<tr${/paid/i.test(r.channel)?' class="row-hl"':""}><td>${esc(r.channel)}</td><td>${cell(num(r.sessions), pv(pr,"sessions"), "n")}</td>${formCell(r, pr)}<td>${cell(num(r.bookings), pv(pr,"bookings"), "count")}</td><td>${cell(num(r.revenue), pv(pr,"revenue"), "money")}</td><td>${cr(num(r.bookings), num(r.sessions))}</td></tr>`;
     }).join("") +
-    `<tr class="row-total"><td>Total</td><td>${cell(tot.sessions, prevTot&&hasPrev?prevTot.sessions:undefined, "n")}</td><td>${cell(tot.bookings, prevTot&&hasPrev?prevTot.bookings:undefined, "count")}</td><td>${cell(tot.revenue, prevTot&&hasPrev?prevTot.revenue:undefined, "money")}</td><td>${cr(tot.bookings, tot.sessions)}</td></tr>`;
+    `<tr class="row-total"><td>Total</td><td>${cell(tot.sessions, prevTot&&hasPrev?prevTot.sessions:undefined, "n")}</td>${hasForm?`<td>${cell(tot.form, prevTot&&hasPrev?prevTot.form:undefined, "n")}</td>`:""}<td>${cell(tot.bookings, prevTot&&hasPrev?prevTot.bookings:undefined, "count")}</td><td>${cell(tot.revenue, prevTot&&hasPrev?prevTot.revenue:undefined, "money")}</td><td>${cr(tot.bookings, tot.sessions)}</td></tr>`;
   sec.appendChild(t);
   if(crHidden){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = `CR is not shown for rows with fewer than ${MIN_CR_SESSIONS} sessions.`; sec.appendChild(n); }
   return sec;
@@ -976,6 +1011,12 @@ function renderEditor(){
         renderScreenshotEditor(body, b);
       }
       row.appendChild(body);
+    }
+    if(b.type === "channels"){
+      const cb = document.createElement("div"); cb.className = "ed-body";
+      cb.innerHTML = `<div class="ed-hint" style="margin:0;">Main channels only: show the top <input type="number" min="1" max="12" style="width:54px;padding:3px 6px;border:1px solid var(--line);border-radius:5px;" value="${esc(b.topN||"")}" placeholder="all"> by sessions and group the rest as “Other channels”. Leave empty to show every channel.</div>`;
+      cb.querySelector("input").addEventListener("input", e=>{ b.topN = e.target.value; changed(false); });
+      row.appendChild(cb);
     }
     if(b.type === "activities" || b.type === "planned"){
       const hb = document.createElement("div"); hb.className = "ed-body"; hb.innerHTML = `<div class="ed-hint" style="margin:0;">${esc(cardHint(b.type))}</div>`; row.appendChild(hb);
