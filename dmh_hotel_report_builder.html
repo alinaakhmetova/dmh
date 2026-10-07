@@ -120,7 +120,7 @@
     .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
-          /* ---- Builder UI ---- */
+                /* ---- Builder UI ---- */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
   .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
   .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
@@ -183,6 +183,8 @@
   .act-fig{margin:0;max-width:100%;}
   .act-fig img{max-width:100%;max-height:300px;width:auto;height:auto;border-radius:8px;border:1px solid var(--line);background:#fff;display:block;}
   .act-fig figcaption{font-size:11px;color:var(--ink-soft);margin-top:4px;}
+
+  .ed-why{font-size:11.5px;color:#8A3A18;background:var(--accent-soft);padding:6px 9px;border-radius:6px;line-height:1.4;}
 </style>
 </head>
 <body>
@@ -255,7 +257,23 @@
 </div>
 
 <script>
-const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxKHZNNI6QlVeyv9Q982-ErEYSXkIdD6vTt0Lpq5z2YMCA_-cR1KROjWjM_p_tzolDSVw/exec";
+let SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxKHZNNI6QlVeyv9Q982-ErEYSXkIdD6vTt0Lpq5z2YMCA_-cR1KROjWjM_p_tzolDSVw/exec";
+// Your data lives in the Google Sheet, not in this file — replacing the file never deletes it. The only thing a fresh copy
+// of this file lacks is the URL, so the URL is remembered in this browser: paste it once (in any DMH tool on this site)
+// and every later copy of every tool picks it up. A URL written in the file always wins and is remembered.
+(function rememberSheetsUrl(){
+  try{
+    const KEY = "dmh-sheets-url", isScript = u => /^https:\/\/script\.google\.com\//.test(String(u||"").trim());
+    if(SHEETS_WEBAPP_URL.indexOf("PASTE_YOUR") !== 0){ if(isScript(SHEETS_WEBAPP_URL)) localStorage.setItem(KEY, SHEETS_WEBAPP_URL.trim()); return; }
+    let saved = localStorage.getItem(KEY);
+    if(!isScript(saved)){
+      const v = typeof prompt === "function" ? prompt("Paste your Apps Script web app URL (the same one the other DMH tools use). It is remembered in this browser, so you only do this once.") : "";
+      saved = isScript(v) ? v.trim() : "";
+      if(saved) localStorage.setItem(KEY, saved);
+    }
+    if(saved) SHEETS_WEBAPP_URL = saved;
+  }catch(e){}
+})();
 const el = id => document.getElementById(id);
 const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
@@ -414,6 +432,11 @@ function normalizeReport(r){
     if(b.enabled === undefined) b.enabled = true;
     if(b.type === "screenshot" && !Array.isArray(b.images)) b.images = [];
   });
+  // Layouts saved before "From advertising" existed get it right after the headline (once).
+  if(!r.v || r.v < 2){
+    if(!r.blocks.some(b=>b.type === "ads")){ const i = r.blocks.findIndex(b=>b.type === "headline"); r.blocks.splice(i >= 0 ? i + 1 : 0, 0, mkBlock("ads")); }
+    r.v = 2;
+  }
   if(!r.channelLabels) r.channelLabels = {};
   r.settings = Object.assign({basis:"overall", comparisons:true, activityScope:"period"}, r.settings||{});
   r.settings.clientShow = Object.assign({spend:false, brand:false, diag:false}, r.settings.clientShow||{});
@@ -988,6 +1011,29 @@ function typeBadge(b){
   return TYPE_LABELS[b.type] || b.type;
 }
 function titleOf(b){ return (b.title && b.title.trim()) || DEFAULT_TITLES[b.type] || TYPE_LABELS[b.type] || b.type; }
+function hiddenReason(b, ctx){
+  if(!ctx || b.type === "headline") return "";
+  if(!isBlockVisible(b, ctx)){
+    if(b.type === "investment") return "hidden in Client view — tick “Spend, cost per booking & ROAS” under “Client view also shows”, or switch Audience to Internal.";
+    if(b.type === "datanotes") return "hidden in Client view — tick “Data notes”, or switch Audience to Internal.";
+    return "";
+  }
+  if(!R[b.type] || ["text","screenshot","table"].includes(b.type)) return "";
+  let node = null;
+  try{ node = R[b.type](ctx, b); }catch(e){ return "this block failed to render (see the browser console)."; }
+  if(node) return "";
+  const overall = "it is shown only when the basis is Overall (in Tracked it would repeat the headline).";
+  return ({
+    ads: ctx.isOverall ? "no campaigns are logged for this period (Results → Campaign / activity results)." : overall,
+    channels: ctx.isOverall ? "no channel rows entered for this period (Results → Traffic by channel)." : "shown only in the Overall basis.",
+    gsc: ctx.isOverall ? "no Search Console figures entered for this period." : "shown only in the Overall basis.",
+    investment: "no spend entered for this period.",
+    datanotes: "nothing to note for this period.",
+    visibility: "no visibility metrics entered.",
+    materials: "no links in Progress → General notes & links.",
+    notes: "this period has no note (Results → Commentary).",
+  })[b.type] || "";
+}
 function renderEditor(){
   const root = el("editorRoot");
   root.style.display = editMode ? "block" : "none";
@@ -998,6 +1044,7 @@ function renderEditor(){
     <select id="presetSel"><option value="">Apply preset…</option><option value="first">First report</option><option value="monthly">Monthly</option></select>
     <button class="btn secondary" id="saveNowBtn">Save now</button></div>
     <div class="ed-note"><b>How this works:</b> tick a block to show it in the report, use ↑ ↓ to move it, ↗ to jump to it in the report. Text, screenshot and table blocks stay invisible until they have content. Layout saves automatically (badge at the top). Numbers come from the workspace as of ${esc(loadedAt || "—")} — if you changed them there, click “Reload data”. A new month starts from last month's layout.</div>`;
+  const ectx = buildCtx();
   report.blocks.forEach((b, i)=>{
     const custom = ["text","screenshot","table"].includes(b.type);
     const row = document.createElement("div"); row.className = "ed-row" + (b.enabled ? "" : " off");
@@ -1033,6 +1080,10 @@ function renderEditor(){
         renderScreenshotEditor(body, b);
       }
       row.appendChild(body);
+    }
+    if(b.enabled){
+      const why = hiddenReason(b, ectx);
+      if(why){ const wb = document.createElement("div"); wb.className = "ed-body"; wb.innerHTML = `<div class="ed-why">Not in the report right now: ${esc(why)}</div>`; row.appendChild(wb); }
     }
     if(b.type === "channels"){
       const cb = document.createElement("div"); cb.className = "ed-body";
@@ -1237,7 +1288,7 @@ async function loadAllForHotel(id){
   setSave("", ""); renderPeriodSelect(); renderAll();
 }
 function syncAudienceUi(){ el("clientShowRow").style.display = el("audienceSelect").value === "client" ? "flex" : "none"; }
-function settingsChanged(){ if(report){ report.settings = readSettings(); scheduleSave(); } renderChecks(); renderReport(); }
+function settingsChanged(){ if(report){ report.settings = readSettings(); scheduleSave(); } renderChecks(); renderReport(); if(editMode) renderEditor(); }
 
 el("loadBtn").addEventListener("click", ()=>{ const id = el("hotelSelect").value; if(id) loadAllForHotel(id); });
 el("editBtn").addEventListener("click", ()=>{ editMode = !editMode; el("editBtn").textContent = editMode ? "Done editing" : "Edit layout"; document.querySelector(".shell").classList.toggle("editing", editMode); renderEditor(); renderReport(); });
@@ -1245,7 +1296,7 @@ el("printBtn").addEventListener("click", ()=>{
   if(el("audienceSelect").value === "internal" && !confirm("You're in Internal view — the PDF will include internal data and a banner. Print anyway?")) return;
   window.print();
 });
-el("audienceSelect").addEventListener("change", ()=>{ syncAudienceUi(); renderChecks(); renderReport(); });
+el("audienceSelect").addEventListener("change", ()=>{ syncAudienceUi(); renderChecks(); renderReport(); if(editMode) renderEditor(); });
 ["basisSelect","showComparisonsToggle","activityScopeSelect","cs_spend","cs_brand","cs_diag"].forEach(id=>el(id).addEventListener("change", settingsChanged));
 el("periodSelect").addEventListener("change", async ()=>{
   if(saveTimer) await saveReport();
