@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DMH Report Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --brand:#4D1774;        /* Exely primary — deep purple */
+    --brand-dark:#2E0D45;   /* darkest purple — main text */
+    --accent:#F65925;       /* Exely accent — orange */
+    --accent2:#C022FF;      /* Exely secondary — magenta */
+    --paper:#EEECF4;        /* light lavender background */
+    --card:#FFFFFF;
+    --ink:#2E0D45;
+    --ink-soft:#7A6690;
+    --line:#DDD5E8;
+    --brand-soft:#F1E9F7;
+    --accent-soft:#FDE7DE;
+    --slate-soft:#F4F2F8;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;}
+  .shell{max-width:860px;margin:0 auto;padding:22px 26px 60px;}
+
+  .controls{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:20px;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
+  select, input[type=text]{font-family:'IBM Plex Sans',sans-serif;border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-size:13px;}
+  .btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12.5px;border-radius:6px;border:1px solid var(--brand);background:var(--brand);color:#fff;padding:8px 14px;cursor:pointer;}
+  .btn.secondary{background:#fff;color:var(--brand);}
+  .btn.accent{background:var(--accent);border-color:var(--accent);}
+  .status-text{font-size:11.5px;color:var(--ink-soft);}
+  .tag-group{display:flex;flex-wrap:wrap;gap:7px;}
+  .tag{font-size:12px;padding:6px 11px;border-radius:16px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--ink-soft);}
+  .tag.selected{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600;}
+  .toggle-row{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+
+  /* Report */
+  .report{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 0 40px;overflow:hidden;box-shadow:0 1px 3px rgba(46,13,69,.06);}
+  .report-header{background:linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);color:#fff;padding:30px 40px 26px;}
+  .report-kicker{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.85;margin-bottom:8px;}
+  .report-title{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin:0 0 4px;color:#fff;}
+  .report-sub{font-size:13px;opacity:.9;}
+  .report-body{padding:32px 40px 0;}
+  .section{margin-bottom:30px;}
+  .layer-heading{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:600;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent-soft);}
+  .layer-heading:first-of-type{margin-top:4px;}
+  .season-note, .activity-result{white-space:pre-line;}
+  .rtable tr.row-hl td{background:var(--accent-soft);}
+  .rtable tr.row-total td{font-weight:700;border-top:2px solid var(--brand-soft);}
+  .rtable .delta-badge{font-size:10.5px;padding:0 6px;margin-left:6px;border-radius:5px;}
+  .delta-badge.delta-flat{background:var(--slate-soft);color:var(--ink-soft);}
+  .delta-badge.delta-new{background:var(--brand-soft);color:var(--brand);}
+  .table-note{font-size:11px;color:var(--ink-soft);margin-top:6px;}
+  .section-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin:0 0 14px;color:var(--brand);position:relative;padding-left:14px;}
+  .group-sublabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin:14px 0 8px;}
+  .group-sublabel:first-of-type{margin-top:0;}
+  .section-title::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:4px;background:var(--accent);border-radius:3px;}
+  .glance-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:8px;}
+  .glance-item{background:var(--brand-soft);border-radius:12px;padding:16px 18px;text-align:center;}
+  .glance-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--brand);font-weight:600;margin-bottom:6px;}
+  .glance-val{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--brand-dark);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;}
+  .glance-yoy{font-size:10.5px;color:var(--ink-soft);margin-top:6px;}
+  .glance-yoy .delta-badge{font-size:11px;padding:1px 7px;border-radius:6px;}
+  .delta-badge{font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;padding:3px 10px;border-radius:8px;vertical-align:middle;white-space:nowrap;display:inline-block;}
+  .delta-badge.delta-up{background:var(--accent-soft);color:#8A3A18;}
+  .delta-badge.delta-down{background:#E9E4EE;color:var(--ink-soft);}
+  .kpi .delta-badge{font-size:11px;padding:1px 6px;border-radius:6px;margin-left:4px;}
+  .compare-chart{margin-bottom:26px;}
+  .compare-row{display:grid;grid-template-columns:80px 1fr 40px;align-items:center;gap:10px;margin-bottom:10px;font-size:12px;}
+  .compare-bars{display:flex;flex-direction:column;gap:3px;}
+  .compare-bar-track{background:var(--slate-soft);border-radius:4px;height:14px;overflow:hidden;position:relative;}
+  .compare-bar-fill{height:100%;border-radius:4px;}
+  .compare-bar-fill.prev{background:var(--line);}
+  .compare-bar-fill.curr{background:var(--brand);}
+  .compare-legend{display:flex;gap:16px;font-size:11px;color:var(--ink-soft);margin-bottom:10px;}
+  .compare-legend span{display:flex;align-items:center;gap:5px;}
+  .legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;}
+  .kpi{background:var(--slate-soft);border-radius:10px;padding:14px 16px;border:1px solid var(--line);}
+  .kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;}
+  .kpi-val{font-family:'Fraunces',serif;font-size:24px;font-weight:700;margin-top:4px;color:var(--brand);}
+  .kpi-val.accent{color:var(--accent);}
+  table.rtable{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px;}
+  table.rtable th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);text-align:left;padding:7px 8px;border-bottom:2px solid var(--brand-soft);}
+  table.rtable td{padding:8px;border-bottom:1px solid var(--slate-soft);}
+
+  .activity-card{background:var(--slate-soft);border-radius:10px;padding:16px 18px;margin-bottom:12px;}
+  .activity-title{font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:var(--brand-dark);}
+  .activity-meta{font-size:11px;color:var(--ink-soft);margin-top:3px;}
+  .activity-meta .pill{display:inline-block;background:var(--brand-soft);color:var(--brand);font-weight:600;border-radius:9px;padding:1px 8px;margin-right:4px;font-size:10.5px;}
+  .activity-result{background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:6px;padding:8px 12px;margin-top:10px;font-size:12.5px;}
+  .activity-result .result-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);font-weight:700;margin-bottom:2px;}
+  .activity-media{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;}
+  .activity-media img{max-width:100%;max-height:280px;width:auto;height:auto;border-radius:8px;border:1px solid var(--line);object-fit:contain;background:#fff;}
+  .activity-media a.file-link{font-size:12px;color:var(--brand);text-decoration:none;background:var(--brand-soft);padding:6px 10px;border-radius:6px;display:inline-block;}
+
+  .season-note{background:var(--brand-soft);color:var(--ink);border-radius:8px;padding:12px 16px;font-size:12.5px;line-height:1.55;}
+  .empty-note{color:var(--ink-soft);font-size:12.5px;font-style:italic;}
+
+  @media (max-width:600px){
+    .glance-strip{grid-template-columns:1fr;}
+  }
+
+  @page{
+    margin: 0.4in;
+  }
+
+  @media print{
+    .activity-card, .rtable tr, .glance-item, .kpi, .season-note{break-inside:avoid;page-break-inside:avoid;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .section-title, .layer-heading{break-after:avoid;page-break-after:avoid;}
+    .section:has(> .rtable){break-inside:avoid;page-break-inside:avoid;}
+    body{background:#fff;}
+    .controls, .no-print{display:none !important;}
+    .report{border:none;padding:0;box-shadow:none;border-radius:0;}
+    .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .shell{max-width:100%;padding:0;}
+  }
+  /* ---- Builder UI ---- */
+  .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
+  .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
+  .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+  .ed-title{font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:var(--brand);margin-right:auto;}
+  .ed-row{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--slate-soft);}
+  .ed-row.off{opacity:.55;}
+  .ed-type{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);background:var(--slate-soft);padding:2px 8px;border-radius:9px;white-space:nowrap;}
+  .ed-move button, .ed-del{border:1px solid var(--line);background:#fff;border-radius:5px;cursor:pointer;font-size:12px;padding:2px 7px;color:var(--ink-soft);}
+  .ed-body{grid-column:1/-1;padding:6px 0 6px 28px;}
+  .ed-body textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;}
+  .ed-body input[type=text].cap{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px;}
+  .ed-hint{font-size:11px;color:var(--ink-soft);margin-top:4px;}
+  .ed-add{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+  .ed-labels{margin-top:14px;padding-top:12px;border-top:1px solid var(--slate-soft);}
+  .ed-labels .lab-row{display:flex;gap:8px;align-items:center;margin-top:6px;font-size:12.5px;}
+  .ed-labels .lab-row span.k{min-width:140px;color:var(--ink-soft);}
+  .dropzone{border:1.5px dashed var(--line);border-radius:8px;padding:12px;text-align:center;color:var(--ink-soft);cursor:pointer;font-size:12px;}
+  .dropzone:focus, .dropzone.over{border-color:var(--brand);background:var(--brand-soft);outline:none;}
+  .thumb-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:8px;}
+  .thumb-row img{height:48px;max-width:110px;object-fit:contain;border-radius:5px;border:1px solid var(--line);background:#fff;}
+  .checks{background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:12px 16px;margin-bottom:18px;}
+  .checks summary{cursor:pointer;font-family:'Fraunces',serif;font-weight:600;color:var(--brand);font-size:15px;}
+  .check-item{padding:8px 11px;border-radius:7px;margin-top:7px;font-size:12.5px;line-height:1.45;}
+  .check-warn{background:var(--accent-soft);}
+  .check-info{background:var(--slate-soft);}
+  .check-sub{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin:14px 0 2px;}
+  .internal-banner{background:#2E0D45;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:8px 40px;}
+  .ss-fig{margin:0 0 16px;}
+  .ss-fig img{max-width:100%;max-height:420px;border-radius:8px;border:1px solid var(--line);background:#fff;}
+  .ss-fig figcaption{font-size:11.5px;color:var(--ink-soft);margin-top:5px;}
+  .rtable.custom td, .rtable.custom th{white-space:pre-wrap;}
+  .delta-badge.delta-abs{background:var(--slate-soft);color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="controls no-print">
+    <div class="row">
+      <div class="field" style="min-width:220px;">
+        <label>Hotel</label>
+        <select id="hotelSelect"><option value="">Loading...</option></select>
+      </div>
+      <button class="btn secondary" id="loadBtn">Load data</button>
+      <button class="btn secondary" id="editBtn">Edit layout</button>
+      <button class="btn" id="printBtn">Print / Export PDF</button>
+      <button class="btn secondary" id="importBtn" title="Import a hotel's data from a JSON file">Import data</button>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+      <span class="status-text" id="statusText"></span>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <div class="field">
+        <label>Report period</label>
+        <select id="periodSelect"></select>
+      </div>
+      <div class="field">
+        <label>Audience</label>
+        <select id="audienceSelect">
+          <option value="client">Client (what the hotel sees)</option>
+          <option value="internal">Internal (everything + checks)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Reporting basis</label>
+        <select id="basisSelect">
+          <option value="overall">Overall (all sources)</option>
+          <option value="tracked">Tracked marketing only</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Comparisons</label>
+        <div class="toggle-row"><input type="checkbox" id="showComparisonsToggle" checked> <label for="showComparisonsToggle" style="text-transform:none;font-weight:400;">Show MoM &amp; YoY</label></div>
+      </div>
+      <div class="field">
+        <label>Activities</label>
+        <select id="activityScopeSelect">
+          <option value="period">This period only</option>
+          <option value="all">Since start (up to this period)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" id="clientShowRow" style="margin-top:10px;">
+      <div class="field">
+        <label>Client view also shows</label>
+        <div class="toggle-row" style="gap:16px;flex-wrap:wrap;">
+          <label class="chk"><input type="checkbox" id="cs_spend"> Spend, cost per booking &amp; ROAS</label>
+          <label class="chk"><input type="checkbox" id="cs_brand"> Campaign-level split (Brand etc.)</label>
+          <label class="chk"><input type="checkbox" id="cs_diag"> Data notes</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="editorRoot" class="no-print" style="display:none;"></div>
+  <div id="checksRoot" class="no-print"></div>
+  <div id="reportRoot"></div>
+
+</div>
+
+<script>
+const SHEETS_WEBAPP_URL = "PASTE_YOUR_DEPLOYED_WEB_APP_URL_HERE";
+const el = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const fmt = n => (typeof n === "number" && isFinite(n)) ? n.toLocaleString("en-US", {maximumFractionDigits: 1}) : "—";
+const money = n => "$" + fmt(Math.round(n));
+const newId = () => "b" + Math.random().toString(36).slice(2, 8);
+
+/* ================= storage ================= */
+function withTimeout(promise, ms, label){
+  return Promise.race([promise, new Promise((_, rej)=> setTimeout(()=> rej(new Error(`Timed out waiting for ${label} (no response after ${ms/1000}s)`)), ms))]);
+}
+function checkBackendConfigured(){
+  if(!SHEETS_WEBAPP_URL || SHEETS_WEBAPP_URL.indexOf("PASTE_YOUR") === 0){
+    throw new Error("Backend not configured — paste the same Apps Script URL used in the main workspace into SHEETS_WEBAPP_URL near the top of this file.");
+  }
+}
+const bust = () => Date.now() + "_" + Math.random().toString(36).slice(2);
+async function stGet(key){
+  checkBackendConfigured();
+  const res = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}&_=${bust()}`, {cache:"no-store"}), 12000, `loading "${key}"`);
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return data.value;
+}
+async function stGetBulk(keys){
+  checkBackendConfigured();
+  try{
+    const res = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?keys=${encodeURIComponent(keys.join(","))}&_=${bust()}`, {cache:"no-store"}), 20000, "loading data");
+    const data = await res.json();
+    if(data && data.values) return data.values;
+  }catch(e){}
+  const out = {};
+  await Promise.all(keys.map(async k=>{ try{ out[k] = await stGet(k); }catch(e){} }));
+  return out;
+}
+async function stSet(key, value){
+  checkBackendConfigured();
+  const res = await withTimeout(fetch(SHEETS_WEBAPP_URL, {
+    method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, cache:"no-store",
+    body: JSON.stringify({action:"set", key, value})
+  }), 20000, `saving "${key}"`);
+  return res.json();
+}
+
+/* ============ images: compressed and stored in chunks ============
+   A Google Sheets cell holds ~50k characters, so a screenshot is saved as
+   several ~40k chunks. Every chunk is prefixed with "~" so Sheets never reads
+   a chunk that happens to start with = + - as a formula. */
+const CHUNK = 40000;
+const imgCache = {}, imgPromises = {};
+async function storeImage(dataUrl){
+  const id = "im" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const n = Math.ceil(dataUrl.length / CHUNK);
+  for(let i = 0; i < n; i++) await stSet(`dmh-img:${id}:c${i}`, "~" + dataUrl.slice(i*CHUNK, (i+1)*CHUNK));
+  await stSet(`dmh-img:${id}`, JSON.stringify({n, len:dataUrl.length}));
+  imgCache[id] = dataUrl;
+  return id;
+}
+function fetchImage(id){
+  if(imgCache[id]) return Promise.resolve(imgCache[id]);
+  if(imgPromises[id]) return imgPromises[id];
+  imgPromises[id] = (async ()=>{
+    const meta = JSON.parse(await stGet(`dmh-img:${id}`));
+    const keys = Array.from({length:meta.n}, (_, i)=>`dmh-img:${id}:c${i}`);
+    const parts = await stGetBulk(keys);
+    const url = keys.map(k=>{ if(parts[k]==null) throw new Error("image chunk missing"); return String(parts[k]).replace(/^~/, ""); }).join("");
+    imgCache[id] = url; return url;
+  })();
+  imgPromises[id].catch(()=>{ delete imgPromises[id]; });
+  return imgPromises[id];
+}
+function hydrateImages(root){
+  root.querySelectorAll("img[data-imgid]").forEach(img=>{
+    fetchImage(img.dataset.imgid).then(u=>{ img.src = u; }).catch(()=>{ img.alt = "image unavailable"; });
+  });
+}
+async function compressImage(file){
+  const bmp = await createImageBitmap(file);
+  let scale = Math.min(1, 1000 / bmp.width), q = 0.8, out = "";
+  for(let a = 0; a < 7; a++){
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const cx = c.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h); cx.drawImage(bmp, 0, 0, w, h);
+    out = c.toDataURL("image/jpeg", q);
+    if(out.length <= 140000) break;
+    if(q > 0.5) q -= 0.1; else scale *= 0.85;
+  }
+  return out;
+}
+function isImageUrl(url){
+  const u = String(url||"").trim();
+  return /^img:/.test(u) || /^data:image\//i.test(u) || /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(u);
+}
+function imgEl(link, alt){
+  const img = document.createElement("img"); img.alt = alt || "attachment";
+  const u = String(link).trim();
+  if(/^img:/.test(u)) img.dataset.imgid = u.slice(4); else img.src = u;
+  return img;
+}
+
+/* ================= state ================= */
+let hotelIndex = [], currentHotel = null, currentResults = null, currentProgress = null;
+let primaryPeriodLabel = null, report = null, editMode = false, saveTimer = null, lastScreenshotBlock = null;
+const setStatus = m => { el("statusText").textContent = m; };
+
+function parsePeriodDate(label){
+  const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const m = (label||"").trim().match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
+  if(!m) return null;
+  const key = m[1].slice(0,3).toLowerCase();
+  if(!(key in months)) return null;
+  return new Date(parseInt(m[2],10), months[key], 1).getTime();
+}
+function sortPeriodsChronologically(periods){
+  return periods.map((p,i)=>({p, i, t: parsePeriodDate(p.period)})).sort((a,b)=>{
+    if(a.t===null && b.t===null) return a.i-b.i;
+    if(a.t===null) return 1; if(b.t===null) return -1; return a.t-b.t;
+  }).map(x=>x.p);
+}
+const getField = (sec, key) => currentHotel?.sections?.[sec]?.fields?.[key] || "";
+
+/* ================= report model: blocks, presets, settings ================= */
+const DEFAULT_TITLES = {
+  channels:"Traffic by channel", campaigns:"Campaign performance", investment:"Investment & return",
+  gsc:"Organic search (Google Search Console)", visibility:"Visibility", activities:"Activities",
+  planned:"Activities planned", materials:"Supporting materials", notes:"Notes", datanotes:"Data notes"
+};
+const TYPE_LABELS = {
+  headline:"Headline numbers", channels:"Channels (GA4)", campaigns:"Campaigns", investment:"Spend & ROAS", gsc:"Search Console",
+  visibility:"Visibility", activities:"Activities", planned:"Planned", materials:"Materials", notes:"Period note", datanotes:"Data notes",
+  text:"Text", screenshot:"Screenshots", table:"Table"
+};
+const BUILTINS = ["headline","channels","campaigns","investment","gsc","visibility","activities","planned","materials","notes","datanotes"];
+const mkBlock = (type, extra) => Object.assign({id:newId(), type, enabled:true, title:""}, extra||{});
+
+function presetLayout(name){
+  if(name === "first"){
+    return {
+      blocks:[mkBlock("headline"), mkBlock("channels"), mkBlock("campaigns"), mkBlock("gsc"), mkBlock("activities"), mkBlock("planned"),
+              mkBlock("text",{title:"Key takeaways", text:""}), mkBlock("text",{title:"Data limitations", text:""}), mkBlock("datanotes"), mkBlock("notes")],
+      settings:{basis:"overall", comparisons:false, activityScope:"all", clientShow:{spend:false, brand:false, diag:false}}
+    };
+  }
+  return {
+    blocks:[mkBlock("headline"), mkBlock("channels"), mkBlock("campaigns"), mkBlock("investment"), mkBlock("gsc"), mkBlock("visibility"),
+            mkBlock("activities"), mkBlock("planned"), mkBlock("materials"), mkBlock("datanotes"), mkBlock("notes")],
+    settings:{basis:"overall", comparisons:true, activityScope:"period", clientShow:{spend:false, brand:false, diag:false}}
+  };
+}
+function normalizeReport(r){
+  if(!Array.isArray(r.blocks)) r.blocks = presetLayout("monthly").blocks;
+  r.blocks.forEach(b=>{
+    if(!b.id) b.id = newId();
+    if(b.enabled === undefined) b.enabled = true;
+    if(b.type === "screenshot" && !Array.isArray(b.images)) b.images = [];
+  });
+  if(!r.channelLabels) r.channelLabels = {};
+  r.settings = Object.assign({basis:"overall", comparisons:true, activityScope:"period"}, r.settings||{});
+  r.settings.clientShow = Object.assign({spend:false, brand:false, diag:false}, r.settings.clientShow||{});
+}
+// New month: keep the structure (blocks, titles, labels, settings) but not last month's text, screenshots or tables.
+function structureFrom(base){
+  const r = JSON.parse(JSON.stringify(base));
+  r.blocks.forEach(b=>{ b.id = newId(); if(b.type==="text") b.text=""; if(b.type==="screenshot") b.images=[]; if(b.type==="table") b.tableText=""; });
+  return r;
+}
+function readSettings(){
+  return {basis:el("basisSelect").value, comparisons:el("showComparisonsToggle").checked, activityScope:el("activityScopeSelect").value,
+          clientShow:{spend:el("cs_spend").checked, brand:el("cs_brand").checked, diag:el("cs_diag").checked}};
+}
+function applySettings(s){
+  el("basisSelect").value = s.basis; el("showComparisonsToggle").checked = !!s.comparisons; el("activityScopeSelect").value = s.activityScope;
+  el("cs_spend").checked = !!s.clientShow.spend; el("cs_brand").checked = !!s.clientShow.brand; el("cs_diag").checked = !!s.clientShow.diag;
+}
+const reportKey = (hid, period) => `dmh-report:${hid}:${period}`;
+async function loadReportForPeriod(){
+  report = null;
+  if(!currentHotel || !primaryPeriodLabel) return;
+  try{ report = JSON.parse(await stGet(reportKey(currentHotel.id, primaryPeriodLabel))); }catch(e){ report = null; }
+  if(!report){
+    const periods = sortPeriodsChronologically(currentResults.periods||[]);
+    const i = periods.findIndex(p=>p.period===primaryPeriodLabel);
+    let base = null;
+    for(let j = i-1; j >= 0 && j >= i-3 && !base; j--){
+      try{ base = JSON.parse(await stGet(reportKey(currentHotel.id, periods[j].period))); }catch(e){}
+    }
+    report = base ? structureFrom(base) : presetLayout("monthly");
+  }
+  normalizeReport(report);
+  applySettings(report.settings);
+}
+function scheduleSave(){ clearTimeout(saveTimer); setStatus("Unsaved changes…"); saveTimer = setTimeout(saveReport, 1200); }
+async function saveReport(){
+  clearTimeout(saveTimer); saveTimer = null;
+  if(!report || !currentHotel || !primaryPeriodLabel) return;
+  report.settings = readSettings();
+  try{ await stSet(reportKey(currentHotel.id, primaryPeriodLabel), JSON.stringify(report)); setStatus("Saved " + new Date().toLocaleTimeString("en-US")); }
+  catch(e){ setStatus("⚠ Save failed: " + e.message); }
+}
+function changed(structural){
+  scheduleSave(); renderReport(); renderChecks();
+  if(structural) renderEditor();
+}
+
+/* ================= context: everything the blocks need ================= */
+function pctDelta(curr, prev){ if(prev===null || prev===undefined || prev===0 || !curr) return null; return (curr-prev)/prev*100; }
+function deltaBadge(curr, prev, goodWhenUp=true){
+  const d = pctDelta(curr, prev);
+  if(d === null) return "";
+  if(Math.round(d) === 0) return `<span class="delta-badge delta-flat">0%</span>`;
+  const up = d >= 0, positive = goodWhenUp ? up : !up;
+  return `<span class="delta-badge ${positive?"delta-up":"delta-down"}">${up?"▲":"▼"} ${Math.abs(d).toFixed(0)}%</span>`;
+}
+// Percent changes on tiny bases mislead (7 → 2 is "-71%"), so counts under 10 on both sides show the absolute change.
+function countBadge(curr, prev){
+  if(prev > 0 && prev < 10 && curr < 10){
+    const d = curr - prev;
+    return d === 0 ? `<span class="delta-badge delta-flat">0</span>` : `<span class="delta-badge delta-abs">${d>0?"▲":"▼"} ${Math.abs(d)}</span>`;
+  }
+  return deltaBadge(curr, prev);
+}
+const chRowsOf = p => (p && Array.isArray(p.channels)) ? p.channels.filter(r=>r.channel && String(r.channel).trim()) : [];
+const sumField = (rows, rx, f) => rows.filter(r=>rx.test(r.channel)).reduce((a,r)=>a+num(r[f]), 0);
+const MIN_CR_SESSIONS = 100;
+
+function buildCtx(){
+  if(!currentResults || !report) return null;
+  const allPeriods = sortPeriodsChronologically(currentResults.periods||[]);
+  const primary = allPeriods.find(p=>p.period===primaryPeriodLabel) || null;
+  if(!primary) return null;
+  const idx = allPeriods.indexOf(primary);
+  const previous = idx > 0 ? allPeriods[idx-1] : null;
+  const sumRows = rows => (rows||[]).reduce((a,r)=>({spend:a.spend+num(r.spend), traffic:a.traffic+num(r.traffic), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {spend:0,traffic:0,bookings:0,revenue:0});
+  const ovOf = p => p ? {websiteTraffic:num(p.totalWebsiteTraffic), beTraffic:num(p.totalBeTraffic), bookings:num(p.totalBookings), revenue:num(p.totalRevenue)} : null;
+  const anyOv = o => !!o && (o.websiteTraffic>0 || o.beTraffic>0 || o.bookings>0 || o.revenue>0);
+  const st = readSettings();
+  const isInternal = el("audienceSelect").value === "internal";
+  const ctx = {
+    allPeriods, primary, previous, idx, periodLabel:primary.period, rows:primary.rows||[], st, isInternal,
+    showComparisons:st.comparisons, isOverall:st.basis==="overall",
+    showSpend:isInternal || st.clientShow.spend, showBrand:isInternal || st.clientShow.brand, showDiag:isInternal || st.clientShow.diag,
+    totals:sumRows(primary.rows), prevTotals:previous ? sumRows(previous.rows) : null,
+    ov:ovOf(primary), prevOv:ovOf(previous),
+  };
+  ctx.hasOv = anyOv(ctx.ov); ctx.hasPrevOv = anyOv(ctx.prevOv);
+  ctx.trendPeriods = allPeriods.slice(Math.max(0, idx-5), idx+1);
+  const useWebsite = !(ctx.ov.beTraffic > 0);
+  ctx.head = ctx.isOverall ? {
+    trafficLabel: useWebsite ? "Website sessions" : "Booking Engine traffic",
+    revenue:ctx.ov.revenue, bookings:ctx.ov.bookings, traffic:useWebsite ? ctx.ov.websiteTraffic : ctx.ov.beTraffic,
+    prevRevenue:ctx.prevOv?.revenue, prevBookings:ctx.prevOv?.bookings, prevTraffic:useWebsite ? ctx.prevOv?.websiteTraffic : ctx.prevOv?.beTraffic,
+    hasPrev:ctx.hasPrevOv, hasData:ctx.hasOv,
+    yoyRevenue:primary.yoyRevenue, yoyBookings:primary.yoyBookings, yoyTraffic:primary.yoyTraffic,
+    hasYoy:["yoyRevenue","yoyTraffic","yoyBookings"].some(k=>!isNaN(parseFloat(primary[k]))),
+  } : {
+    trafficLabel:"Traffic", revenue:ctx.totals.revenue, bookings:ctx.totals.bookings, traffic:ctx.totals.traffic,
+    prevRevenue:ctx.prevTotals?.revenue, prevBookings:ctx.prevTotals?.bookings, prevTraffic:ctx.prevTotals?.traffic,
+    hasPrev:!!previous, hasData:ctx.rows.length>0, hasYoy:false,
+  };
+  return ctx;
+}
+function isBlockVisible(b, ctx){
+  if(!b.enabled) return false;
+  if(b.type === "investment" && !ctx.showSpend) return false;
+  if(b.type === "datanotes" && !ctx.showDiag) return false;
+  return true;
+}
+
+/* ================= block renderers ================= */
+function renderNote(txt){
+  return String(txt).replace(/&/g,"&amp;").replace(/</g,"&lt;").split("\n").map(line=>{
+    const t = line.trim();
+    return (t && !t.startsWith("•") && t.length <= 40 && !/[.:;]$/.test(t)) ? `<strong>${t}</strong>` : line;
+  }).join("\n");
+}
+function section(b, fallbackTitle){
+  const s = document.createElement("div"); s.className = "section";
+  const title = (b.title && b.title.trim()) || fallbackTitle || DEFAULT_TITLES[b.type] || "";
+  if(title) s.innerHTML = `<div class="section-title">${esc(title)}</div>`;
+  return s;
+}
+const R = {};
+
+R.headline = (ctx, b) => {
+  const wrap = document.createElement("div"); wrap.className = "block-headline";
+  const h = ctx.head;
+  if(!h.hasData){
+    wrap.innerHTML = `<div class="empty-note">${ctx.isOverall ? "Overall hotel results haven't been filled in for this period yet — add them in the main workspace, or switch the basis to Tracked marketing." : "No tracked campaigns logged for this period yet."}</div>`;
+    return wrap;
+  }
+  const mom = (curr, prev, small) => {
+    if(!ctx.showComparisons || !h.hasPrev || !curr) return "";
+    const badge = small ? countBadge(curr, prev) : deltaBadge(curr, prev);
+    return badge ? `<div class="glance-yoy">vs last month: ${badge}</div>` : "";
+  };
+  const yoy = (curr, manual) => {
+    if(!ctx.showComparisons || !h.hasYoy || !curr) return "";
+    const p = parseFloat(manual); if(isNaN(p)) return "";
+    const badge = deltaBadge(curr, p);
+    return badge ? `<div class="glance-yoy">vs last year: ${badge}</div>` : "";
+  };
+  const g = document.createElement("div"); g.className = "glance-strip";
+  g.innerHTML = `
+    <div class="glance-item"><div class="glance-label">Revenue</div><div class="glance-val">${money(h.revenue)}</div>${mom(h.revenue,h.prevRevenue)}${yoy(h.revenue,h.yoyRevenue)}</div>
+    <div class="glance-item"><div class="glance-label">Bookings</div><div class="glance-val">${fmt(h.bookings)}</div>${mom(h.bookings,h.prevBookings,true)}${yoy(h.bookings,h.yoyBookings)}</div>
+    <div class="glance-item"><div class="glance-label">${h.trafficLabel}</div><div class="glance-val">${fmt(h.traffic)}</div>${mom(h.traffic,h.prevTraffic)}${yoy(h.traffic,h.yoyTraffic)}</div>`;
+  wrap.appendChild(g);
+  if(ctx.showComparisons && !h.hasPrev && !h.hasYoy){
+    const n = document.createElement("div"); n.className = "empty-note"; n.style.cssText = "text-align:center;margin:10px 0 4px;";
+    n.textContent = "No prior period to compare yet — comparisons will appear once a second period is logged.";
+    wrap.appendChild(n);
+  }
+  wrap.style.marginBottom = "30px";
+  return wrap;
+};
+
+R.channels = (ctx, b) => {
+  const rows = chRowsOf(ctx.primary);
+  if(!ctx.isOverall || !rows.length) return null;
+  const sec = section(b);
+  const prevCh = {}; chRowsOf(ctx.previous).forEach(r=>{ prevCh[String(r.channel).trim().toLowerCase()] = r; });
+  const hasPrev = ctx.showComparisons && Object.keys(prevCh).length > 0;
+  const sumC = rs => rs.reduce((a,r)=>({sessions:a.sessions+num(r.sessions), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {sessions:0,bookings:0,revenue:0});
+  const cell = (curr, prev, kind) => {
+    const shown = kind === "money" ? money(curr) : fmt(curr);
+    if(!hasPrev || prev === undefined) return shown;
+    if(prev === 0 && curr > 0) return `${shown}<span class="delta-badge delta-new">new</span>`;
+    return shown + (kind === "count" ? countBadge(curr, prev) : deltaBadge(curr, prev));
+  };
+  let crHidden = false;
+  const cr = (bk, s) => { if(s < MIN_CR_SESSIONS){ crHidden = crHidden || s > 0; return "—"; } return (bk/s*100).toFixed(1) + "%"; };
+  const curTot = sumC(rows), prevTotC = sumC(Object.values(prevCh));
+  const tot = {sessions:ctx.ov.websiteTraffic || curTot.sessions, bookings:ctx.ov.bookings || curTot.bookings, revenue:ctx.ov.revenue || curTot.revenue};
+  const prevTot = ctx.previous ? {sessions:ctx.prevOv?.websiteTraffic || prevTotC.sessions, bookings:ctx.prevOv?.bookings || prevTotC.bookings, revenue:ctx.prevOv?.revenue || prevTotC.revenue} : null;
+  const pv = (pr, f, zero) => pr ? num(pr[f]) : (hasPrev ? 0 : undefined);
+  const t = document.createElement("table"); t.className = "rtable";
+  t.innerHTML = `<tr><th>Channel</th><th>Sessions</th><th>Bookings</th><th>Revenue</th><th>CR</th></tr>` +
+    rows.map(r=>{
+      const pr = prevCh[String(r.channel).trim().toLowerCase()];
+      return `<tr${/paid/i.test(r.channel)?' class="row-hl"':""}><td>${esc(r.channel)}</td><td>${cell(num(r.sessions), pv(pr,"sessions"), "n")}</td><td>${cell(num(r.bookings), pv(pr,"bookings"), "count")}</td><td>${cell(num(r.revenue), pv(pr,"revenue"), "money")}</td><td>${cr(num(r.bookings), num(r.sessions))}</td></tr>`;
+    }).join("") +
+    `<tr class="row-total"><td>Total</td><td>${cell(tot.sessions, prevTot&&hasPrev?prevTot.sessions:undefined, "n")}</td><td>${cell(tot.bookings, prevTot&&hasPrev?prevTot.bookings:undefined, "count")}</td><td>${cell(tot.revenue, prevTot&&hasPrev?prevTot.revenue:undefined, "money")}</td><td>${cr(tot.bookings, tot.sessions)}</td></tr>`;
+  sec.appendChild(t);
+  if(crHidden){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = `CR is not shown for rows with fewer than ${MIN_CR_SESSIONS} sessions.`; sec.appendChild(n); }
+  return sec;
+};
+
+R.campaigns = (ctx, b) => {
+  const sec = section(b);
+  if(!ctx.rows.length){ sec.innerHTML += `<div class="empty-note">No tracked campaigns logged for this period.</div>`; return sec; }
+  const cols = ctx.showSpend && ctx.totals.spend > 0;
+  const labels = report.channelLabels || {};
+  const by = {};
+  ctx.rows.forEach(r=>{
+    const campaign = (r.campaign||"").trim(), channel = (r.channel||"").trim();
+    let key, sub = "";
+    if(ctx.showBrand){ key = campaign || channel || "Other"; sub = channel; }
+    else { key = channel ? (labels[channel] || channel) : (campaign || "Other"); }
+    const o = by[key] || (by[key] = {traffic:0,bookings:0,revenue:0,spend:0,sub});
+    o.traffic += num(r.traffic); o.bookings += num(r.bookings); o.revenue += num(r.revenue); o.spend += num(r.spend);
+  });
+  let crHidden = false;
+  const cr = (bk, t) => { if(t < MIN_CR_SESSIONS){ crHidden = crHidden || t > 0; return "—"; } return (bk/t*100).toFixed(1) + "%"; };
+  const cpb = (s, bk) => bk > 0 ? money(s/bk) : "—";
+  const T = ctx.totals;
+  const t = document.createElement("table"); t.className = "rtable";
+  t.innerHTML = `<tr><th>${ctx.showBrand?"Campaign":"Channel"}</th><th>Traffic</th><th>Bookings</th><th>CR</th><th>Revenue</th>${cols?"<th>Spend</th><th>Cost / booking</th><th>ROAS</th>":""}</tr>` +
+    Object.keys(by).sort((a,c)=>by[c].revenue-by[a].revenue).map(k=>{
+      const o = by[k];
+      return `<tr><td>${esc(k)}${o.sub?`<div style="font-size:10.5px;color:var(--ink-soft);">${esc(o.sub)}</div>`:""}</td><td>${fmt(o.traffic)}</td><td>${fmt(o.bookings)}</td><td>${cr(o.bookings,o.traffic)}</td><td>${money(o.revenue)}</td>${cols?`<td>${money(o.spend)}</td><td>${cpb(o.spend,o.bookings)}</td><td>${o.spend>0?(o.revenue/o.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
+    }).join("") +
+    `<tr class="row-total"><td>Total tracked</td><td>${fmt(T.traffic)}</td><td>${fmt(T.bookings)}</td><td>${cr(T.bookings,T.traffic)}</td><td>${money(T.revenue)}</td>${cols?`<td>${money(T.spend)}</td><td>${cpb(T.spend,T.bookings)}</td><td>${T.spend>0?(T.revenue/T.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
+  sec.appendChild(t);
+  if(crHidden){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = `CR is not shown for rows with fewer than ${MIN_CR_SESSIONS} sessions.`; sec.appendChild(n); }
+  return sec;
+};
+
+R.investment = (ctx, b) => {
+  const T = ctx.totals, P = ctx.prevTotals;
+  const sec = section(b);
+  if(!(T.spend > 0)){
+    if(!ctx.isInternal) return null;
+    sec.innerHTML += `<div class="empty-note">No spend entered for this period — cost per booking and ROAS can't be calculated.</div>`;
+    return sec;
+  }
+  const g = document.createElement("div"); g.className = "kpi-grid";
+  g.innerHTML = `
+    <div class="kpi"><div class="kpi-label">Budget spent</div><div class="kpi-val">${money(T.spend)} ${deltaBadge(T.spend, P?.spend, false)}</div></div>
+    <div class="kpi"><div class="kpi-label">Tracked bookings</div><div class="kpi-val">${fmt(T.bookings)} ${P?countBadge(T.bookings,P.bookings):""}</div></div>
+    <div class="kpi"><div class="kpi-label">Cost per booking</div><div class="kpi-val">${T.bookings>0?money(T.spend/T.bookings):"—"}</div></div>
+    <div class="kpi"><div class="kpi-label">Tracked revenue</div><div class="kpi-val accent">${money(T.revenue)} ${deltaBadge(T.revenue, P?.revenue)}</div></div>
+    <div class="kpi"><div class="kpi-label">ROAS</div><div class="kpi-val accent">${(T.revenue/T.spend).toFixed(2)}×</div></div>`;
+  sec.appendChild(g);
+  return sec;
+};
+
+R.gsc = (ctx, b) => {
+  const gscOf = per => {
+    const g = per && per.gsc; if(!g) return null;
+    const n = v => { const x = parseFloat(v); return isNaN(x) ? null : x; };
+    const o = {clicks:n(g.clicks), impressions:n(g.impressions), ctr:n(g.ctr), position:n(g.position), days:n(g.days)};
+    return (o.clicks!==null || o.impressions!==null || o.ctr!==null || o.position!==null) ? o : null;
+  };
+  const cur = gscOf(ctx.primary), prev = ctx.showComparisons ? gscOf(ctx.previous) : null;
+  if(!ctx.isOverall || !cur) return null;
+  const sec = section(b);
+  const daily = !!(prev && cur.days>0 && prev.days>0 && cur.days!==prev.days);
+  const pct = (c,p) => (c===null||p===null||p===0) ? "" : deltaBadge(c,p);
+  const rows = [];
+  const add = (label, c, p, change, suffix="") => rows.push(`<tr><td>${label}</td>${prev?`<td>${p===null?"—":fmt(p)+suffix}</td>`:""}<td>${c===null?"—":fmt(c)+suffix}</td>${prev?`<td>${change||"—"}</td>`:""}</tr>`);
+  if(daily){
+    const pd = (v,d,dec=1) => (v===null||!d) ? null : (dec===0 ? Math.round(v/d) : Math.round(v/d*10)/10);
+    add("Clicks", cur.clicks, prev.clicks, "");
+    add("Clicks per day", pd(cur.clicks,cur.days), pd(prev.clicks,prev.days), pct(pd(cur.clicks,cur.days), pd(prev.clicks,prev.days)));
+    add("Impressions", cur.impressions, prev.impressions, "");
+    add("Impressions per day", pd(cur.impressions,cur.days,0), pd(prev.impressions,prev.days,0), pct(pd(cur.impressions,cur.days,0), pd(prev.impressions,prev.days,0)));
+  } else {
+    add("Clicks", cur.clicks, prev?.clicks ?? null, prev ? pct(cur.clicks, prev.clicks) : "");
+    add("Impressions", cur.impressions, prev?.impressions ?? null, prev ? pct(cur.impressions, prev.impressions) : "");
+  }
+  const pp = (prev && cur.ctr!==null && prev.ctr!==null) ? (()=>{ const d = Math.round((cur.ctr-prev.ctr)*10)/10; return d===0 ? "" : `<span class="delta-badge ${d>0?"delta-up":"delta-down"}">${d>0?"▲":"▼"} ${Math.abs(d)} pp</span>`; })() : "";
+  add("CTR", cur.ctr, prev?.ctr ?? null, pp, "%");
+  const ps = (prev && cur.position!==null && prev.position!==null) ? (()=>{ const d = Math.round((prev.position-cur.position)*10)/10; return d===0 ? "" : `<span class="delta-badge ${d>0?"delta-up":"delta-down"}">${d>0?"▲":"▼"} ${Math.abs(d)} position${Math.abs(d)===1?"":"s"}</span>`; })() : "";
+  add("Average position", cur.position, prev?.position ?? null, ps);
+  const t = document.createElement("table"); t.className = "rtable";
+  t.innerHTML = `<tr><th>Metric</th>${prev?`<th>${esc(ctx.previous.period)}</th>`:""}<th>${esc(ctx.periodLabel)}</th>${prev?"<th>Change</th>":""}</tr>` + rows.join("");
+  sec.appendChild(t);
+  const notes = [];
+  if(prev) notes.push("Average position: a lower number is better.");
+  if(daily) notes.push(`${ctx.previous.period} covers ${prev.days} days of data vs ${cur.days} in ${ctx.periodLabel}, so per-day figures carry the comparison.`);
+  if(notes.length){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = notes.join(" "); sec.appendChild(n); }
+  return sec;
+};
+
+R.visibility = (ctx, b) => {
+  const parse = s => { if(s==null) return null; const c = String(s).replace(/[^0-9.\-]/g,""); if(c===""||c==="-") return null; const n = parseFloat(c); return isNaN(n)?null:n; };
+  const tp = ctx.trendPeriods; if(!tp.length) return null;
+  const names = new Set(); tp.forEach(p=>(p.visibilityMetrics||[]).forEach(m=>{ if(m.name && m.name.trim()) names.add(m.name.trim()); }));
+  const series = {}, plain = [];
+  names.forEach(name=>{
+    const vals = tp.map(p=>{ const f = (p.visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name); return f ? parse(f.value) : null; });
+    if(vals.some(v=>v!==null)) series[name] = vals.map(v=>v===null?0:v);
+    else for(let i = tp.length-1; i >= 0; i--){ const f = (tp[i].visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name); if(f){ plain.push(f); break; } }
+  });
+  if(!Object.keys(series).length && !plain.length) return null;
+  const sec = section(b);
+  if(Object.keys(series).length) sec.appendChild(buildLineChart(series, tp.map(p=>p.period), false));
+  if(plain.length){
+    const t = document.createElement("table"); t.className = "rtable";
+    t.innerHTML = `<tr><th>Signal</th><th>This period</th></tr>` + plain.map(m=>`<tr><td>${esc(m.name)}</td><td>${esc(m.value)}</td></tr>`).join("");
+    t.style.marginTop = Object.keys(series).length ? "10px" : "0"; sec.appendChild(t);
+  }
+  return sec;
+};
+
+function mediaNode(link, label){
+  if(isImageUrl(link)) return imgEl(link, label);
+  const a = document.createElement("a"); a.className = "file-link"; a.href = link; a.target = "_blank"; a.textContent = "🔗 " + (label || "View");
+  return a;
+}
+function activityCard(c, kind){
+  const item = document.createElement("div"); item.className = "activity-card";
+  const pills = (c.tags||[]).map(t=>`<span class="pill">${esc(t)}</span>`).join("");
+  const meta = kind === "plan" ? (c.period?("· targeting "+esc(c.period)):"") : ((c.period?("· "+esc(c.period)+" "):"") + (c.stage==="Live"?"· ongoing":"· completed"));
+  item.innerHTML = `<div class="activity-title">${esc(c.title||"(untitled)")}</div><div class="activity-meta">${pills} ${meta}</div>` +
+    (c.notes ? `<div class="activity-result"><div class="result-label">${kind==="plan"?"Plan":"Result"}</div>${esc(c.notes)}</div>` : "");
+  const links = (c.subtasks||[]).filter(s=>s.link && s.link.trim());
+  if(links.length){ const m = document.createElement("div"); m.className = "activity-media"; links.forEach(s=>m.appendChild(mediaNode(s.link, s.text))); item.appendChild(m); }
+  return item;
+}
+R.activities = (ctx, b) => {
+  const scope = ctx.st.activityScope, pt = parsePeriodDate(ctx.periodLabel);
+  const cards = (currentProgress.cards||[]).filter(c=>{
+    if(!(c.stage==="Done/Paused" || c.stage==="Live")) return false;
+    if(scope !== "all") return c.period === ctx.periodLabel;
+    if(!c.period) return true;
+    const t = parsePeriodDate(c.period);
+    return (t===null || pt===null) ? c.period === ctx.periodLabel : t <= pt;
+  });
+  const sec = section(b);
+  if(!cards.length) sec.innerHTML += `<div class="empty-note">No activities logged for this period yet.</div>`;
+  cards.forEach(c=>sec.appendChild(activityCard(c, "done")));
+  return sec;
+};
+R.planned = (ctx, b) => {
+  const cards = (currentProgress.cards||[]).filter(c=>c.stage==="Planned");
+  const sec = section(b);
+  if(!cards.length) sec.innerHTML += `<div class="empty-note">No planned activities logged yet.</div>`;
+  cards.forEach(c=>sec.appendChild(activityCard(c, "plan")));
+  return sec;
+};
+R.materials = (ctx, b) => {
+  const notes = (currentProgress.generalNotes||[]).filter(n=>n.link && n.link.trim());
+  if(!notes.length) return null;
+  const sec = section(b), m = document.createElement("div"); m.className = "activity-media";
+  notes.forEach(n=>m.appendChild(mediaNode(n.link, n.note)));
+  sec.appendChild(m); return sec;
+};
+R.notes = (ctx, b) => {
+  const t = ctx.primary.seasonalNote; if(!t || !String(t).trim()) return null;
+  const sec = section(b); const d = document.createElement("div"); d.className = "season-note"; d.innerHTML = renderNote(t); sec.appendChild(d); return sec;
+};
+R.text = (ctx, b) => {
+  if(!b.text || !b.text.trim()) return null;
+  const sec = section(b, "Notes"); const d = document.createElement("div"); d.className = "season-note"; d.innerHTML = renderNote(b.text); sec.appendChild(d); return sec;
+};
+R.screenshot = (ctx, b) => {
+  if(!(b.images||[]).length) return null;
+  const sec = section(b, "Screenshots");
+  b.images.forEach(im=>{
+    const f = document.createElement("figure"); f.className = "ss-fig";
+    const img = document.createElement("img"); img.dataset.imgid = im.id; img.alt = im.caption || "screenshot"; f.appendChild(img);
+    if(im.caption && im.caption.trim()){ const c = document.createElement("figcaption"); c.textContent = im.caption; f.appendChild(c); }
+    sec.appendChild(f);
+  });
+  return sec;
+};
+R.table = (ctx, b) => {
+  const text = (b.tableText||"").trim(); if(!text) return null;
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  const rows = lines.map(l=> l.includes("\t") ? l.split("\t") : l.split(","));
+  const sec = section(b, "Table");
+  const t = document.createElement("table"); t.className = "rtable custom";
+  t.innerHTML = `<tr>${rows[0].map(c=>`<th>${esc(c.trim())}</th>`).join("")}</tr>` + rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${esc(c.trim())}</td>`).join("")}</tr>`).join("");
+  sec.appendChild(t); return sec;
+};
+// Neutral, factual limitations — safe for the client. The full diagnosis lives in the Internal checks panel.
+R.datanotes = (ctx, b) => {
+  const items = [];
+  const rows = chRowsOf(ctx.primary), totS = rows.reduce((a,r)=>a+num(r.sessions), 0);
+  const un = sumField(rows, /unassigned/i, "sessions");
+  if(totS > 0 && un/totS >= 0.05) items.push(`"Unassigned" traffic (${Math.round(un/totS*100)}% of sessions) has no channel attribution in GA4, so it may include organic and paid visits.`);
+  const gd = [ctx.primary.gsc?.days, ctx.previous?.gsc?.days].map(num).filter(d=>d>0);
+  if(gd.some(d=>d < 28)) items.push("Search Console data covers part of the month for at least one period, so per-day figures are used for comparison.");
+  if(ctx.showComparisons && ctx.isOverall && !ctx.head.hasYoy) items.push("No year-over-year comparison is available yet.");
+  if(!items.length) return null;
+  const sec = section(b); const d = document.createElement("div"); d.className = "season-note"; d.innerHTML = items.map(i=>"• "+esc(i)).join("\n"); sec.appendChild(d); return sec;
+};
+
+function renderReport(){
+  const root = el("reportRoot"); root.innerHTML = "";
+  if(!currentHotel){ root.innerHTML = '<div class="empty-note">Select a hotel and click Load data.</div>'; return; }
+  const ctx = buildCtx();
+  if(!ctx){ root.innerHTML = '<div class="empty-note">Select a report period above.</div>'; return; }
+  const rep = document.createElement("div"); rep.className = "report";
+  rep.innerHTML = (ctx.isInternal ? `<div class="internal-banner">Internal view — contains data that is not for the client</div>` : "") +
+    `<div class="report-header"><div class="report-kicker">Exely Digital Marketing Hub</div><div class="report-title">${esc(getField("hotelData","name") || currentHotel.id)}</div><div class="report-sub">${esc(ctx.periodLabel)} · ${ctx.isOverall?"Overall results":"Tracked marketing results"}</div></div>`;
+  const body = document.createElement("div"); body.className = "report-body"; rep.appendChild(body);
+  report.blocks.forEach(b=>{
+    if(!isBlockVisible(b, ctx) || !R[b.type]) return;
+    let node = null; try{ node = R[b.type](ctx, b); }catch(e){ console.error("block "+b.type, e); }
+    if(node) body.appendChild(node);
+  });
+  root.appendChild(rep);
+  hydrateImages(rep);
+}
+
+function buildLineChart(seriesMap, periodLabels){
+  const wrap = document.createElement("div");
+  const width = 640, height = 260, padL = 44, padR = 50, padT = 16, padB = 34, plotW = width-padL-padR, plotH = height-padT-padB;
+  const all = Object.values(seriesMap).flat().filter(v=>v!==null && v!==undefined), maxVal = Math.max(...all, 1);
+  const n = periodLabels.length, xStep = n > 1 ? plotW/(n-1) : 0;
+  const colors = ["#4D1774","#F65925","#2E5FA3","#1D9E75","#993556","#A9791B"];
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;" role="img" aria-label="Visibility trend by source">`;
+  svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${height-padB}" stroke="var(--line)"/><line x1="${padL}" y1="${height-padB}" x2="${width-padR}" y2="${height-padB}" stroke="var(--line)"/>`;
+  periodLabels.forEach((l,i)=>{ svg += `<text x="${padL+i*xStep}" y="${height-padB+18}" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)">${esc(l)}</text>`; });
+  [0,0.5,1].forEach(f=>{ svg += `<text x="${padL-8}" y="${padT+plotH-f*plotH+3}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${Math.round(f*maxVal)}</text>`; });
+  const legend = []; let ci = 0;
+  Object.keys(seriesMap).forEach(name=>{
+    const color = colors[ci++ % colors.length]; legend.push({name, color});
+    const pts = []; seriesMap[name].forEach((v,i)=>{ if(v!==null && v!==undefined) pts.push([padL+i*xStep, padT+plotH-(v/maxVal*plotH), v]); });
+    if(!pts.length) return;
+    svg += `<path d="${pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
+    pts.forEach(p=>{ svg += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="${color}"/>`; });
+    const last = pts[pts.length-1];
+    svg += `<text x="${(last[0]-4).toFixed(1)}" y="${(last[1]-9).toFixed(1)}" font-size="10.5" text-anchor="end" fill="${color}" font-weight="600">${Math.round(last[2])}</text>`;
+  });
+  svg += `</svg>`;
+  wrap.innerHTML = `<div style="margin-bottom:10px;">${legend.map(l=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:16px;font-size:11.5px;color:var(--ink-soft);"><span style="width:9px;height:9px;border-radius:50%;background:${l.color};display:inline-block;"></span>${esc(l.name)}</span>`).join("")}</div>` + svg;
+  return wrap;
+}
+
+/* ================= Internal checks: what to watch, computed from the data ================= */
+function computeChecks(ctx){
+  const warn = [], info = [];
+  const cur = chRowsOf(ctx.primary), prev = chRowsOf(ctx.previous);
+  const totS = cur.reduce((a,r)=>a+num(r.sessions), 0), totB = cur.reduce((a,r)=>a+num(r.bookings), 0);
+  const T = ctx.totals, ov = ctx.ov;
+
+  // 1. Cannibalization: paid grows while organic + direct shrink
+  if(cur.length && prev.length){
+    const g = rows => ({paid:sumField(rows,/paid/i,"bookings"), org:sumField(rows,/organic/i,"bookings"), dir:sumField(rows,/direct/i,"bookings"), tot:rows.reduce((a,r)=>a+num(r.bookings),0)});
+    const c = g(cur), p = g(prev), dPaid = c.paid-p.paid, dOD = (c.org+c.dir)-(p.org+p.dir), dTot = c.tot-p.tot;
+    if(dPaid > 0 && dOD < 0 && -dOD >= 0.3*dPaid){
+      warn.push(`Cannibalization risk: paid bookings ${dPaid>0?"+":""}${dPaid} while organic + direct bookings ${dOD} (net total ${dTot>0?"+":""}${dTot}). Don't say ads caused all the growth; check how much of Brand is incremental before reporting it as results.`);
+    }
+  }
+  // 2. Brand dependence
+  const brand = ctx.rows.filter(r=>/brand/i.test(r.campaign||""));
+  if(brand.length && T.bookings > 0){
+    const bb = brand.reduce((a,r)=>a+num(r.bookings), 0), share = Math.round(bb/T.bookings*100);
+    if(share >= 60) info.push(`Brand campaigns carry ${share}% of tracked bookings (${bb} of ${T.bookings}) — the rest of the campaigns add little so far.`);
+  }
+  // 3. Campaigns that eat traffic and book nothing
+  ctx.rows.forEach(r=>{
+    const t = num(r.traffic);
+    if(T.traffic > 0 && t >= 200 && num(r.bookings) === 0 && t/T.traffic >= 0.25){
+      const sp = T.spend > 0 && num(r.spend) > 0 ? ` and ${Math.round(num(r.spend)/T.spend*100)}% of spend` : "";
+      warn.push(`"${r.campaign||r.channel}": ${fmt(t)} sessions (${Math.round(t/T.traffic*100)}% of tracked traffic)${sp} with 0 bookings — first candidate for optimisation.`);
+    }
+  });
+  // 4. Unassigned
+  const un = sumField(cur,/unassigned/i,"sessions"), unB = sumField(cur,/unassigned/i,"bookings");
+  if(totS > 0 && un/totS >= 0.05){
+    const msg = `Unassigned is ${Math.round(un/totS*100)}% of sessions${totB>0?` and ${Math.round(unB/totB*100)}% of bookings`:""} — attribution gap (UTM tagging, Google Ads ↔ GA4 link).`;
+    (un/totS >= 0.10 ? warn : info).push(msg);
+  }
+  // 5. Revenue per booking anomalies
+  const avg = ov.bookings > 0 ? ov.revenue/ov.bookings : 0;
+  if(avg > 0) ctx.rows.forEach(r=>{
+    const b = num(r.bookings), rev = num(r.revenue);
+    if(b > 0 && rev/b < 0.4*avg) warn.push(`"${r.campaign||r.channel}": ${money(rev/b)} per booking vs ${money(avg)} hotel average — check attribution, cancellations or currency.`);
+  });
+  // 6. Unexplained "other" sources
+  cur.forEach(r=>{
+    if(/other|email|referral|social/i.test(r.channel) && totB > 0 && num(r.bookings)/totB >= 0.05)
+      info.push(`"${r.channel}" brought ${num(r.bookings)} bookings (${Math.round(num(r.bookings)/totB*100)}%) — make sure you can say where they came from (e.g. a hotel email campaign) before they sit in the report.`);
+  });
+  // 7. Spend
+  if(ctx.rows.length && !(T.spend > 0)) info.push("No spend entered — cost per booking and ROAS are unavailable.");
+  // 8. Small bases
+  if(prev.length && cur.some(r=>{ const p = prev.find(x=>String(x.channel).trim().toLowerCase()===String(r.channel).trim().toLowerCase()); return p && num(p.bookings) > 0 && num(p.bookings) < 10 && num(r.bookings) < 10; }))
+    info.push("Some channels have fewer than 10 bookings on both sides — the report shows the absolute change instead of a percentage.");
+  // 9. Partial data / baseline
+  [ctx.primary, ctx.previous].forEach(p=>{ const d = num(p?.gsc?.days); if(d > 0 && d < 28) info.push(`Search Console covers only ${d} days in ${p.period} — compare per-day numbers, not totals.`); });
+  if(!ctx.previous) info.push("First period: no month-over-month comparison. Consider the First-report preset and state when data collection started.");
+  else if(!ctx.head.hasYoy && ctx.isOverall) info.push("No year-over-year reference entered — leave YoY out, or add last year's figures from the hotel's own analytics.");
+  // 10. Reconciliation
+  const rev = cur.reduce((a,r)=>a+num(r.revenue), 0);
+  if(rev > 0 && ov.revenue > 0 && Math.abs(rev-ov.revenue)/ov.revenue > 0.02) info.push(`Channel revenue adds up to ${money(rev)} but the hotel total is ${money(ov.revenue)} — reconcile before sending.`);
+  return {warn, info};
+}
+const ALWAYS_CHECK = [
+  "Price parity: is the official-site rate in Google (GFL / Hotel Ads) at or below the other sellers for the same dates? It can't be read from the data.",
+  "Google Business Profile: complete and consistent with the website (name, logo, photos, rooms).",
+  "Where does each booking-bearing channel in \"Other\" come from? Anything the hotel did itself shouldn't be presented as our result.",
+  "Seasonality: month-to-month moves can be seasonal — say so, or wait for a year-over-year base."
+];
+function renderChecks(){
+  const root = el("checksRoot"); root.innerHTML = "";
+  if(el("audienceSelect").value !== "internal") return;
+  const ctx = buildCtx(); if(!ctx) return;
+  const {warn, info} = computeChecks(ctx);
+  const d = document.createElement("details"); d.className = "checks"; d.open = true;
+  d.innerHTML = `<summary>Report checks (internal only) — ${warn.length} to look at, ${info.length} notes</summary>` +
+    (warn.length ? `<div class="check-sub">Look at before sending</div>` + warn.map(w=>`<div class="check-item check-warn">${esc(w)}</div>`).join("") : "") +
+    (info.length ? `<div class="check-sub">Good to know</div>` + info.map(w=>`<div class="check-item check-info">${esc(w)}</div>`).join("") : "") +
+    `<div class="check-sub">Always check (not in the data)</div>` + ALWAYS_CHECK.map(w=>`<div class="check-item check-info">${esc(w)}</div>`).join("") +
+    `<div class="check-sub">Rule of thumb</div><div class="check-item check-info">What the client sees is chosen by the Audience switch. Spend, campaign split and data notes are hidden for the client by default; turn them on per case.</div>`;
+  root.appendChild(d);
+}
+
+/* ================= Layout editor ================= */
+function typeBadge(b){
+  if(b.type === "investment") return "Spend & ROAS · internal, client opt-in";
+  if(b.type === "datanotes") return "Data notes · client opt-in";
+  return TYPE_LABELS[b.type] || b.type;
+}
+function titleOf(b){ return (b.title && b.title.trim()) || DEFAULT_TITLES[b.type] || TYPE_LABELS[b.type] || b.type; }
+function renderEditor(){
+  const root = el("editorRoot");
+  root.style.display = editMode ? "block" : "none";
+  if(!editMode || !report) return;
+  root.innerHTML = "";
+  const card = document.createElement("div"); card.className = "ed-card";
+  card.innerHTML = `<div class="ed-head"><span class="ed-title">Report layout</span>
+    <select id="presetSel"><option value="">Apply preset…</option><option value="first">First report</option><option value="monthly">Monthly</option></select>
+    <span class="ed-hint">Changes save automatically. A new month starts from last month's layout.</span></div>`;
+  report.blocks.forEach((b, i)=>{
+    const custom = ["text","screenshot","table"].includes(b.type);
+    const row = document.createElement("div"); row.className = "ed-row" + (b.enabled ? "" : " off");
+    row.innerHTML = `<input type="checkbox" ${b.enabled?"checked":""} title="Show in report">
+      <span class="ed-move"><button data-d="-1" title="Move up">↑</button> <button data-d="1" title="Move down">↓</button></span>
+      <input type="text" value="${esc(b.title||"")}" placeholder="${esc(DEFAULT_TITLES[b.type] || TYPE_LABELS[b.type])}" ${b.type==="headline"?"disabled":""}>
+      <span class="ed-type">${esc(typeBadge(b))}</span>
+      ${custom ? `<button class="ed-del" title="Delete block">✕</button>` : "<span></span>"}`;
+    const [chk, tin] = row.querySelectorAll("input");
+    chk.addEventListener("change", ()=>{ b.enabled = chk.checked; changed(true); });
+    tin.addEventListener("input", ()=>{ b.title = tin.value; changed(false); });
+    row.querySelectorAll(".ed-move button").forEach(btn=>btn.addEventListener("click", ()=>{
+      const j = i + parseInt(btn.dataset.d, 10); if(j < 0 || j >= report.blocks.length) return;
+      [report.blocks[i], report.blocks[j]] = [report.blocks[j], report.blocks[i]]; changed(true);
+    }));
+    const del = row.querySelector(".ed-del");
+    if(del) del.addEventListener("click", ()=>{ if(confirm("Delete this block?")){ report.blocks.splice(i,1); changed(true); } });
+    if(custom){
+      const body = document.createElement("div"); body.className = "ed-body";
+      if(b.type === "text"){
+        body.innerHTML = `<textarea placeholder="Write the text. Start lines with • for bullets; a short line without a full stop becomes a bold sub-heading."></textarea>`;
+        const ta = body.querySelector("textarea"); ta.value = b.text || "";
+        ta.addEventListener("input", ()=>{ b.text = ta.value; changed(false); });
+      } else if(b.type === "table"){
+        body.innerHTML = `<textarea placeholder="Paste rows from Excel / Google Sheets (first row = column headers)"></textarea><div class="ed-hint">Tab-separated (paste from a spreadsheet) or comma-separated.</div>`;
+        const ta = body.querySelector("textarea"); ta.value = b.tableText || "";
+        ta.addEventListener("input", ()=>{ b.tableText = ta.value; changed(false); });
+      } else {
+        renderScreenshotEditor(body, b);
+      }
+      row.appendChild(body);
+    }
+    card.appendChild(row);
+  });
+  // add block
+  const add = document.createElement("div"); add.className = "ed-add";
+  const missing = BUILTINS.filter(t=>!report.blocks.some(b=>b.type===t));
+  add.innerHTML = `<select id="addType"><option value="text">+ Text block</option><option value="screenshot">+ Screenshots</option><option value="table">+ Table (paste)</option>${missing.map(t=>`<option value="${t}">Restore: ${esc(DEFAULT_TITLES[t]||TYPE_LABELS[t])}</option>`).join("")}</select><button class="btn secondary" id="addBtn">Add</button>`;
+  card.appendChild(add);
+  // channel labels
+  const chans = [...new Set(((ctxRowsForEditor())||[]).map(r=>(r.channel||"").trim()).filter(Boolean))];
+  if(chans.length){
+    const lab = document.createElement("div"); lab.className = "ed-labels";
+    lab.innerHTML = `<div class="ed-hint" style="margin:0 0 4px;"><b>Client view: campaigns are grouped by channel.</b> Rename a channel to merge campaigns under one label (e.g. "Google Ads" → "Google Search"). The campaign split shows only in Internal view or when ticked above.</div>`;
+    chans.forEach(ch=>{
+      const r = document.createElement("div"); r.className = "lab-row";
+      r.innerHTML = `<span class="k">${esc(ch)}</span><span>shown as</span><input type="text" value="${esc((report.channelLabels||{})[ch] || "")}" placeholder="${esc(ch)}">`;
+      r.querySelector("input").addEventListener("input", e=>{ const v = e.target.value.trim(); if(v) report.channelLabels[ch] = v; else delete report.channelLabels[ch]; changed(false); });
+      lab.appendChild(r);
+    });
+    card.appendChild(lab);
+  }
+  root.appendChild(card);
+  card.querySelector("#presetSel").addEventListener("change", e=>{
+    const v = e.target.value; if(!v) return;
+    if(confirm("Replace the current layout with the preset? Text, screenshots and tables you added will be removed from this report.")){
+      const p = presetLayout(v); report.blocks = p.blocks; report.settings = p.settings; applySettings(p.settings); changed(true);
+    } else e.target.value = "";
+  });
+  card.querySelector("#addBtn").addEventListener("click", ()=>{
+    const t = card.querySelector("#addType").value;
+    const b = t==="text" ? mkBlock("text",{title:"", text:""}) : t==="screenshot" ? mkBlock("screenshot",{title:"Screenshots", images:[]}) : t==="table" ? mkBlock("table",{title:"", tableText:""}) : mkBlock(t);
+    report.blocks.push(b); changed(true);
+  });
+}
+function ctxRowsForEditor(){
+  const p = (currentResults?.periods||[]).find(x=>x.period===primaryPeriodLabel);
+  return p ? p.rows : [];
+}
+function renderScreenshotEditor(body, b){
+  body.innerHTML = `<div class="dropzone" tabindex="0">Paste a screenshot (Ctrl+V), drop an image here, or click to choose files</div><input type="file" accept="image/*" multiple style="display:none"><div class="thumbs"></div>`;
+  const dz = body.querySelector(".dropzone"), fi = body.querySelector("input[type=file]"), th = body.querySelector(".thumbs");
+  const drawThumbs = ()=>{
+    th.innerHTML = "";
+    (b.images||[]).forEach((im, k)=>{
+      const r = document.createElement("div"); r.className = "thumb-row";
+      r.innerHTML = `<img data-imgid="${esc(im.id)}" alt=""><input type="text" class="cap" placeholder="Caption (optional)" value="${esc(im.caption||"")}"><button class="ed-del">✕</button>`;
+      r.querySelector("input").addEventListener("input", e=>{ im.caption = e.target.value; changed(false); });
+      r.querySelector("button").addEventListener("click", ()=>{ b.images.splice(k,1); changed(true); });
+      th.appendChild(r);
+    });
+    hydrateImages(th);
+  };
+  const addFiles = async files => {
+    const imgs = [...files].filter(f=>f.type.startsWith("image/")); if(!imgs.length) return;
+    try{
+      for(const f of imgs){
+        setStatus("Compressing image…"); const url = await compressImage(f);
+        setStatus("Saving image…"); const id = await storeImage(url);
+        b.images.push({id, caption:""});
+      }
+      changed(true);
+    }catch(e){ setStatus("⚠ Image failed: " + e.message); }
+  };
+  dz.addEventListener("click", ()=>{ lastScreenshotBlock = b.id; fi.click(); });
+  dz.addEventListener("focus", ()=>{ lastScreenshotBlock = b.id; });
+  fi.addEventListener("change", ()=>{ addFiles(fi.files); fi.value = ""; });
+  dz.addEventListener("dragover", e=>{ e.preventDefault(); dz.classList.add("over"); });
+  dz.addEventListener("dragleave", ()=>dz.classList.remove("over"));
+  dz.addEventListener("drop", e=>{ e.preventDefault(); dz.classList.remove("over"); addFiles(e.dataTransfer.files); });
+  body._addFiles = addFiles; body.dataset.blockId = b.id;
+  drawThumbs();
+}
+document.addEventListener("paste", e=>{
+  if(!editMode || !report) return;
+  const files = [...(e.clipboardData?.files || [])].filter(f=>f.type.startsWith("image/")); if(!files.length) return;
+  const shots = report.blocks.filter(b=>b.type==="screenshot");
+  const target = shots.find(b=>b.id===lastScreenshotBlock) || (shots.length === 1 ? shots[0] : null);
+  if(!target){ setStatus("Click a screenshot block's drop area first, then paste."); return; }
+  const body = [...document.querySelectorAll(".ed-body")].find(x=>x.dataset.blockId === target.id);
+  if(body && body._addFiles){ e.preventDefault(); body._addFiles(files); }
+});
+
+/* ================= load / controls / import ================= */
+async function loadHotelIndex(){ try{ hotelIndex = JSON.parse(await stGet("dmh-hotel-index")); }catch(e){ hotelIndex = []; } }
+function populateHotelSelect(){
+  const sel = el("hotelSelect"); sel.innerHTML = '<option value="">Select a hotel...</option>';
+  hotelIndex.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(h=>{ const o = document.createElement("option"); o.value = h.id; o.textContent = h.name; sel.appendChild(o); });
+}
+function renderPeriodSelect(){
+  const sel = el("periodSelect"), periods = sortPeriodsChronologically(currentResults?.periods || []);
+  if(!periods.length){ sel.innerHTML = '<option value="">No periods logged</option>'; return; }
+  sel.innerHTML = periods.map(p=>`<option value="${esc(p.period)}" ${p.period===primaryPeriodLabel?"selected":""}>${esc(p.period)}</option>`).join("");
+}
+function renderAll(){ renderEditor(); renderChecks(); renderReport(); }
+async function loadAllForHotel(id){
+  setStatus("Loading...");
+  try{ currentHotel = JSON.parse(await stGet(`dmh-hotel:${id}`)); }catch(e){ currentHotel = null; }
+  try{ currentResults = JSON.parse(await stGet(`dmh-results:${id}`)); }catch(e){ currentResults = {periods:[]}; }
+  try{ currentProgress = JSON.parse(await stGet(`dmh-progress:${id}`)); }catch(e){ currentProgress = {cards:[]}; }
+  const periods = sortPeriodsChronologically(currentResults.periods || []);
+  primaryPeriodLabel = periods.length ? periods[periods.length-1].period : null;
+  await loadReportForPeriod();
+  setStatus("Loaded " + new Date().toLocaleTimeString("en-US"));
+  renderPeriodSelect(); renderAll();
+}
+function syncAudienceUi(){ el("clientShowRow").style.display = el("audienceSelect").value === "client" ? "flex" : "none"; }
+function settingsChanged(){ if(report){ report.settings = readSettings(); scheduleSave(); } renderChecks(); renderReport(); }
+
+el("loadBtn").addEventListener("click", ()=>{ const id = el("hotelSelect").value; if(id) loadAllForHotel(id); });
+el("editBtn").addEventListener("click", ()=>{ editMode = !editMode; el("editBtn").textContent = editMode ? "Done editing" : "Edit layout"; renderEditor(); });
+el("printBtn").addEventListener("click", ()=>{
+  if(el("audienceSelect").value === "internal" && !confirm("You're in Internal view — the PDF will include internal data and a banner. Print anyway?")) return;
+  window.print();
+});
+el("audienceSelect").addEventListener("change", ()=>{ syncAudienceUi(); renderChecks(); renderReport(); });
+["basisSelect","showComparisonsToggle","activityScopeSelect","cs_spend","cs_brand","cs_diag"].forEach(id=>el(id).addEventListener("change", settingsChanged));
+el("periodSelect").addEventListener("change", async ()=>{
+  if(saveTimer) await saveReport();
+  primaryPeriodLabel = el("periodSelect").value; await loadReportForPeriod(); renderAll();
+});
+
+async function importKV(dict){
+  const keys = Object.keys(dict); let n = 0;
+  for(const k of keys){
+    let v = dict[k];
+    if(k === "dmh-hotel-index"){
+      let cur = []; try{ cur = JSON.parse(await stGet(k)); }catch(e){}
+      JSON.parse(v).forEach(h=>{ const i = cur.findIndex(c=>c.id===h.id); if(i>=0) cur[i] = h; else cur.push(h); });
+      v = JSON.stringify(cur);
+    }
+    await stSet(k, v); setStatus(`Importing ${++n}/${keys.length}…`);
+  }
+  await loadHotelIndex(); populateHotelSelect(); setStatus(`Imported ${keys.length} records — pick the hotel and click Load data.`);
+}
+el("importBtn").addEventListener("click", ()=>el("importFile").click());
+el("importFile").addEventListener("change", async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  try{ await importKV(JSON.parse(await f.text())); }catch(err){ setStatus("⚠ Import failed: " + err.message); }
+  e.target.value = "";
+});
+
+(async function init(){
+  syncAudienceUi();
+  setStatus("Loading hotel list...");
+  try{
+    await loadHotelIndex(); populateHotelSelect(); setStatus("");
+    if(window.__AUTOLOAD_HOTEL){ el("hotelSelect").value = window.__AUTOLOAD_HOTEL; await loadAllForHotel(window.__AUTOLOAD_HOTEL); }
+  }catch(e){ setStatus("⚠ " + e.message); }
+})();
+
+</script>
+</body>
+</html>
