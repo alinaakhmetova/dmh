@@ -120,7 +120,7 @@
     .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
-                  /* ---- Builder UI ---- */
+                          /* ---- Builder UI ---- */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
   .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
   .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
@@ -197,6 +197,8 @@
     .ss-fig{break-inside:avoid;page-break-inside:avoid;}
     .season-note{orphans:3;widows:3;}
   }
+
+  .block-caption{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--brand);margin:0 0 10px;}
 </style>
 </head>
 <body>
@@ -217,8 +219,16 @@
     </div>
     <div class="row" style="margin-top:12px;">
       <div class="field">
-        <label>Report period</label>
+        <label>Report period (end)</label>
         <select id="periodSelect"></select>
+      </div>
+      <div class="field">
+        <label>Range from (optional)</label>
+        <select id="periodFromSelect"><option value="">— single month —</option></select>
+      </div>
+      <div class="field">
+        <label>Report language</label>
+        <select id="langSelect"><option value="en">English</option><option value="ru">Русский</option></select>
       </div>
       <div class="field">
         <label>Audience</label>
@@ -236,7 +246,10 @@
       </div>
       <div class="field">
         <label>Comparisons</label>
-        <div class="toggle-row"><input type="checkbox" id="showComparisonsToggle" checked> <label for="showComparisonsToggle" style="text-transform:none;font-weight:400;">Show MoM &amp; YoY</label></div>
+        <div class="toggle-row" style="gap:14px;flex-wrap:wrap;">
+          <label class="chk"><input type="checkbox" id="compPrevToggle" checked> vs previous period</label>
+          <label class="chk"><input type="checkbox" id="compYoyToggle" checked> vs last year</label>
+        </div>
       </div>
       <div class="field">
         <label>Activities</label>
@@ -289,9 +302,88 @@ let SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxKHZNNI6QlVeyv
 const el = id => document.getElementById(id);
 const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
-const fmt = n => (typeof n === "number" && isFinite(n)) ? n.toLocaleString("en-US", {maximumFractionDigits: 1}) : "—";
+let LANG = "en";
+const fmt = n => (typeof n === "number" && isFinite(n)) ? n.toLocaleString(LANG === "ru" ? "ru-RU" : "en-US", {maximumFractionDigits: 1}) : "—";
 const money = n => "$" + fmt(Math.round(n));
 const newId = () => "b" + Math.random().toString(36).slice(2, 8);
+
+/* ================= report language (EN / RU) =================
+   Only the client-facing report is translated; the editor and the internal checks stay in English. */
+const DICT = {
+  en: {
+    revenue:"Revenue", bookings:"Bookings", websiteSessions:"Website sessions", toForm:"To booking form", traffic:"Traffic", sessions:"Sessions",
+    vsMonth:"vs last month", vsPrev:"vs previous period", vsYear:"vs last year", newTag:"new",
+    noPrior:"No prior period to compare yet — comparisons will appear once a second period is logged.",
+    emptyOverall:"Overall hotel results haven't been filled in for this period yet — add them in the main workspace, or switch the basis to Tracked marketing.",
+    emptyTracked:"No tracked campaigns logged for this period yet.",
+    adsRevenue:"Revenue from ads", adsBookings:"Bookings from ads", adsVisits:"Visits from ads",
+    ofRevenue:"{p}% of all revenue", ofBookings:"{p}% of all bookings", ofSessions:"{p}% of all website sessions",
+    channel:"Channel", campaign:"Campaign", cr:"CR", total:"Total", otherChannels:"Other channels",
+    crNote:"CR is not shown for rows with fewer than {n} sessions.",
+    spend:"Spend", costPerBooking:"Cost / booking", roas:"ROAS", totalTracked:"Total tracked", noCampaigns:"No tracked campaigns logged for this period.",
+    budgetSpent:"Budget spent", trackedBookings:"Tracked bookings", costPerBookingKpi:"Cost per booking", trackedRevenue:"Tracked revenue",
+    noSpend:"No spend entered for this period — cost per booking and ROAS can't be calculated.",
+    metric:"Metric", change:"Change", clicks:"Clicks", clicksPerDay:"Clicks per day", impressions:"Impressions", impressionsPerDay:"Impressions per day",
+    ctr:"CTR", avgPos:"Average position", positionWord:"{n} position", positionWords:"{n} positions", pp:"pp",
+    posNote:"Average position: a lower number is better.",
+    dailyNote:"{prev} covers {pd} days of data vs {cd} in {cur}, so per-day figures carry the comparison.",
+    signal:"Signal", thisPeriod:"This period",
+    result:"Result", plan:"Plan", completed:"completed", ongoing:"ongoing", targeting:"targeting",
+    noActivities:"No activities logged for this period yet.", noPlanned:"No planned activities logged yet.",
+    dnUnassigned:"\"Unassigned\" traffic ({p}% of sessions) has no channel attribution in GA4, so it may include organic and paid visits.",
+    dnGsc:"Search Console data covers part of the month for at least one period, so per-day figures are used for comparison.",
+    dnYoy:"No year-over-year comparison is available yet.",
+    t_channels:"Traffic by channel", t_ads:"From advertising", t_campaigns:"Campaign performance", t_investment:"Investment & return",
+    t_gsc:"Organic search (Google Search Console)", t_visibility:"Visibility", t_activities:"Activities", t_planned:"Activities planned",
+    t_materials:"Supporting materials", t_notes:"Notes", t_datanotes:"Data notes", t_screenshot:"Screenshots", t_table:"Table",
+    overallResults:"Overall results", trackedResults:"Tracked marketing results",
+  },
+  ru: {
+    revenue:"Выручка", bookings:"Брони", websiteSessions:"Сессии сайта", toForm:"Входы в форму бронирования", traffic:"Трафик", sessions:"Сессии",
+    vsMonth:"к прошлому месяцу", vsPrev:"к предыдущему периоду", vsYear:"к прошлому году", newTag:"новый",
+    noPrior:"Пока не с чем сравнивать — сравнения появятся, когда будет внесён второй период.",
+    emptyOverall:"Общие данные по отелю за этот период ещё не внесены.",
+    emptyTracked:"За этот период нет данных по рекламным кампаниям.",
+    adsRevenue:"Выручка от рекламы", adsBookings:"Брони от рекламы", adsVisits:"Визиты из рекламы",
+    ofRevenue:"{p}% всей выручки", ofBookings:"{p}% всех броней", ofSessions:"{p}% всех сессий сайта",
+    channel:"Канал", campaign:"Кампания", cr:"Конверсия", total:"Всего", otherChannels:"Прочие каналы",
+    crNote:"Конверсия не показана для строк с числом сессий меньше {n}.",
+    spend:"Расход", costPerBooking:"Стоимость брони", roas:"ROAS", totalTracked:"Итого по рекламе", noCampaigns:"За этот период нет рекламных кампаний.",
+    budgetSpent:"Расход бюджета", trackedBookings:"Брони (реклама)", costPerBookingKpi:"Стоимость брони", trackedRevenue:"Выручка (реклама)",
+    noSpend:"Расход за период не внесён — стоимость брони и ROAS посчитать нельзя.",
+    metric:"Показатель", change:"Изменение", clicks:"Клики", clicksPerDay:"Клики в день", impressions:"Показы", impressionsPerDay:"Показы в день",
+    ctr:"CTR", avgPos:"Средняя позиция", positionWord:"{n}", positionWords:"{n}", pp:"п.п.",
+    posNote:"Средняя позиция: чем меньше число, тем лучше.",
+    dailyNote:"За {prev} данные собраны за {pd} дн., за {cur} — за {cd} дн., поэтому сравнение идёт по показателям в день.",
+    signal:"Показатель", thisPeriod:"За период",
+    result:"Результат", plan:"План", completed:"завершено", ongoing:"в процессе", targeting:"планируется на",
+    noActivities:"За этот период активностей пока нет.", noPlanned:"Запланированных активностей пока нет.",
+    dnUnassigned:"Трафик «Unassigned» ({p}% сессий) не имеет атрибуции по каналу в GA4 и может включать органические и платные визиты.",
+    dnGsc:"Данные Search Console за один из периодов собраны не за весь месяц, поэтому сравнение идёт по показателям в день.",
+    dnYoy:"Сравнение с прошлым годом пока недоступно.",
+    t_channels:"Трафик по каналам", t_ads:"Из них реклама", t_campaigns:"Результаты кампаний", t_investment:"Расходы и отдача",
+    t_gsc:"Органический поиск (Google Search Console)", t_visibility:"Видимость", t_activities:"Что сделано", t_planned:"Следующие шаги",
+    t_materials:"Материалы", t_notes:"Комментарии", t_datanotes:"Примечания к данным", t_screenshot:"Скриншоты", t_table:"Таблица",
+    overallResults:"Общие результаты", trackedResults:"Результаты по рекламе (tracked)",
+  }
+};
+const T = (k, v) => { let s = (DICT[LANG] && DICT[LANG][k]) || DICT.en[k] || k; if(v) for(const x in v) s = s.split("{" + x + "}").join(v[x]); return s; };
+const MONTHS_RU = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+// Period labels stay English in the data ("September 2026"); the Russian report shows them in Russian.
+const MONTHS_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+function periodDisplay(label){
+  const one = l => { const t = parsePeriodDate(l); if(t === null) return null; const d = new Date(t); return {m: (LANG === "ru" ? MONTHS_RU : MONTHS_EN)[d.getMonth()], y: d.getFullYear()}; };
+  if(String(label).includes(" – ")){
+    const [a, b] = String(label).split(" – "), pa = one(a), pb = one(b);
+    if(!pa || !pb) return label;
+    const m2 = LANG === "ru" ? pb.m.toLowerCase() : pb.m;
+    return pa.y === pb.y ? `${pa.m} – ${m2} ${pb.y}` : `${pa.m} ${pa.y} – ${m2} ${pb.y}`;
+  }
+  if(LANG !== "ru") return label;
+  const p = one(label); return p ? p.m + " " + p.y : label;
+}
+// Russian plural for "позиция": 1 позиция, 2–4 позиции, 5+ позиций
+const ruPos = n => { const a = Math.abs(n), m10 = a % 10, m100 = a % 100; const w = (m10 === 1 && m100 !== 11) ? "позиция" : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? "позиции" : "позиций"; return fmt(a) + " " + w; };
 
 /* ================= storage ================= */
 function withTimeout(promise, ms, label){
@@ -390,7 +482,7 @@ function imgEl(link, alt){
 let hotelIndex = [], currentHotel = null, currentResults = null, currentProgress = null;
 let primaryPeriodLabel = null, report = null, editMode = false, saveTimer = null, lastTarget = null;
 const setStatus = m => { el("statusText").textContent = m; };
-let loadedAt = "";
+let loadedAt = "", rangeFromWanted = "";
 function setSave(state, text){ const b = el("saveBadge"); b.className = "save-badge " + state; b.textContent = text; }
 
 function parsePeriodDate(label){
@@ -450,21 +542,25 @@ function normalizeReport(r){
     r.v = 2;
   }
   if(!r.channelLabels) r.channelLabels = {};
-  r.settings = Object.assign({basis:"overall", comparisons:true, activityScope:"period"}, r.settings||{});
+  if(r.subtitle === undefined) r.subtitle = "";
+  r.settings = Object.assign({rangeFrom:"", lang:"en", basis:"overall", comparisons:true, activityScope:"period"}, r.settings||{});
+  if(r.settings.compPrev === undefined) r.settings.compPrev = r.settings.comparisons !== false;
+  if(r.settings.compYoy === undefined) r.settings.compYoy = r.settings.comparisons !== false;
   r.settings.clientShow = Object.assign({spend:false, brand:false, diag:false}, r.settings.clientShow||{});
 }
 // New month: keep the structure (blocks, titles, labels, settings) but not last month's text, screenshots or tables.
 function structureFrom(base){
   const r = JSON.parse(JSON.stringify(base));
+  if(r.settings) r.settings.rangeFrom = "";   // a new month starts as a single month
   r.blocks.forEach(b=>{ b.id = newId(); if(b.type==="text") b.text=""; if(b.type==="screenshot") b.images=[]; if(b.type==="table") b.tableText=""; });
   return r;
 }
 function readSettings(){
-  return {basis:el("basisSelect").value, comparisons:el("showComparisonsToggle").checked, activityScope:el("activityScopeSelect").value,
+  return {rangeFrom:el("periodFromSelect").value, lang:el("langSelect").value, basis:el("basisSelect").value, comparisons:el("compPrevToggle").checked || el("compYoyToggle").checked, compPrev:el("compPrevToggle").checked, compYoy:el("compYoyToggle").checked, activityScope:el("activityScopeSelect").value,
           clientShow:{spend:el("cs_spend").checked, brand:el("cs_brand").checked, diag:el("cs_diag").checked}};
 }
 function applySettings(s){
-  el("basisSelect").value = s.basis; el("showComparisonsToggle").checked = !!s.comparisons; el("activityScopeSelect").value = s.activityScope;
+  rangeFromWanted = s.rangeFrom || ""; el("langSelect").value = s.lang || "en"; el("basisSelect").value = s.basis; el("compPrevToggle").checked = s.compPrev !== undefined ? !!s.compPrev : !!s.comparisons; el("compYoyToggle").checked = s.compYoy !== undefined ? !!s.compYoy : !!s.comparisons; el("activityScopeSelect").value = s.activityScope;
   el("cs_spend").checked = !!s.clientShow.spend; el("cs_brand").checked = !!s.clientShow.brand; el("cs_diag").checked = !!s.clientShow.diag;
 }
 const reportKey = (hid, period) => `dmh-report:${hid}:${period}`;
@@ -505,6 +601,7 @@ function deltaBadge(curr, prev, goodWhenUp=true){
   if(d === null) return "";
   if(Math.round(d) === 0) return `<span class="delta-badge delta-flat">0%</span>`;
   const up = d >= 0, positive = goodWhenUp ? up : !up;
+  if(d >= 500) return `<span class="delta-badge ${positive?"delta-up":"delta-down"}">× ${fmt(Math.round(curr/prev*10)/10)}</span>`;
   return `<span class="delta-badge ${positive?"delta-up":"delta-down"}">${up?"▲":"▼"} ${Math.abs(d).toFixed(0)}%</span>`;
 }
 // Percent changes on tiny bases mislead (7 → 2 is "-71%"), so counts under 10 on both sides show the absolute change.
@@ -519,13 +616,77 @@ const chRowsOf = p => (p && Array.isArray(p.channels)) ? p.channels.filter(r=>r.
 const sumField = (rows, rx, f) => rows.filter(r=>rx.test(r.channel)).reduce((a,r)=>a+num(r[f]), 0);
 const MIN_CR_SESSIONS = 100;
 
+/* ---- ranges: "from … to" merges several months into one virtual period ---- */
+const monthIndex = label => { const t = parsePeriodDate(label); if(t === null) return null; const d = new Date(t); return d.getFullYear()*12 + d.getMonth(); };
+const hasVal = v => v !== undefined && v !== null && String(v).trim() !== "" && !isNaN(parseFloat(v));
+// Sums months into one period. A total (bookings, revenue…) is only kept when EVERY month has it —
+// a half-filled range would otherwise compare a partial sum with a full one.
+function mergePeriods(ps, label){
+  if(ps.length === 1) return Object.assign({}, ps[0], {memberLabels:[ps[0].period]});
+  const out = {period:label, memberLabels:ps.map(p=>p.period), rows:[], channels:[], gsc:null,
+    visibilityMetrics:(ps[ps.length-1].visibilityMetrics||[]), seasonalNote:ps.map(p=>p.seasonalNote).filter(Boolean).join("\n")};
+  ["totalWebsiteTraffic","totalBeTraffic","totalBookings","totalRevenue","yoyRevenue","yoyTraffic","yoyBookings"].forEach(k=>{
+    out[k] = ps.every(p=>hasVal(p[k])) ? ps.reduce((a,p)=>a+num(p[k]), 0) : "";
+  });
+  const rm = {};
+  ps.forEach(p=>(p.rows||[]).forEach(r=>{
+    const k = String(r.campaign||"").trim().toLowerCase() + "|" + String(r.channel||"").trim().toLowerCase();
+    const o = rm[k] || (rm[k] = {campaign:r.campaign, channel:r.channel, spend:0, traffic:0, bookings:0, revenue:0});
+    o.spend += num(r.spend); o.traffic += num(r.traffic); o.bookings += num(r.bookings); o.revenue += num(r.revenue);
+  }));
+  out.rows = Object.values(rm);
+  const cm = {};
+  ps.forEach(p=>chRowsOf(p).forEach(r=>{
+    const k = String(r.channel).trim().toLowerCase();
+    const o = cm[k] || (cm[k] = {channel:r.channel, sessions:0, form:0, bookings:0, revenue:0, _f:false});
+    o.sessions += num(r.sessions); o.form += num(r.form); o.bookings += num(r.bookings); o.revenue += num(r.revenue); if(hasVal(r.form)) o._f = true;
+  }));
+  out.channels = Object.values(cm).map(o=>{ const f = o._f ? o.form : ""; delete o._f; o.form = f; return o; });
+  const gs = ps.map(p=>p.gsc).filter(g=>g && (hasVal(g.clicks) || hasVal(g.impressions)));
+  if(gs.length){
+    const clicks = gs.reduce((a,g)=>a+num(g.clicks), 0), imps = gs.reduce((a,g)=>a+num(g.impressions), 0);
+    const wpos = gs.filter(g=>hasVal(g.position)); const wsum = wpos.reduce((a,g)=>a+(num(g.impressions)||1), 0);
+    out.gsc = {clicks, impressions:imps, days:gs.reduce((a,g)=>a+num(g.days), 0),
+      ctr: imps > 0 ? Math.round(clicks/imps*1000)/10 : "",
+      position: wpos.length ? Math.round(wpos.reduce((a,g)=>a+num(g.position)*(num(g.impressions)||1), 0)/wsum*10)/10 : ""};
+  }
+  return out;
+}
+function cardPeriodOk(c, ctx){
+  const members = ctx.memberLabels || [ctx.periodLabel];
+  if(ctx.st.activityScope !== "all") return members.includes(c.period);
+  if(!c.period) return true;
+  const pt = parsePeriodDate(ctx.endLabel || ctx.periodLabel), t = parsePeriodDate(c.period);
+  return (t === null || pt === null) ? members.includes(c.period) : t <= pt;
+}
+
 function buildCtx(){
   if(!currentResults || !report) return null;
   const allPeriods = sortPeriodsChronologically(currentResults.periods||[]);
-  const primary = allPeriods.find(p=>p.period===primaryPeriodLabel) || null;
-  if(!primary) return null;
-  const idx = allPeriods.indexOf(primary);
-  const previous = idx > 0 ? allPeriods[idx-1] : null;
+  const endP = allPeriods.find(p=>p.period===primaryPeriodLabel) || null;
+  if(!endP) return null;
+  const endIdx = allPeriods.indexOf(endP);
+  // range start (optional); only periods up to the end are valid
+  let startIdx = endIdx;
+  const fromLabel = el("periodFromSelect").value;
+  if(fromLabel){ const fi = allPeriods.findIndex(p=>p.period===fromLabel); if(fi >= 0 && fi <= endIdx) startIdx = fi; }
+  const members = allPeriods.slice(startIdx, endIdx + 1);
+  const isRange = members.length > 1;
+  const rangeLabel = isRange ? `${members[0].period} – ${members[members.length-1].period}` : endP.period;
+  const primary = isRange ? mergePeriods(members, rangeLabel) : endP;
+  const idx = endIdx;
+  // Comparison = the same number of months right before the start. Calendar months when the labels are dates
+  // (so Jun 2026 is never compared with Sep 2025); otherwise the previous periods in the list.
+  const fm = monthIndex(members[0].period), lm = monthIndex(members[members.length-1].period);
+  let prevMembers = null;
+  if(fm !== null && lm !== null){
+    const span = lm - fm + 1;
+    const found = Array.from({length:span}, (_, i)=>allPeriods.find(p=>monthIndex(p.period) === fm - span + i));
+    prevMembers = found.every(Boolean) ? found : null;
+  } else if(startIdx - members.length >= 0){
+    prevMembers = allPeriods.slice(startIdx - members.length, startIdx);
+  }
+  const previous = prevMembers ? mergePeriods(prevMembers, prevMembers.length > 1 ? `${prevMembers[0].period} – ${prevMembers[prevMembers.length-1].period}` : prevMembers[0].period) : null;
   const sumRows = rows => (rows||[]).reduce((a,r)=>({spend:a.spend+num(r.spend), traffic:a.traffic+num(r.traffic), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {spend:0,traffic:0,bookings:0,revenue:0});
   const ovOf = p => p ? {websiteTraffic:num(p.totalWebsiteTraffic), beTraffic:num(p.totalBeTraffic), bookings:num(p.totalBookings), revenue:num(p.totalRevenue)} : null;
   const anyOv = o => !!o && (o.websiteTraffic>0 || o.beTraffic>0 || o.bookings>0 || o.revenue>0);
@@ -533,7 +694,8 @@ function buildCtx(){
   const isInternal = el("audienceSelect").value === "internal";
   const ctx = {
     allPeriods, primary, previous, idx, periodLabel:primary.period, rows:primary.rows||[], st, isInternal,
-    showComparisons:st.comparisons, isOverall:st.basis==="overall",
+    isRange, members, memberLabels:members.map(p=>p.period), endLabel:endP.period,
+    showComparisons:st.compPrev, showYoy:st.compYoy, isOverall:st.basis==="overall",
     showSpend:isInternal || st.clientShow.spend, showBrand:isInternal || st.clientShow.brand, showDiag:isInternal || st.clientShow.diag,
     totals:sumRows(primary.rows), prevTotals:previous ? sumRows(previous.rows) : null,
     ov:ovOf(primary), prevOv:ovOf(previous),
@@ -571,7 +733,7 @@ function renderNote(txt){
 }
 function section(b, fallbackTitle){
   const s = document.createElement("div"); s.className = "section";
-  const title = (b.title && b.title.trim()) || fallbackTitle || DEFAULT_TITLES[b.type] || "";
+  const title = (b.title && b.title.trim()) || fallbackTitle || (DEFAULT_TITLES[b.type] ? T("t_" + b.type) : "");
   if(title) s.innerHTML = `<div class="section-title">${esc(title)}</div>`;
   return s;
 }
@@ -581,37 +743,38 @@ R.headline = (ctx, b) => {
   const wrap = document.createElement("div"); wrap.className = "block-headline";
   const h = ctx.head, P = ctx.primary;
   if(!h.hasData){
-    wrap.innerHTML = `<div class="empty-note">${ctx.isOverall ? "Overall hotel results haven't been filled in for this period yet — add them in the main workspace, or switch the basis to Tracked marketing." : "No tracked campaigns logged for this period yet."}</div>`;
+    wrap.innerHTML = `<div class="empty-note">${ctx.isOverall ? T("emptyOverall") : T("emptyTracked")}</div>`;
     return wrap;
   }
   const tiles = [
-    {label:"Revenue", cur:h.revenue, prev:h.prevRevenue, yoy:h.yoyRevenue, money:true},
-    {label:"Bookings", cur:h.bookings, prev:h.prevBookings, yoy:h.yoyBookings, small:true},
+    {label:T("revenue"), cur:h.revenue, prev:h.prevRevenue, yoy:h.yoyRevenue, money:true},
+    {label:T("bookings"), cur:h.bookings, prev:h.prevBookings, yoy:h.yoyBookings, small:true},
   ];
   if(ctx.isOverall){
     // "Total" and "to the booking form" are two different traffic numbers, so they get two tiles.
     const hasSite = ctx.ov.websiteTraffic > 0, hasForm = ctx.ov.beTraffic > 0;
-    if(hasSite) tiles.push({label:"Website sessions", cur:ctx.ov.websiteTraffic, prev:ctx.prevOv?.websiteTraffic, yoy:P.yoyTraffic});
-    if(hasForm) tiles.push({label:"To booking form", cur:ctx.ov.beTraffic, prev:ctx.prevOv?.beTraffic, yoy:hasSite ? undefined : P.yoyTraffic});
-  } else tiles.push({label:"Traffic", cur:h.traffic, prev:h.prevTraffic});
+    if(hasSite) tiles.push({label:T("websiteSessions"), cur:ctx.ov.websiteTraffic, prev:ctx.prevOv?.websiteTraffic, yoy:P.yoyTraffic});
+    if(hasForm) tiles.push({label:T("toForm"), cur:ctx.ov.beTraffic, prev:ctx.prevOv?.beTraffic, yoy:hasSite ? undefined : P.yoyTraffic});
+  } else tiles.push({label:T("traffic"), cur:h.traffic, prev:h.prevTraffic});
   const lines = t => {
     let out = "";
     if(ctx.showComparisons && h.hasPrev && t.cur && t.prev !== undefined){
       const badge = t.small ? countBadge(t.cur, t.prev) : deltaBadge(t.cur, t.prev);
-      if(badge) out += `<div class="glance-yoy">vs last month: ${badge}</div>`;
+      if(badge) out += `<div class="glance-yoy">${T(ctx.isRange ? "vsPrev" : "vsMonth")}: ${badge}</div>`;
     }
-    if(ctx.showComparisons && h.hasYoy && t.cur && t.yoy !== undefined){
+    if(ctx.showYoy && h.hasYoy && t.cur && t.yoy !== undefined){
       const p = parseFloat(t.yoy), badge = isNaN(p) ? "" : deltaBadge(t.cur, p);
-      if(badge) out += `<div class="glance-yoy">vs last year: ${badge}</div>`;
+      if(badge) out += `<div class="glance-yoy">${T("vsYear")}: ${badge}</div>`;
     }
     return out;
   };
+  if(b.title && b.title.trim()){ const cap = document.createElement("div"); cap.className = "block-caption"; cap.textContent = b.title; wrap.appendChild(cap); }
   const g = document.createElement("div"); g.className = "glance-strip";
   g.innerHTML = tiles.map(t=>`<div class="glance-item"><div class="glance-label">${t.label}</div><div class="glance-val">${t.money ? money(t.cur) : fmt(t.cur)}</div>${lines(t)}</div>`).join("");
   wrap.appendChild(g);
-  if(ctx.showComparisons && !h.hasPrev && !h.hasYoy){
+  if((ctx.showComparisons || ctx.showYoy) && !(ctx.showComparisons && h.hasPrev) && !(ctx.showYoy && h.hasYoy)){
     const n = document.createElement("div"); n.className = "empty-note"; n.style.cssText = "text-align:center;margin:10px 0 4px;";
-    n.textContent = "No prior period to compare yet — comparisons will appear once a second period is logged.";
+    n.textContent = T("noPrior");
     wrap.appendChild(n);
   }
   wrap.style.marginBottom = "30px";
@@ -621,14 +784,14 @@ R.headline = (ctx, b) => {
 // The advertising slice of the headline: what the tracked campaigns brought, and how much of the hotel's total that is.
 R.ads = (ctx, b) => {
   if(!ctx.isOverall || !ctx.rows.length) return null;
-  const T = ctx.totals, O = ctx.ov;
-  const of = (a, tot, what) => tot > 0 ? `<div class="glance-yoy">${Math.round(a/tot*100)}% of all ${what}</div>` : "";
+  const Tt = ctx.totals, O = ctx.ov;
+  const of = (a, tot, key) => tot > 0 ? `<div class="glance-yoy">${T(key, {p:Math.round(a/tot*100)})}</div>` : "";
   const sec = section(b);
   const g = document.createElement("div"); g.className = "glance-strip";
   g.innerHTML = `
-    <div class="glance-item"><div class="glance-label">Revenue from ads</div><div class="glance-val">${money(T.revenue)}</div>${of(T.revenue, O.revenue, "revenue")}</div>
-    <div class="glance-item"><div class="glance-label">Bookings from ads</div><div class="glance-val">${fmt(T.bookings)}</div>${of(T.bookings, O.bookings, "bookings")}</div>
-    <div class="glance-item"><div class="glance-label">Visits from ads</div><div class="glance-val">${fmt(T.traffic)}</div>${of(T.traffic, O.websiteTraffic, "website sessions")}</div>`;
+    <div class="glance-item"><div class="glance-label">${T("adsRevenue")}</div><div class="glance-val">${money(Tt.revenue)}</div>${of(Tt.revenue, O.revenue, "ofRevenue")}</div>
+    <div class="glance-item"><div class="glance-label">${T("adsBookings")}</div><div class="glance-val">${fmt(Tt.bookings)}</div>${of(Tt.bookings, O.bookings, "ofBookings")}</div>
+    <div class="glance-item"><div class="glance-label">${T("adsVisits")}</div><div class="glance-val">${fmt(Tt.traffic)}</div>${of(Tt.traffic, O.websiteTraffic, "ofSessions")}</div>`;
   sec.appendChild(g);
   return sec;
 };
@@ -642,7 +805,7 @@ R.channels = (ctx, b) => {
   const N = parseInt(b.topN, 10);
   if(N > 0 && rows.length > N + 1){
     const keep = new Set(rows.slice().sort((a,c)=>num(c.sessions)-num(a.sessions)).slice(0, N).map(r=>key(r.channel)));
-    const merge = rs => rs.reduce((a,r)=>({channel:"Other channels", sessions:a.sessions+num(r.sessions), form:a.form+num(r.form), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {channel:"Other channels", sessions:0, form:0, bookings:0, revenue:0});
+    const merge = rs => rs.reduce((a,r)=>({channel:T("otherChannels"), sessions:a.sessions+num(r.sessions), form:a.form+num(r.form), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {channel:T("otherChannels"), sessions:0, form:0, bookings:0, revenue:0});
     const group = rs => { const kept = rs.filter(r=>keep.has(key(r.channel))), rest = rs.filter(r=>!keep.has(key(r.channel))); return rest.length ? kept.concat([merge(rest)]) : kept; };
     rows = group(rows); prevRows = group(prevRows);
   }
@@ -654,7 +817,7 @@ R.channels = (ctx, b) => {
   const cell = (curr, prev, kind) => {
     const shown = kind === "money" ? money(curr) : fmt(curr);
     if(!hasPrev || prev === undefined) return shown;
-    if(prev === 0 && curr > 0) return `${shown}<span class="delta-badge delta-new">new</span>`;
+    if(prev === 0 && curr > 0) return `${shown}<span class="delta-badge delta-new">${T("newTag")}</span>`;
     return shown + (kind === "count" ? countBadge(curr, prev) : deltaBadge(curr, prev));
   };
   let crHidden = false;
@@ -665,20 +828,20 @@ R.channels = (ctx, b) => {
   const pv = (pr, f) => pr ? num(pr[f]) : (hasPrev ? 0 : undefined);
   const formCell = (r, pr) => hasForm ? `<td>${cell(num(r.form), pv(pr,"form"), "n")}</td>` : "";
   const t = document.createElement("table"); t.className = "rtable";
-  t.innerHTML = `<tr><th>Channel</th><th>Sessions</th>${hasForm?"<th>To booking form</th>":""}<th>Bookings</th><th>Revenue</th><th>CR</th></tr>` +
+  t.innerHTML = `<tr><th>${T("channel")}</th><th>${T("sessions")}</th>${hasForm?`<th>${T("toForm")}</th>`:""}<th>${T("bookings")}</th><th>${T("revenue")}</th><th>${T("cr")}</th></tr>` +
     rows.map(r=>{
       const pr = prevCh[key(r.channel)];
       return `<tr${/paid/i.test(r.channel)?' class="row-hl"':""}><td>${esc(r.channel)}</td><td>${cell(num(r.sessions), pv(pr,"sessions"), "n")}</td>${formCell(r, pr)}<td>${cell(num(r.bookings), pv(pr,"bookings"), "count")}</td><td>${cell(num(r.revenue), pv(pr,"revenue"), "money")}</td><td>${cr(num(r.bookings), num(r.sessions))}</td></tr>`;
     }).join("") +
-    `<tr class="row-total"><td>Total</td><td>${cell(tot.sessions, prevTot&&hasPrev?prevTot.sessions:undefined, "n")}</td>${hasForm?`<td>${cell(tot.form, prevTot&&hasPrev?prevTot.form:undefined, "n")}</td>`:""}<td>${cell(tot.bookings, prevTot&&hasPrev?prevTot.bookings:undefined, "count")}</td><td>${cell(tot.revenue, prevTot&&hasPrev?prevTot.revenue:undefined, "money")}</td><td>${cr(tot.bookings, tot.sessions)}</td></tr>`;
+    `<tr class="row-total"><td>${T("total")}</td><td>${cell(tot.sessions, prevTot&&hasPrev?prevTot.sessions:undefined, "n")}</td>${hasForm?`<td>${cell(tot.form, prevTot&&hasPrev?prevTot.form:undefined, "n")}</td>`:""}<td>${cell(tot.bookings, prevTot&&hasPrev?prevTot.bookings:undefined, "count")}</td><td>${cell(tot.revenue, prevTot&&hasPrev?prevTot.revenue:undefined, "money")}</td><td>${cr(tot.bookings, tot.sessions)}</td></tr>`;
   sec.appendChild(t);
-  if(crHidden){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = `CR is not shown for rows with fewer than ${MIN_CR_SESSIONS} sessions.`; sec.appendChild(n); }
+  if(crHidden){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = T("crNote", {n:MIN_CR_SESSIONS}); sec.appendChild(n); }
   return sec;
 };
 
 R.campaigns = (ctx, b) => {
   const sec = section(b);
-  if(!ctx.rows.length){ sec.innerHTML += `<div class="empty-note">No tracked campaigns logged for this period.</div>`; return sec; }
+  if(!ctx.rows.length){ sec.innerHTML += `<div class="empty-note">${T("noCampaigns")}</div>`; return sec; }
   const cols = ctx.showSpend && ctx.totals.spend > 0;
   const labels = report.channelLabels || {};
   const by = {};
@@ -693,34 +856,34 @@ R.campaigns = (ctx, b) => {
   let crHidden = false;
   const cr = (bk, t) => { if(t < MIN_CR_SESSIONS){ crHidden = crHidden || t > 0; return "—"; } return (bk/t*100).toFixed(1) + "%"; };
   const cpb = (s, bk) => bk > 0 ? money(s/bk) : "—";
-  const T = ctx.totals;
+  const Tt = ctx.totals;
   const t = document.createElement("table"); t.className = "rtable";
-  t.innerHTML = `<tr><th>${ctx.showBrand?"Campaign":"Channel"}</th><th>Traffic</th><th>Bookings</th><th>CR</th><th>Revenue</th>${cols?"<th>Spend</th><th>Cost / booking</th><th>ROAS</th>":""}</tr>` +
+  t.innerHTML = `<tr><th>${ctx.showBrand?T("campaign"):T("channel")}</th><th>${T("traffic")}</th><th>${T("bookings")}</th><th>${T("cr")}</th><th>${T("revenue")}</th>${cols?`<th>${T("spend")}</th><th>${T("costPerBooking")}</th><th>${T("roas")}</th>`:""}</tr>` +
     Object.keys(by).sort((a,c)=>by[c].revenue-by[a].revenue).map(k=>{
       const o = by[k];
       return `<tr><td>${esc(k)}${o.sub?`<div style="font-size:10.5px;color:var(--ink-soft);">${esc(o.sub)}</div>`:""}</td><td>${fmt(o.traffic)}</td><td>${fmt(o.bookings)}</td><td>${cr(o.bookings,o.traffic)}</td><td>${money(o.revenue)}</td>${cols?`<td>${money(o.spend)}</td><td>${cpb(o.spend,o.bookings)}</td><td>${o.spend>0?(o.revenue/o.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
     }).join("") +
-    `<tr class="row-total"><td>Total tracked</td><td>${fmt(T.traffic)}</td><td>${fmt(T.bookings)}</td><td>${cr(T.bookings,T.traffic)}</td><td>${money(T.revenue)}</td>${cols?`<td>${money(T.spend)}</td><td>${cpb(T.spend,T.bookings)}</td><td>${T.spend>0?(T.revenue/T.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
+    `<tr class="row-total"><td>${T("totalTracked")}</td><td>${fmt(Tt.traffic)}</td><td>${fmt(Tt.bookings)}</td><td>${cr(Tt.bookings,Tt.traffic)}</td><td>${money(Tt.revenue)}</td>${cols?`<td>${money(Tt.spend)}</td><td>${cpb(Tt.spend,Tt.bookings)}</td><td>${Tt.spend>0?(Tt.revenue/Tt.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
   sec.appendChild(t);
-  if(crHidden){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = `CR is not shown for rows with fewer than ${MIN_CR_SESSIONS} sessions.`; sec.appendChild(n); }
+  if(crHidden){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = T("crNote", {n:MIN_CR_SESSIONS}); sec.appendChild(n); }
   return sec;
 };
 
 R.investment = (ctx, b) => {
-  const T = ctx.totals, P = ctx.prevTotals;
+  const Tt = ctx.totals, P = ctx.prevTotals;
   const sec = section(b);
-  if(!(T.spend > 0)){
+  if(!(Tt.spend > 0)){
     if(!ctx.isInternal) return null;
-    sec.innerHTML += `<div class="empty-note">No spend entered for this period — cost per booking and ROAS can't be calculated.</div>`;
+    sec.innerHTML += `<div class="empty-note">${T("noSpend")}</div>`;
     return sec;
   }
   const g = document.createElement("div"); g.className = "kpi-grid";
   g.innerHTML = `
-    <div class="kpi"><div class="kpi-label">Budget spent</div><div class="kpi-val">${money(T.spend)} ${deltaBadge(T.spend, P?.spend, false)}</div></div>
-    <div class="kpi"><div class="kpi-label">Tracked bookings</div><div class="kpi-val">${fmt(T.bookings)} ${P?countBadge(T.bookings,P.bookings):""}</div></div>
-    <div class="kpi"><div class="kpi-label">Cost per booking</div><div class="kpi-val">${T.bookings>0?money(T.spend/T.bookings):"—"}</div></div>
-    <div class="kpi"><div class="kpi-label">Tracked revenue</div><div class="kpi-val accent">${money(T.revenue)} ${deltaBadge(T.revenue, P?.revenue)}</div></div>
-    <div class="kpi"><div class="kpi-label">ROAS</div><div class="kpi-val accent">${(T.revenue/T.spend).toFixed(2)}×</div></div>`;
+    <div class="kpi"><div class="kpi-label">${T("budgetSpent")}</div><div class="kpi-val">${money(Tt.spend)} ${deltaBadge(Tt.spend, P?.spend, false)}</div></div>
+    <div class="kpi"><div class="kpi-label">${T("trackedBookings")}</div><div class="kpi-val">${fmt(Tt.bookings)} ${P?countBadge(Tt.bookings,P.bookings):""}</div></div>
+    <div class="kpi"><div class="kpi-label">${T("costPerBookingKpi")}</div><div class="kpi-val">${Tt.bookings>0?money(Tt.spend/Tt.bookings):"—"}</div></div>
+    <div class="kpi"><div class="kpi-label">${T("trackedRevenue")}</div><div class="kpi-val accent">${money(Tt.revenue)} ${deltaBadge(Tt.revenue, P?.revenue)}</div></div>
+    <div class="kpi"><div class="kpi-label">${T("roas")}</div><div class="kpi-val accent">${(Tt.revenue/Tt.spend).toFixed(2)}×</div></div>`;
   sec.appendChild(g);
   return sec;
 };
@@ -741,24 +904,24 @@ R.gsc = (ctx, b) => {
   const add = (label, c, p, change, suffix="") => rows.push(`<tr><td>${label}</td>${prev?`<td>${p===null?"—":fmt(p)+suffix}</td>`:""}<td>${c===null?"—":fmt(c)+suffix}</td>${prev?`<td>${change||"—"}</td>`:""}</tr>`);
   if(daily){
     const pd = (v,d,dec=1) => (v===null||!d) ? null : (dec===0 ? Math.round(v/d) : Math.round(v/d*10)/10);
-    add("Clicks", cur.clicks, prev.clicks, "");
-    add("Clicks per day", pd(cur.clicks,cur.days), pd(prev.clicks,prev.days), pct(pd(cur.clicks,cur.days), pd(prev.clicks,prev.days)));
-    add("Impressions", cur.impressions, prev.impressions, "");
-    add("Impressions per day", pd(cur.impressions,cur.days,0), pd(prev.impressions,prev.days,0), pct(pd(cur.impressions,cur.days,0), pd(prev.impressions,prev.days,0)));
+    add(T("clicks"), cur.clicks, prev.clicks, "");
+    add(T("clicksPerDay"), pd(cur.clicks,cur.days), pd(prev.clicks,prev.days), pct(pd(cur.clicks,cur.days), pd(prev.clicks,prev.days)));
+    add(T("impressions"), cur.impressions, prev.impressions, "");
+    add(T("impressionsPerDay"), pd(cur.impressions,cur.days,0), pd(prev.impressions,prev.days,0), pct(pd(cur.impressions,cur.days,0), pd(prev.impressions,prev.days,0)));
   } else {
-    add("Clicks", cur.clicks, prev?.clicks ?? null, prev ? pct(cur.clicks, prev.clicks) : "");
-    add("Impressions", cur.impressions, prev?.impressions ?? null, prev ? pct(cur.impressions, prev.impressions) : "");
+    add(T("clicks"), cur.clicks, prev?.clicks ?? null, prev ? pct(cur.clicks, prev.clicks) : "");
+    add(T("impressions"), cur.impressions, prev?.impressions ?? null, prev ? pct(cur.impressions, prev.impressions) : "");
   }
-  const pp = (prev && cur.ctr!==null && prev.ctr!==null) ? (()=>{ const d = Math.round((cur.ctr-prev.ctr)*10)/10; return d===0 ? "" : `<span class="delta-badge ${d>0?"delta-up":"delta-down"}">${d>0?"▲":"▼"} ${Math.abs(d)} pp</span>`; })() : "";
-  add("CTR", cur.ctr, prev?.ctr ?? null, pp, "%");
-  const ps = (prev && cur.position!==null && prev.position!==null) ? (()=>{ const d = Math.round((prev.position-cur.position)*10)/10; return d===0 ? "" : `<span class="delta-badge ${d>0?"delta-up":"delta-down"}">${d>0?"▲":"▼"} ${Math.abs(d)} position${Math.abs(d)===1?"":"s"}</span>`; })() : "";
-  add("Average position", cur.position, prev?.position ?? null, ps);
+  const pp = (prev && cur.ctr!==null && prev.ctr!==null) ? (()=>{ const d = Math.round((cur.ctr-prev.ctr)*10)/10; return d===0 ? "" : `<span class="delta-badge ${d>0?"delta-up":"delta-down"}">${d>0?"▲":"▼"} ${Math.abs(d)} ${T("pp")}</span>`; })() : "";
+  add(T("ctr"), cur.ctr, prev?.ctr ?? null, pp, "%");
+  const ps = (prev && cur.position!==null && prev.position!==null) ? (()=>{ const d = Math.round((prev.position-cur.position)*10)/10; return d===0 ? "" : `<span class="delta-badge ${d>0?"delta-up":"delta-down"}">${d>0?"▲":"▼"} ${LANG==="ru" ? ruPos(Math.abs(d)) : (Math.abs(d)===1 ? T("positionWord",{n:fmt(Math.abs(d))}) : T("positionWords",{n:fmt(Math.abs(d))}))}</span>`; })() : "";
+  add(T("avgPos"), cur.position, prev?.position ?? null, ps);
   const t = document.createElement("table"); t.className = "rtable";
-  t.innerHTML = `<tr><th>Metric</th>${prev?`<th>${esc(ctx.previous.period)}</th>`:""}<th>${esc(ctx.periodLabel)}</th>${prev?"<th>Change</th>":""}</tr>` + rows.join("");
+  t.innerHTML = `<tr><th>${T("metric")}</th>${prev?`<th>${esc(periodDisplay(ctx.previous.period))}</th>`:""}<th>${esc(periodDisplay(ctx.periodLabel))}</th>${prev?`<th>${T("change")}</th>`:""}</tr>` + rows.join("");
   sec.appendChild(t);
   const notes = [];
-  if(prev) notes.push("Average position: a lower number is better.");
-  if(daily) notes.push(`${ctx.previous.period} covers ${prev.days} days of data vs ${cur.days} in ${ctx.periodLabel}, so per-day figures carry the comparison.`);
+  if(prev) notes.push(T("posNote"));
+  if(daily) notes.push(T("dailyNote", {prev:periodDisplay(ctx.previous.period), pd:prev.days, cd:cur.days, cur:periodDisplay(ctx.periodLabel)}));
   if(notes.length){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = notes.join(" "); sec.appendChild(n); }
   return sec;
 };
@@ -778,7 +941,7 @@ R.visibility = (ctx, b) => {
   if(Object.keys(series).length) sec.appendChild(buildLineChart(series, tp.map(p=>p.period), false));
   if(plain.length){
     const t = document.createElement("table"); t.className = "rtable";
-    t.innerHTML = `<tr><th>Signal</th><th>This period</th></tr>` + plain.map(m=>`<tr><td>${esc(m.name)}</td><td>${esc(m.value)}</td></tr>`).join("");
+    t.innerHTML = `<tr><th>${T("signal")}</th><th>${T("thisPeriod")}</th></tr>` + plain.map(m=>`<tr><td>${esc(m.name)}</td><td>${esc(m.value)}</td></tr>`).join("");
     t.style.marginTop = Object.keys(series).length ? "10px" : "0"; sec.appendChild(t);
   }
   return sec;
@@ -792,9 +955,9 @@ function mediaNode(link, label){
 function activityCard(c, kind){
   const item = document.createElement("div"); item.className = "activity-card";
   const pills = (c.tags||[]).map(t=>`<span class="pill">${esc(t)}</span>`).join("");
-  const meta = kind === "plan" ? (c.period?("· targeting "+esc(c.period)):"") : ((c.period?("· "+esc(c.period)+" "):"") + (c.stage==="Live"?"· ongoing":"· completed"));
+  const meta = kind === "plan" ? (c.period?("· " + T("targeting") + " " + esc(periodDisplay(c.period))):"") : ((c.period?("· "+esc(periodDisplay(c.period))+" "):"") + (c.stage==="Live" ? "· " + T("ongoing") : "· " + T("completed")));
   item.innerHTML = `<div class="activity-title">${esc(c.title||"(untitled)")}</div><div class="activity-meta">${pills} ${meta}</div>` +
-    (c.notes ? `<div class="activity-result"><div class="result-label">${kind==="plan"?"Plan":"Result"}</div>${esc(c.notes)}</div>` : "");
+    (c.notes ? `<div class="activity-result"><div class="result-label">${kind==="plan"?T("plan"):T("result")}</div>${esc(c.notes)}</div>` : "");
   const links = (c.subtasks||[]).filter(s=>s.link && s.link.trim());
   if(links.length){ const m = document.createElement("div"); m.className = "activity-media"; links.forEach(s=>m.appendChild(mediaNode(s.link, s.text))); item.appendChild(m); }
   // Screenshots attached to the card itself (from the report editor) — they live with the activity, so later reports keep showing them.
@@ -812,26 +975,19 @@ function activityCard(c, kind){
   return item;
 }
 function activityCardsFor(ctx){
-  const scope = ctx.st.activityScope, pt = parsePeriodDate(ctx.periodLabel);
-  return (currentProgress.cards||[]).filter(c=>{
-    if(!(c.stage==="Done/Paused" || c.stage==="Live")) return false;
-    if(scope !== "all") return c.period === ctx.periodLabel;
-    if(!c.period) return true;
-    const t = parsePeriodDate(c.period);
-    return (t===null || pt===null) ? c.period === ctx.periodLabel : t <= pt;
-  });
+  return (currentProgress.cards||[]).filter(c=>(c.stage==="Done/Paused" || c.stage==="Live") && cardPeriodOk(c, ctx));
 }
 R.activities = (ctx, b) => {
   const cards = activityCardsFor(ctx);
   const sec = section(b);
-  if(!cards.length) sec.innerHTML += `<div class="empty-note">No activities logged for this period yet.</div>`;
+  if(!cards.length) sec.innerHTML += `<div class="empty-note">${T("noActivities")}</div>`;
   cards.forEach(c=>sec.appendChild(activityCard(c, "done")));
   return sec;
 };
 R.planned = (ctx, b) => {
   const cards = (currentProgress.cards||[]).filter(c=>c.stage==="Planned");
   const sec = section(b);
-  if(!cards.length) sec.innerHTML += `<div class="empty-note">No planned activities logged yet.</div>`;
+  if(!cards.length) sec.innerHTML += `<div class="empty-note">${T("noPlanned")}</div>`;
   cards.forEach(c=>sec.appendChild(activityCard(c, "plan")));
   return sec;
 };
@@ -848,11 +1004,11 @@ R.notes = (ctx, b) => {
 };
 R.text = (ctx, b) => {
   if(!b.text || !b.text.trim()) return null;
-  const sec = section(b, "Notes"); const d = document.createElement("div"); d.className = "season-note"; d.innerHTML = renderNote(b.text); sec.appendChild(d); return sec;
+  const sec = section(b, T("t_notes")); const d = document.createElement("div"); d.className = "season-note"; d.innerHTML = renderNote(b.text); sec.appendChild(d); return sec;
 };
 R.screenshot = (ctx, b) => {
   if(!(b.images||[]).length) return null;
-  const sec = section(b, "Screenshots");
+  const sec = section(b, T("t_screenshot"));
   b.images.forEach(im=>{
     const f = document.createElement("figure"); f.className = "ss-fig";
     const img = document.createElement("img"); img.dataset.imgid = im.id; img.alt = im.caption || "screenshot"; f.appendChild(img);
@@ -865,9 +1021,17 @@ R.table = (ctx, b) => {
   const text = (b.tableText||"").trim(); if(!text) return null;
   const lines = text.split(/\r?\n/).filter(l=>l.trim());
   const rows = lines.map(l=> l.includes("\t") ? l.split("\t") : l.split(","));
-  const sec = section(b, "Table");
+  const sec = section(b, T("t_table"));
   const t = document.createElement("table"); t.className = "rtable custom";
-  t.innerHTML = `<tr>${rows[0].map(c=>`<th>${esc(c.trim())}</th>`).join("")}</tr>` + rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${esc(c.trim())}</td>`).join("")}</tr>`).join("");
+  // Cells that look like changes (+33%, −32%, ×18,7, "new") get the same badges as the built-in tables.
+  const cellHtml = raw => {
+    const v = String(raw).trim(), e = esc(v);
+    if(/^[+▲]\s?[\d\s\u00a0.,]+\s?%$/.test(v) || /^[×x]\s?\d[\d.,]*$/.test(v)) return `<span class="delta-badge delta-up">${e}</span>`;
+    if(/^[−–\-▼]\s?[\d\s\u00a0.,]+\s?%$/.test(v)) return `<span class="delta-badge delta-down">${e}</span>`;
+    if(/^(new|новый|новая|новое|запуск)$/i.test(v)) return `<span class="delta-badge delta-new">${e}</span>`;
+    return e;
+  };
+  t.innerHTML = `<tr>${rows[0].map(c=>`<th>${esc(c.trim())}</th>`).join("")}</tr>` + rows.slice(1).map(r=>`<tr${/^(total|всего|итого)/i.test(String(r[0]||"").trim()) ? ' class="row-total"' : ""}>${r.map(c=>`<td>${cellHtml(c)}</td>`).join("")}</tr>`).join("");
   sec.appendChild(t); return sec;
 };
 // Neutral, factual limitations — safe for the client. The full diagnosis lives in the Internal checks panel.
@@ -875,22 +1039,23 @@ R.datanotes = (ctx, b) => {
   const items = [];
   const rows = chRowsOf(ctx.primary), totS = rows.reduce((a,r)=>a+num(r.sessions), 0);
   const un = sumField(rows, /unassigned/i, "sessions");
-  if(totS > 0 && un/totS >= 0.05) items.push(`"Unassigned" traffic (${Math.round(un/totS*100)}% of sessions) has no channel attribution in GA4, so it may include organic and paid visits.`);
+  if(totS > 0 && un/totS >= 0.05) items.push(T("dnUnassigned", {p:Math.round(un/totS*100)}));
   const gd = [ctx.primary.gsc?.days, ctx.previous?.gsc?.days].map(num).filter(d=>d>0);
-  if(gd.some(d=>d < 28)) items.push("Search Console data covers part of the month for at least one period, so per-day figures are used for comparison.");
-  if(ctx.showComparisons && ctx.isOverall && !ctx.head.hasYoy) items.push("No year-over-year comparison is available yet.");
+  if(gd.some(d=>d < 28)) items.push(T("dnGsc"));
+  if(ctx.showYoy && ctx.isOverall && !ctx.head.hasYoy) items.push(T("dnYoy"));
   if(!items.length) return null;
   const sec = section(b); const d = document.createElement("div"); d.className = "season-note"; d.innerHTML = items.map(i=>"• "+esc(i)).join("\n"); sec.appendChild(d); return sec;
 };
 
 function renderReport(){
+  LANG = el("langSelect").value;
   const root = el("reportRoot"); root.innerHTML = "";
   if(!currentHotel){ root.innerHTML = '<div class="empty-note">Select a hotel and click Load data.</div>'; return; }
   const ctx = buildCtx();
   if(!ctx){ root.innerHTML = '<div class="empty-note">Select a report period above.</div>'; return; }
   const rep = document.createElement("div"); rep.className = "report";
   rep.innerHTML = (ctx.isInternal ? `<div class="internal-banner">Internal view — contains data that is not for the client</div>` : "") +
-    `<div class="report-header"><div class="report-kicker">Exely Digital Marketing Hub</div><div class="report-title">${esc(getField("hotelData","name") || currentHotel.id)}</div><div class="report-sub">${esc(ctx.periodLabel)} · ${ctx.isOverall?"Overall results":"Tracked marketing results"}</div></div>`;
+    `<div class="report-header"><div class="report-kicker">Exely Digital Marketing Hub</div><div class="report-title">${esc(getField("hotelData","name") || currentHotel.id)}</div><div class="report-sub">${esc((report.subtitle && report.subtitle.trim()) || (periodDisplay(ctx.periodLabel) + " · " + (ctx.isOverall ? T("overallResults") : T("trackedResults"))))}</div></div>`;
   const body = document.createElement("div"); body.className = "report-body"; rep.appendChild(body);
   const EMPTY_MSG = {text:"is empty — write it in the editor.", screenshot:"has no screenshots yet — paste one (Ctrl+V) or drop a file in the editor.", table:"is empty — paste rows from a spreadsheet in the editor."};
   report.blocks.forEach(b=>{
@@ -991,6 +1156,11 @@ function computeChecks(ctx){
   [ctx.primary, ctx.previous].forEach(p=>{ const d = num(p?.gsc?.days); if(d > 0 && d < 28) info.push(`Search Console covers only ${d} days in ${p.period} — compare per-day numbers, not totals.`); });
   if(!ctx.previous) info.push("First period: no month-over-month comparison. Consider the First-report preset and state when data collection started.");
   else if(!ctx.head.hasYoy && ctx.isOverall) info.push("No year-over-year reference entered — leave YoY out, or add last year's figures from the hotel's own analytics.");
+  // 9b. Ranges
+  if(ctx.isRange){
+    const miss = ctx.members.filter(p=>!(hasVal(p.totalBookings) && hasVal(p.totalRevenue))).map(p=>p.period);
+    if(miss.length) info.push(`Range ${ctx.periodLabel}: ${miss.join(", ")} ha${miss.length>1?"ve":"s"} no overall bookings/revenue, so those totals aren't shown for the range.`);
+  }
   // 10. Reconciliation
   const rev = cur.reduce((a,r)=>a+num(r.revenue), 0);
   if(rev > 0 && ov.revenue > 0 && Math.abs(rev-ov.revenue)/ov.revenue > 0.02) info.push(`Channel revenue adds up to ${money(rev)} but the hotel total is ${money(ov.revenue)} — reconcile before sending.`);
@@ -1057,12 +1227,16 @@ function renderEditor(){
     <button class="btn secondary" id="saveNowBtn">Save now</button></div>
     <div class="ed-note"><b>How this works:</b> tick a block to show it in the report, use ↑ ↓ to move it, ↗ to jump to it in the report. Text, screenshot and table blocks stay invisible until they have content. Layout saves automatically (badge at the top). Numbers come from the workspace as of ${esc(loadedAt || "—")} — if you changed them there, click “Reload data”. A new month starts from last month's layout.</div>`;
   const ectx = buildCtx();
+  const subRow = document.createElement("div"); subRow.className = "ed-labels"; subRow.style.cssText = "margin:0 0 10px;padding:0 0 10px;border-top:0;border-bottom:1px solid var(--slate-soft);";
+  subRow.innerHTML = `<div class="ed-hint" style="margin:0 0 4px;"><b>Report subtitle</b> (optional) — replaces the period line under the hotel name, e.g. “Август–сентябрь 2026”.</div><input type="text" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12.5px;" value="${esc(report.subtitle||"")}" placeholder="Leave empty to show the period">`;
+  subRow.querySelector("input").addEventListener("input", e=>{ report.subtitle = e.target.value; changed(false); });
+  card.appendChild(subRow);
   report.blocks.forEach((b, i)=>{
     const custom = ["text","screenshot","table"].includes(b.type);
     const row = document.createElement("div"); row.className = "ed-row" + (b.enabled ? "" : " off");
     row.innerHTML = `<input type="checkbox" ${b.enabled?"checked":""} title="Show in report">
       <span class="ed-move"><button data-d="-1" title="Move up">↑</button> <button data-d="1" title="Move down">↓</button> <button class="go" data-go="1" title="Show in the report">↗</button></span>
-      <input type="text" value="${esc(b.title||"")}" placeholder="${esc(DEFAULT_TITLES[b.type] || TYPE_LABELS[b.type])}" ${b.type==="headline"?"disabled":""}>
+      <input type="text" value="${esc(b.title||"")}" placeholder="${b.type==="headline" ? "Caption above the numbers (optional)" : esc(DEFAULT_TITLES[b.type] || TYPE_LABELS[b.type])}">
       <span class="ed-type" title="${b.type==="investment"||b.type==="datanotes" ? "Shown in Internal view; in Client view only when ticked under ‘Client view also shows’" : ""}">${esc(typeBadge(b))}</span>
       ${custom ? `<button class="ed-del" title="Delete block">✕</button>` : "<span></span>"}`;
     const [chk, tin] = row.querySelectorAll("input");
@@ -1160,19 +1334,18 @@ function cardHint(type){
     const n = cards.filter(c=>c.stage==="Planned").length;
     return `Shows cards with stage “Planned”: ${n} now.`;
   }
-  const scope = ctx.st.activityScope, pt = parsePeriodDate(ctx.periodLabel), hidden = []; let shown = 0;
+  const scope = ctx.st.activityScope, hidden = []; let shown = 0;
   cards.forEach(c=>{
     if(c.stage === "Planned") return;
     if(!(c.stage === "Done/Paused" || c.stage === "Live")){ hidden.push(`“${c.title||"untitled"}” — stage “${c.stage||"none"}” (only Done/Paused and Live are shown)`); return; }
-    let ok;
-    if(scope !== "all") ok = c.period === ctx.periodLabel;
-    else if(!c.period) ok = true;
-    else { const t = parsePeriodDate(c.period); ok = (t===null || pt===null) ? c.period === ctx.periodLabel : t <= pt; }
-    if(ok) shown++; else hidden.push(`“${c.title||"untitled"}” — period “${c.period||"none"}”` + (scope !== "all" ? ` (set Activities to “Since start”, or give the card the period “${ctx.periodLabel}”)` : " is later than this report"));
+    if(cardPeriodOk(c, ctx)) shown++;
+    else hidden.push(`“${c.title||"untitled"}” — period “${c.period||"none"}”` + (scope !== "all" ? ` (set Activities to “Since start”, or give the card a period inside this report)` : " is later than this report"));
   });
   return `Showing ${shown} of ${shown + hidden.length} cards.` + (hidden.length ? " Not shown: " + hidden.join("; ") + "." : "");
 }
 function ctxRowsForEditor(){
+  const c = buildCtx();
+  if(c) return c.rows;
   const p = (currentResults?.periods||[]).find(x=>x.period===primaryPeriodLabel);
   return p ? p.rows : [];
 }
@@ -1282,9 +1455,13 @@ function populateHotelSelect(){
   hotelIndex.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(h=>{ const o = document.createElement("option"); o.value = h.id; o.textContent = h.name; sel.appendChild(o); });
 }
 function renderPeriodSelect(){
-  const sel = el("periodSelect"), periods = sortPeriodsChronologically(currentResults?.periods || []);
-  if(!periods.length){ sel.innerHTML = '<option value="">No periods logged</option>'; return; }
+  const sel = el("periodSelect"), from = el("periodFromSelect"), periods = sortPeriodsChronologically(currentResults?.periods || []);
+  if(!periods.length){ sel.innerHTML = '<option value="">No periods logged</option>'; from.innerHTML = '<option value="">—</option>'; return; }
   sel.innerHTML = periods.map(p=>`<option value="${esc(p.period)}" ${p.period===primaryPeriodLabel?"selected":""}>${esc(p.period)}</option>`).join("");
+  // the range can start at any earlier period; empty = just the selected month
+  const endIdx = periods.findIndex(p=>p.period===primaryPeriodLabel);
+  from.innerHTML = '<option value="">— single month —</option>' + periods.slice(0, Math.max(endIdx, 0)).map(p=>`<option value="${esc(p.period)}">${esc(p.period)}</option>`).join("");
+  from.value = [...from.options].some(o=>o.value === rangeFromWanted) ? rangeFromWanted : "";
 }
 function renderAll(){ renderEditor(); renderChecks(); renderReport(); }
 async function loadAllForHotel(id){
@@ -1309,10 +1486,10 @@ el("printBtn").addEventListener("click", ()=>{
   window.print();
 });
 el("audienceSelect").addEventListener("change", ()=>{ syncAudienceUi(); renderChecks(); renderReport(); if(editMode) renderEditor(); });
-["basisSelect","showComparisonsToggle","activityScopeSelect","cs_spend","cs_brand","cs_diag"].forEach(id=>el(id).addEventListener("change", settingsChanged));
+["periodFromSelect","langSelect","basisSelect","compPrevToggle","compYoyToggle","activityScopeSelect","cs_spend","cs_brand","cs_diag"].forEach(id=>el(id).addEventListener("change", settingsChanged));
 el("periodSelect").addEventListener("change", async ()=>{
   if(saveTimer) await saveReport();
-  primaryPeriodLabel = el("periodSelect").value; await loadReportForPeriod(); renderAll();
+  primaryPeriodLabel = el("periodSelect").value; await loadReportForPeriod(); renderPeriodSelect(); renderAll();
 });
 
 async function importKV(dict){
