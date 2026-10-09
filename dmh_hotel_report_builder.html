@@ -120,7 +120,7 @@
     .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
-                                                /* ---- Builder UI ---- */
+                                                    /* ---- Builder UI ---- */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
   .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
   .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
@@ -218,6 +218,8 @@
   @media print{ .tk, .act-results{break-inside:avoid;page-break-inside:avoid;} }
 
   @media print{ .section:has(> .act-results){break-inside:avoid;page-break-inside:avoid;} }
+
+  @media print{ .story-comment{break-before:avoid;page-break-before:avoid;} .act-results + .story-comment{break-before:avoid;} }
 </style>
 </head>
 <body>
@@ -337,7 +339,7 @@ const DICT = {
     emptyTracked:"No tracked campaigns logged for this period yet.",
     adsRevenue:"Revenue from ads", adsBookings:"Bookings from ads", adsVisits:"Visits from ads",
     storyDid:"What we did", storyResult:"What changed", storyWhy:"Comment",
-    t_takeaways:"Key takeaways", tkCommercial:"Commercial results", tkTraffic:"Traffic", tkBookings:"Bookings", tkRevenue:"Revenue", tkAds:"From advertising", tkWhy:"Why", tkOrganic:"Organic", tkRefAi:"Referral & AI", tkPaid:"Paid",
+    t_takeaways:"Key takeaways", tkCommercial:"Commercial results", tkTraffic:"Traffic", tkBookings:"Bookings", tkRevenue:"Revenue", tkAds:"From advertising", tkWhy:"Why", tkSite:"Site-wide", tkOrganic:"Organic", tkRefAi:"Referral & AI", tkPaid:"Paid",
     ofRevenue:"{p}% of all revenue", ofBookings:"{p}% of all bookings", ofSessions:"{p}% of all website sessions",
     channel:"Channel", campaign:"Campaign", cr:"CR", total:"Total", otherChannels:"Other channels",
     crNote:"CR is not shown for rows with fewer than {n} sessions.",
@@ -367,7 +369,7 @@ const DICT = {
     emptyTracked:"За этот период нет данных по рекламным кампаниям.",
     adsRevenue:"Выручка от рекламы", adsBookings:"Брони от рекламы", adsVisits:"Визиты из рекламы",
     storyDid:"Что сделали", storyResult:"Что изменилось", storyWhy:"Комментарий",
-    t_takeaways:"Ключевые выводы", tkCommercial:"Коммерческие результаты", tkTraffic:"Трафик", tkBookings:"Брони", tkRevenue:"Выручка", tkAds:"Из рекламы", tkWhy:"Почему так", tkOrganic:"Органика", tkRefAi:"Реферал и ИИ", tkPaid:"Реклама",
+    t_takeaways:"Ключевые выводы", tkCommercial:"Коммерческие результаты", tkTraffic:"Трафик", tkBookings:"Брони", tkRevenue:"Выручка", tkAds:"Из рекламы", tkWhy:"Почему так", tkSite:"Весь сайт", tkOrganic:"Органика", tkRefAi:"Реферал и ИИ", tkPaid:"Реклама",
     ofRevenue:"{p}% всей выручки", ofBookings:"{p}% всех броней", ofSessions:"{p}% всех сессий сайта",
     channel:"Канал", campaign:"Кампания", cr:"Конверсия", total:"Всего", otherChannels:"Прочие каналы",
     crNote:"Конверсия не показана для строк с числом сессий меньше {n}.",
@@ -1067,7 +1069,7 @@ R.activities = (ctx, b) => {
 R.takeaways = (ctx, b) => {
   const f = b.fields || {}, has = k => f[k] && String(f[k]).trim();
   const comm = [["bookings","tkBookings"],["revenue","tkRevenue"],["paid","tkAds"]].filter(([k])=>has(k));
-  const traf = [["organic","tkOrganic"],["refai","tkRefAi"],["paidTraffic","tkPaid"]].filter(([k])=>has(k));
+  const traf = [["site","tkSite"],["organic","tkOrganic"],["refai","tkRefAi"],["paidTraffic","tkPaid"]].filter(([k])=>has(k));
   const why = has("why");
   if(!comm.length && !traf.length && !why) return null;
   const sec = section(b, T("t_takeaways"));
@@ -1421,7 +1423,7 @@ function renderEditor(){
       } else if(b.type === "takeaways"){
         if(!b.fields) b.fields = {};
         const G = [["Commercial results", [["bookings","Bookings","12 (+20% vs last month, +20% vs last year)"],["revenue","Revenue","$4,743, net of cancellations (+59% vs last month, +95% vs last year)"],["paid","From advertising","4 bookings, $1.7k: 33% of bookings, 35% of revenue"],["why","Why — context for weak or unusual numbers","First full month after the work; conversion is the main upside"]]],
-                   ["Traffic", [["organic","Organic","how it moved, new sources"],["refai","Referral & AI","how it moved, new sources"],["paidTraffic","Paid","what is running and what it brought"]]]];
+                   ["Traffic", [["site","Site-wide","visits and visitors, trend"],["organic","Organic","how it moved, new sources"],["refai","Referral & AI","how it moved, new sources"],["paidTraffic","Paid","what is running and what it brought"]]]];
         body.innerHTML = G.map(([h, fs])=>`<div class="ed-hint" style="margin:8px 0 3px;"><b>${h}</b></div>` + fs.map(([k, l, ph])=>`<div class="ed-hint" style="margin:4px 0 2px;">${l}</div><input type="text" class="cap tk-in" data-k="${k}" placeholder="${esc(ph)}">`).join("")).join("") + `<div class="ed-hint">Same fields every month; empty fields are left out of the report.</div>`;
         body.querySelectorAll(".tk-in").forEach(i=>{ i.value = b.fields[i.dataset.k] || ""; i.addEventListener("input", ()=>{ b.fields[i.dataset.k] = i.value; changed(false); }); });
       } else if(b.type === "story"){
