@@ -120,7 +120,7 @@
     .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
-                                            /* ---- Builder UI ---- */
+                                              /* ---- Builder UI ---- */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
   .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
   .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
@@ -1466,6 +1466,15 @@ function renderEditor(){
     if(b.type === "activities" || b.type === "planned"){
       const hb = document.createElement("div"); hb.className = "ed-body"; hb.innerHTML = `<div class="ed-hint" style="margin:0;">${esc(cardHint(b.type))}</div>`; row.appendChild(hb);
     }
+    if(b.type === "planned"){
+      const pl = (currentProgress?.cards || []).filter(c=>c.stage === "Planned" && c.id);
+      if(pl.length){
+        const pb = document.createElement("div"); pb.className = "ed-body";
+        pb.innerHTML = `<div class="ed-hint" style="margin:0 0 6px;"><b>Edit the plans here</b> — changes are saved to the Progress tab.</div>`;
+        pl.forEach(c=>{ const w = document.createElement("div"); w.className = "card-img"; w.appendChild(cardTextFields(c, "Plan")); pb.appendChild(w); });
+        row.appendChild(pb);
+      }
+    }
     if(b.type === "activities"){
       const gb = document.createElement("div"); gb.className = "ed-body";
       gb.innerHTML = `<div class="ed-hint" style="margin:0 0 3px;"><b>Group</b> — show only cards with these tags (comma-separated, empty = all cards)</div><input type="text" class="cap a-tags" placeholder="e.g. Organic, SEO">
@@ -1480,7 +1489,7 @@ function renderEditor(){
       const ctx2 = buildCtx(), shown = ctx2 ? cardsForBlock(ctx2, b) : [];
       if(shown.length){
         const lb = document.createElement("div"); lb.className = "ed-body";
-        lb.innerHTML = `<div class="ed-hint" style="margin:0 0 6px;"><b>Screenshots per activity.</b> A screenshot attached here appears inside that activity and stays with it in later reports.</div>`;
+        lb.innerHTML = `<div class="ed-hint" style="margin:0 0 6px;"><b>Screenshots per activity.</b> Edit the text of an activity here, and attach screenshots: they appear inside that activity and stay with it in later reports.</div>`;
         shown.forEach(c=>lb.appendChild(cardImageEditor(c)));
         row.appendChild(lb);
       }
@@ -1591,22 +1600,40 @@ document.addEventListener("paste", e=>{
 // Screenshots attached to an activity card live on the Progress card (card.images). Read-modify-write the latest
 // Progress record so edits made in the workspace in the meantime aren't overwritten.
 const capTimers = {};
-async function persistCardImages(cardId){
+async function persistCard(cardId, keys){
   const local = (currentProgress.cards || []).find(c=>c.id === cardId); if(!local) return;
   setSave("saving", "Saving…");
   try{
     let latest; try{ latest = JSON.parse(await stGet(`dmh-progress:${currentHotel.id}`)); }catch(e){ latest = currentProgress; }
-    const t = (latest.cards || []).find(c=>c.id === cardId); if(t) t.images = local.images;
+    const t = (latest.cards || []).find(c=>c.id === cardId); if(t) keys.forEach(k=>{ t[k] = local[k]; });
     await stSet(`dmh-progress:${currentHotel.id}`, JSON.stringify(latest));
-    setSave("ok", "✓ Screenshots saved " + new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"}));
+    setSave("ok", "✓ Activity saved " + new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"}));
   }catch(e){ setSave("err", "⚠ Not saved — " + e.message); }
+}
+const persistCardImages = id => persistCard(id, ["images"]);
+const cardTextTimers = {};
+function scheduleCardText(id, key){
+  const k = id + ":" + key; clearTimeout(cardTextTimers[k]); setSave("saving", "Saving…");
+  cardTextTimers[k] = setTimeout(()=>persistCard(id, [key]), 900);
+}
+// Title and text of an activity card, editable right here (they live in the Progress tab of the workspace).
+function cardTextFields(c, textLabel){
+  const d = document.createElement("div");
+  d.innerHTML = `<div class="ed-hint" style="margin:0 0 2px;">Title</div><input type="text" class="cap ct-title">
+    <div class="ed-hint" style="margin:6px 0 2px;">${textLabel} <span style="opacity:.7">(shown in the report)</span></div><textarea class="ct-notes" style="min-height:52px;"></textarea>`;
+  const ti = d.querySelector(".ct-title"), no = d.querySelector(".ct-notes");
+  ti.value = c.title || ""; no.value = c.notes || "";
+  ti.addEventListener("input", ()=>{ c.title = ti.value; renderReport(); scheduleCardText(c.id, "title"); });
+  no.addEventListener("input", ()=>{ c.notes = no.value; renderReport(); scheduleCardText(c.id, "notes"); });
+  return d;
 }
 function cardImageEditor(c){
   const w = document.createElement("div"); w.className = "card-img"; w.dataset.target = "card:" + c.id;
   if(!Array.isArray(c.images)) c.images = [];
-  w.innerHTML = `<div class="ci-title">${esc(c.title || "(untitled)")} <span class="ed-type">${c.stage === "Live" ? "ongoing" : "completed"}</span></div>
+  w.innerHTML = `<div class="ci-title"><span class="ed-type">${c.stage === "Live" ? "ongoing" : "completed"}</span></div><div class="ci-text"></div>
     <div class="dropzone small" tabindex="0">+ Screenshot — click here, then paste (Ctrl+V), drop a file, or click to choose</div>
     <input type="file" accept="image/*" multiple style="display:none"><div class="thumbs"></div>`;
+  w.querySelector(".ci-text").appendChild(cardTextFields(c, "Result"));
   const dz = w.querySelector(".dropzone"), fi = w.querySelector("input[type=file]"), th = w.querySelector(".thumbs");
   const draw = () => {
     th.innerHTML = "";
