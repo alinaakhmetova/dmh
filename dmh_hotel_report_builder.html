@@ -120,7 +120,7 @@
     .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
-                                              /* ---- Builder UI ---- */
+                                                /* ---- Builder UI ---- */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
   .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
   .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
@@ -1719,16 +1719,48 @@ el("periodSelect").addEventListener("change", async ()=>{
 
 async function importKV(dict){
   const keys = Object.keys(dict); let n = 0;
+  const srcIds = [...new Set(keys.map(k=>(k.match(/^dmh-hotel:(.+)$/)||[])[1]).filter(Boolean))];
+  const src = srcIds[0], selId = el("hotelSelect").value;
+  let dst = null;
+  // A file holds one hotel. If another hotel is selected, offer to put the data into IT instead of creating a duplicate.
+  if(srcIds.length === 1 && selId && selId !== src){
+    const selName = (hotelIndex.find(h=>h.id === selId) || {}).name || selId;
+    let srcName = src; try{ srcName = (JSON.parse(dict["dmh-hotel-index"] || "[]").find(h=>h.id === src) || {}).name || src; }catch(e){}
+    if(confirm(`Import into “${selName}” (the hotel selected above)?\n\nOK — add the file's periods, activities and report layout to “${selName}”. Periods, activities and layouts with the same name are replaced; everything else is kept.\n\nCancel — import as a separate hotel “${srcName}”.`)) dst = selId;
+  }
+  const P = (a, b) => `${a}${b}`;
+  const mapKey = k => {
+    if(!dst) return k;
+    if(k === `dmh-hotel:${src}` || k === "dmh-hotel-index") return null;           // the selected hotel keeps its own record
+    if(k === `dmh-results:${src}`) return `dmh-results:${dst}`;
+    if(k === `dmh-progress:${src}`) return `dmh-progress:${dst}`;
+    if(k.startsWith(`dmh-report:${src}:`)) return `dmh-report:${dst}:` + k.slice(`dmh-report:${src}:`.length);
+    return k;                                                                         // screenshots are global
+  };
   for(const k of keys){
+    const nk = mapKey(k); if(nk === null){ n++; continue; }
     let v = dict[k];
     if(k === "dmh-hotel-index"){
       let cur = []; try{ cur = JSON.parse(await stGet(k)); }catch(e){}
       JSON.parse(v).forEach(h=>{ const i = cur.findIndex(c=>c.id===h.id); if(i>=0) cur[i] = h; else cur.push(h); });
       v = JSON.stringify(cur);
+    } else if(dst && (nk === `dmh-results:${dst}` || nk === `dmh-progress:${dst}`)){
+      // merge into what the hotel already has
+      const incoming = JSON.parse(v); let cur = null; try{ cur = JSON.parse(await stGet(nk)); }catch(e){}
+      if(nk.startsWith("dmh-results:")){
+        cur = cur && Array.isArray(cur.periods) ? cur : {periods:[]};
+        incoming.periods.forEach(p=>{ const i = cur.periods.findIndex(x=>x.period === p.period); if(i >= 0) cur.periods[i] = p; else cur.periods.push(p); });
+      } else {
+        cur = cur && Array.isArray(cur.cards) ? cur : {cards:[], ideas:[], generalNotes:[]};
+        incoming.cards.forEach(c=>{ const i = cur.cards.findIndex(x=>x.id === c.id); if(i >= 0) cur.cards[i] = c; else cur.cards.push(c); });
+      }
+      v = JSON.stringify(cur);
     }
-    await stSet(k, v); setStatus(`Importing ${++n}/${keys.length}…`);
+    await stSet(nk, v); setStatus(`Importing ${++n}/${keys.length}…`);
   }
-  await loadHotelIndex(); populateHotelSelect(); setStatus(`Imported ${keys.length} records — pick the hotel and click Load data.`);
+  await loadHotelIndex(); populateHotelSelect();
+  if(dst){ el("hotelSelect").value = dst; await loadAllForHotel(dst); setStatus(`Imported into the selected hotel (${keys.length} records).`); }
+  else setStatus(`Imported ${keys.length} records — pick the hotel and click Load data.`);
 }
 el("importBtn").addEventListener("click", ()=>el("importFile").click());
 el("importFile").addEventListener("change", async e=>{
