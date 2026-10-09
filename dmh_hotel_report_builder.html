@@ -120,7 +120,7 @@
     .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
-                          /* ---- Builder UI ---- */
+                                            /* ---- Builder UI ---- */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
   .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
   .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
@@ -199,6 +199,25 @@
   }
 
   .block-caption{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--brand);margin:0 0 10px;}
+
+  @media print{ .section:has(> .glance-strip){break-inside:avoid;page-break-inside:avoid;} }
+
+  .story{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+  .story.one{grid-template-columns:1fr;}
+  .story-label{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
+  .story-comment{font-size:12.5px;color:var(--ink);margin-top:10px;padding:8px 12px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;}
+  @media print{ .section:has(> .story){break-inside:avoid;page-break-inside:avoid;} }
+
+  .tk{display:grid;grid-template-columns:1fr 1fr;gap:20px;background:var(--brand-soft);border-radius:8px;padding:14px 18px;font-size:12.5px;line-height:1.55;}
+  .tk.one{grid-template-columns:1fr;}
+  .tk-head{font-weight:700;color:var(--brand);margin-bottom:6px;font-size:12.5px;}
+  .tk ul{margin:0;padding:0;list-style:none;}
+  .tk li{margin-bottom:6px;}
+  .tk-why{margin-top:8px;padding:8px 11px;background:rgba(255,255,255,.6);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;}
+  .act-results{margin-top:6px;}
+  @media print{ .tk, .act-results{break-inside:avoid;page-break-inside:avoid;} }
+
+  @media print{ .section:has(> .act-results){break-inside:avoid;page-break-inside:avoid;} }
 </style>
 </head>
 <body>
@@ -317,6 +336,8 @@ const DICT = {
     emptyOverall:"Overall hotel results haven't been filled in for this period yet — add them in the main workspace, or switch the basis to Tracked marketing.",
     emptyTracked:"No tracked campaigns logged for this period yet.",
     adsRevenue:"Revenue from ads", adsBookings:"Bookings from ads", adsVisits:"Visits from ads",
+    storyDid:"What we did", storyResult:"What changed", storyWhy:"Comment",
+    t_takeaways:"Key takeaways", tkCommercial:"Commercial results", tkTraffic:"Traffic", tkBookings:"Bookings", tkRevenue:"Revenue", tkAds:"From advertising", tkWhy:"Why", tkOrganic:"Organic", tkRefAi:"Referral & AI", tkPaid:"Paid",
     ofRevenue:"{p}% of all revenue", ofBookings:"{p}% of all bookings", ofSessions:"{p}% of all website sessions",
     channel:"Channel", campaign:"Campaign", cr:"CR", total:"Total", otherChannels:"Other channels",
     crNote:"CR is not shown for rows with fewer than {n} sessions.",
@@ -345,6 +366,8 @@ const DICT = {
     emptyOverall:"Общие данные по отелю за этот период ещё не внесены.",
     emptyTracked:"За этот период нет данных по рекламным кампаниям.",
     adsRevenue:"Выручка от рекламы", adsBookings:"Брони от рекламы", adsVisits:"Визиты из рекламы",
+    storyDid:"Что сделали", storyResult:"Что изменилось", storyWhy:"Комментарий",
+    t_takeaways:"Ключевые выводы", tkCommercial:"Коммерческие результаты", tkTraffic:"Трафик", tkBookings:"Брони", tkRevenue:"Выручка", tkAds:"Из рекламы", tkWhy:"Почему так", tkOrganic:"Органика", tkRefAi:"Реферал и ИИ", tkPaid:"Реклама",
     ofRevenue:"{p}% всей выручки", ofBookings:"{p}% всех броней", ofSessions:"{p}% всех сессий сайта",
     channel:"Канал", campaign:"Кампания", cr:"Конверсия", total:"Всего", otherChannels:"Прочие каналы",
     crNote:"Конверсия не показана для строк с числом сессий меньше {n}.",
@@ -510,12 +533,33 @@ const DEFAULT_TITLES = {
 const TYPE_LABELS = {
   headline:"Headline numbers", ads:"From advertising", channels:"Channels (GA4)", campaigns:"Campaigns", investment:"Spend & ROAS", gsc:"Search Console",
   visibility:"Visibility", activities:"Activities", planned:"Planned", materials:"Materials", notes:"Period note", datanotes:"Data notes",
-  text:"Text", screenshot:"Screenshots", table:"Table"
+  text:"Text", screenshot:"Screenshots", table:"Table", numbers:"Number tiles", story:"Did → changed", takeaways:"Key takeaways"
 };
 const BUILTINS = ["headline","ads","channels","campaigns","investment","gsc","visibility","activities","planned","materials","notes","datanotes"];
 const mkBlock = (type, extra) => Object.assign({id:newId(), type, enabled:true, title:""}, extra||{});
 
-function presetLayout(name){
+// One structure for "Key takeaways", the same every month. It is kept as a template: a new month starts from it again.
+const SKELETON = {
+  en: "Commercial results\n• Bookings: [number] ([±%] vs last month, [±%] vs last year)\n• Revenue: [amount] ([±%] vs last month, [±%] vs last year)\n• Paid channels: [bookings and revenue, share of total]\nDrivers\n• [One or two lines on what drove the result, including any weak or unusual number]\nTraffic\n• Organic: [how it moved, new sources]\n• Paid: [what is running and what it brought]",
+  ru: "Коммерческие результаты\n• Брони: [число] ([±%] к прошлому месяцу, [±%] к прошлому году)\n• Выручка: [сумма] ([±%] к прошлому месяцу, [±%] к прошлому году)\n• Платные каналы: [брони и выручка, доля от общего]\nФакторы\n• [Одна-две строки: что определило результат, включая слабые или необычные цифры]\nТрафик\n• Органика: [как изменилась, новые источники]\n• Реклама: [что запущено и что принесло]"
+};
+function presetLayout(name, lang){
+  if(name === "structured"){
+    const ru = lang === "ru";
+    return {
+      blocks:[mkBlock("headline",{tiles:{sessions:false}}), mkBlock("takeaways",{fields:{}}),
+              mkBlock("activities",{title:ru ? "Органика, реферал, ИИ" : "Organic, referral, AI", tagFilter:"Organic", tilesText:"", commentText:""}),
+              mkBlock("activities",{title:ru ? "Реклама" : "Advertising", tagFilter:"Advertising", tilesText:"", commentText:""}),
+              mkBlock("campaigns"), mkBlock("planned")],
+      settings:{basis:"overall", comparisons:true, compPrev:true, compYoy:true, activityScope:"all", clientShow:{spend:false, brand:false, diag:false}}
+    };
+  }
+  if(name === "simple"){
+    return {
+      blocks:[mkBlock("headline",{tiles:{form:false}}), mkBlock("text",{title:"Highlights", text:""}), mkBlock("activities"), mkBlock("text",{title:"What's next", text:""})],
+      settings:{basis:"overall", comparisons:true, compPrev:true, compYoy:false, activityScope:"all", clientShow:{spend:false, brand:false, diag:false}}
+    };
+  }
   if(name === "first"){
     return {
       blocks:[mkBlock("headline"), mkBlock("ads"), mkBlock("channels"), mkBlock("campaigns"), mkBlock("gsc"), mkBlock("activities"), mkBlock("planned"),
@@ -543,6 +587,7 @@ function normalizeReport(r){
   }
   if(!r.channelLabels) r.channelLabels = {};
   if(r.subtitle === undefined) r.subtitle = "";
+  if(r.hotelName === undefined) r.hotelName = "";
   r.settings = Object.assign({rangeFrom:"", lang:"en", basis:"overall", comparisons:true, activityScope:"period"}, r.settings||{});
   if(r.settings.compPrev === undefined) r.settings.compPrev = r.settings.comparisons !== false;
   if(r.settings.compYoy === undefined) r.settings.compYoy = r.settings.comparisons !== false;
@@ -552,7 +597,7 @@ function normalizeReport(r){
 function structureFrom(base){
   const r = JSON.parse(JSON.stringify(base));
   if(r.settings) r.settings.rangeFrom = "";   // a new month starts as a single month
-  r.blocks.forEach(b=>{ b.id = newId(); if(b.type==="text") b.text=""; if(b.type==="screenshot") b.images=[]; if(b.type==="table") b.tableText=""; });
+  r.blocks.forEach(b=>{ b.id = newId(); if(b.type==="text") b.text = b.skeleton || ""; if(b.type==="screenshot") b.images=[]; if(b.type==="table") b.tableText=""; if(b.type==="numbers") b.tilesText=""; if(b.type==="story"){ b.doneText=""; b.tilesText=""; b.commentText=""; } if(b.type==="takeaways") b.fields = {}; if(b.type==="activities"){ b.tilesText=""; b.commentText=""; } });
   return r;
 }
 function readSettings(){
@@ -625,7 +670,7 @@ function mergePeriods(ps, label){
   if(ps.length === 1) return Object.assign({}, ps[0], {memberLabels:[ps[0].period]});
   const out = {period:label, memberLabels:ps.map(p=>p.period), rows:[], channels:[], gsc:null,
     visibilityMetrics:(ps[ps.length-1].visibilityMetrics||[]), seasonalNote:ps.map(p=>p.seasonalNote).filter(Boolean).join("\n")};
-  ["totalWebsiteTraffic","totalBeTraffic","totalBookings","totalRevenue","yoyRevenue","yoyTraffic","yoyBookings"].forEach(k=>{
+  ["totalWebsiteTraffic","totalBeTraffic","totalBookings","totalRevenue","yoyRevenue","yoyTraffic","yoyForm","yoyBookings"].forEach(k=>{
     out[k] = ps.every(p=>hasVal(p[k])) ? ps.reduce((a,p)=>a+num(p[k]), 0) : "";
   });
   const rm = {};
@@ -708,8 +753,8 @@ function buildCtx(){
     revenue:ctx.ov.revenue, bookings:ctx.ov.bookings, traffic:useWebsite ? ctx.ov.websiteTraffic : ctx.ov.beTraffic,
     prevRevenue:ctx.prevOv?.revenue, prevBookings:ctx.prevOv?.bookings, prevTraffic:useWebsite ? ctx.prevOv?.websiteTraffic : ctx.prevOv?.beTraffic,
     hasPrev:ctx.hasPrevOv, hasData:ctx.hasOv,
-    yoyRevenue:primary.yoyRevenue, yoyBookings:primary.yoyBookings, yoyTraffic:primary.yoyTraffic,
-    hasYoy:["yoyRevenue","yoyTraffic","yoyBookings"].some(k=>!isNaN(parseFloat(primary[k]))),
+    yoyRevenue:primary.yoyRevenue, yoyBookings:primary.yoyBookings, yoyTraffic:primary.yoyTraffic, yoyForm:primary.yoyForm,
+    hasYoy:["yoyRevenue","yoyTraffic","yoyForm","yoyBookings"].some(k=>!isNaN(parseFloat(primary[k]))),
   } : {
     trafficLabel:"Traffic", revenue:ctx.totals.revenue, bookings:ctx.totals.bookings, traffic:ctx.totals.traffic,
     prevRevenue:ctx.prevTotals?.revenue, prevBookings:ctx.prevTotals?.bookings, prevTraffic:ctx.prevTotals?.traffic,
@@ -747,15 +792,18 @@ R.headline = (ctx, b) => {
     return wrap;
   }
   const tiles = [
-    {label:T("revenue"), cur:h.revenue, prev:h.prevRevenue, yoy:h.yoyRevenue, money:true},
-    {label:T("bookings"), cur:h.bookings, prev:h.prevBookings, yoy:h.yoyBookings, small:true},
+    {key:"revenue", label:T("revenue"), cur:h.revenue, prev:h.prevRevenue, yoy:h.yoyRevenue, money:true},
+    {key:"bookings", label:T("bookings"), cur:h.bookings, prev:h.prevBookings, yoy:h.yoyBookings, small:true},
   ];
   if(ctx.isOverall){
     // "Total" and "to the booking form" are two different traffic numbers, so they get two tiles.
     const hasSite = ctx.ov.websiteTraffic > 0, hasForm = ctx.ov.beTraffic > 0;
-    if(hasSite) tiles.push({label:T("websiteSessions"), cur:ctx.ov.websiteTraffic, prev:ctx.prevOv?.websiteTraffic, yoy:P.yoyTraffic});
-    if(hasForm) tiles.push({label:T("toForm"), cur:ctx.ov.beTraffic, prev:ctx.prevOv?.beTraffic, yoy:hasSite ? undefined : P.yoyTraffic});
-  } else tiles.push({label:T("traffic"), cur:h.traffic, prev:h.prevTraffic});
+    if(hasSite) tiles.push({key:"sessions", label:T("websiteSessions"), cur:ctx.ov.websiteTraffic, prev:ctx.prevOv?.websiteTraffic, yoy:P.yoyTraffic});
+    if(hasForm) tiles.push({key:"form", label:T("toForm"), cur:ctx.ov.beTraffic, prev:ctx.prevOv?.beTraffic, yoy:(P.yoyForm !== undefined && String(P.yoyForm).trim() !== "") ? P.yoyForm : (hasSite ? undefined : P.yoyTraffic)});
+  } else tiles.push({key:"sessions", label:T("traffic"), cur:h.traffic, prev:h.prevTraffic});
+  const sel = b.tiles || {};
+  for(let i = tiles.length - 1; i >= 0; i--) if(sel[tiles[i].key] === false) tiles.splice(i, 1);
+  if(!tiles.length) return null;
   const lines = t => {
     let out = "";
     if(ctx.showComparisons && h.hasPrev && t.cur && t.prev !== undefined){
@@ -854,16 +902,17 @@ R.campaigns = (ctx, b) => {
     o.traffic += num(r.traffic); o.bookings += num(r.bookings); o.revenue += num(r.revenue); o.spend += num(r.spend);
   });
   let crHidden = false;
+  const ht = ctx.rows.some(r=>num(r.traffic) > 0);   // traffic per campaign known?
   const cr = (bk, t) => { if(t < MIN_CR_SESSIONS){ crHidden = crHidden || t > 0; return "—"; } return (bk/t*100).toFixed(1) + "%"; };
   const cpb = (s, bk) => bk > 0 ? money(s/bk) : "—";
   const Tt = ctx.totals;
   const t = document.createElement("table"); t.className = "rtable";
-  t.innerHTML = `<tr><th>${ctx.showBrand?T("campaign"):T("channel")}</th><th>${T("traffic")}</th><th>${T("bookings")}</th><th>${T("cr")}</th><th>${T("revenue")}</th>${cols?`<th>${T("spend")}</th><th>${T("costPerBooking")}</th><th>${T("roas")}</th>`:""}</tr>` +
+  t.innerHTML = `<tr><th>${ctx.showBrand?T("campaign"):T("channel")}</th>${ht?`<th>${T("traffic")}</th>`:""}<th>${T("bookings")}</th>${ht?`<th>${T("cr")}</th>`:""}<th>${T("revenue")}</th>${cols?`<th>${T("spend")}</th><th>${T("costPerBooking")}</th><th>${T("roas")}</th>`:""}</tr>` +
     Object.keys(by).sort((a,c)=>by[c].revenue-by[a].revenue).map(k=>{
       const o = by[k];
-      return `<tr><td>${esc(k)}${o.sub?`<div style="font-size:10.5px;color:var(--ink-soft);">${esc(o.sub)}</div>`:""}</td><td>${fmt(o.traffic)}</td><td>${fmt(o.bookings)}</td><td>${cr(o.bookings,o.traffic)}</td><td>${money(o.revenue)}</td>${cols?`<td>${money(o.spend)}</td><td>${cpb(o.spend,o.bookings)}</td><td>${o.spend>0?(o.revenue/o.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
+      return `<tr><td>${esc(k)}${o.sub?`<div style="font-size:10.5px;color:var(--ink-soft);">${esc(o.sub)}</div>`:""}</td>${ht?`<td>${fmt(o.traffic)}</td>`:""}<td>${fmt(o.bookings)}</td>${ht?`<td>${cr(o.bookings,o.traffic)}</td>`:""}<td>${money(o.revenue)}</td>${cols?`<td>${money(o.spend)}</td><td>${cpb(o.spend,o.bookings)}</td><td>${o.spend>0?(o.revenue/o.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
     }).join("") +
-    `<tr class="row-total"><td>${T("totalTracked")}</td><td>${fmt(Tt.traffic)}</td><td>${fmt(Tt.bookings)}</td><td>${cr(Tt.bookings,Tt.traffic)}</td><td>${money(Tt.revenue)}</td>${cols?`<td>${money(Tt.spend)}</td><td>${cpb(Tt.spend,Tt.bookings)}</td><td>${Tt.spend>0?(Tt.revenue/Tt.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
+    `<tr class="row-total"><td>${T("totalTracked")}</td>${ht?`<td>${fmt(Tt.traffic)}</td>`:""}<td>${fmt(Tt.bookings)}</td>${ht?`<td>${cr(Tt.bookings,Tt.traffic)}</td>`:""}<td>${money(Tt.revenue)}</td>${cols?`<td>${money(Tt.spend)}</td><td>${cpb(Tt.spend,Tt.bookings)}</td><td>${Tt.spend>0?(Tt.revenue/Tt.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
   sec.appendChild(t);
   if(crHidden){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = T("crNote", {n:MIN_CR_SESSIONS}); sec.appendChild(n); }
   return sec;
@@ -977,13 +1026,61 @@ function activityCard(c, kind){
 function activityCardsFor(ctx){
   return (currentProgress.cards||[]).filter(c=>(c.stage==="Done/Paused" || c.stage==="Live") && cardPeriodOk(c, ctx));
 }
+// A group of activities can be limited to cards with certain tags (e.g. "Organic" or "Advertising") and can carry a
+// "what changed" strip of result tiles under the cards — so each block reads as: what we did → what it brought.
+function cardsForBlock(ctx, b){
+  const tf = (b.tagFilter||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean);
+  const all = activityCardsFor(ctx);
+  return tf.length ? all.filter(c=>(c.tags||[]).some(t=>tf.includes(String(t).trim().toLowerCase()))) : all;
+}
+function resultTiles(lines, cols){
+  const g = document.createElement("div"); g.className = "glance-strip";
+  g.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  g.innerHTML = lines.map(l=>{
+    const [label, value, note] = splitLine(l).map(x=>(x||"").trim());
+    let nh = "";
+    if(note){ const m = note.match(/^(\S+)\s*(.*)$/); const badge = m ? deltaTokenHtml(m[1]) : null; nh = `<div class="glance-yoy">${badge ? badge + (m[2] ? " " + esc(m[2]) : "") : esc(note)}</div>`; }
+    return `<div class="glance-item"><div class="glance-label">${esc(label)}</div><div class="glance-val">${esc(value||"")}</div>${nh}</div>`;
+  }).join("");
+  return g;
+}
 R.activities = (ctx, b) => {
-  const cards = activityCardsFor(ctx);
+  const cards = cardsForBlock(ctx, b);
+  const tiles = (b.tilesText||"").split(/\r?\n/).map(l=>l.trim()).filter(l=>l && !l.startsWith("#"));
+  const comment = (b.commentText||"").trim();
+  const filtered = !!(b.tagFilter||"").trim();
+  if(filtered && !cards.length && !tiles.length) return null;     // an empty group simply isn't shown
   const sec = section(b);
-  if(!cards.length) sec.innerHTML += `<div class="empty-note">${T("noActivities")}</div>`;
+  if(!cards.length && !tiles.length) sec.innerHTML += `<div class="empty-note">${T("noActivities")}</div>`;
   cards.forEach(c=>sec.appendChild(activityCard(c, "done")));
+  if(tiles.length){
+    const r = document.createElement("div"); r.className = "act-results";
+    r.innerHTML = `<div class="story-label">${T("storyResult")}</div>`;
+    r.appendChild(resultTiles(tiles, Math.min(tiles.length, 4)));
+    sec.appendChild(r);
+  }
+  if(comment){ const c = document.createElement("div"); c.className = "story-comment"; c.innerHTML = `<b>${T("storyWhy")}:</b> ${esc(comment)}`; sec.appendChild(c); }
   return sec;
 };
+
+// Key takeaways as a fixed form: commercial results (+ why) on one side, traffic on the other. Empty fields are left out.
+R.takeaways = (ctx, b) => {
+  const f = b.fields || {}, has = k => f[k] && String(f[k]).trim();
+  const comm = [["bookings","tkBookings"],["revenue","tkRevenue"],["paid","tkAds"]].filter(([k])=>has(k));
+  const traf = [["organic","tkOrganic"],["refai","tkRefAi"],["paidTraffic","tkPaid"]].filter(([k])=>has(k));
+  const why = has("why");
+  if(!comm.length && !traf.length && !why) return null;
+  const sec = section(b, T("t_takeaways"));
+  const li = ([k, lk]) => `<li><b>${T(lk)}:</b> ${esc(String(f[k]).trim())}</li>`;
+  const cols = [];
+  if(comm.length || why) cols.push(`<div class="tk-col"><div class="tk-head">${T("tkCommercial")}</div><ul>${comm.map(li).join("")}</ul>${why ? `<div class="tk-why"><b>${T("tkWhy")}:</b> ${esc(String(f.why).trim())}</div>` : ""}</div>`);
+  if(traf.length) cols.push(`<div class="tk-col"><div class="tk-head">${T("tkTraffic")}</div><ul>${traf.map(li).join("")}</ul></div>`);
+  const box = document.createElement("div"); box.className = "tk" + (cols.length === 1 ? " one" : ""); box.innerHTML = cols.join("");
+  sec.appendChild(box);
+  return sec;
+};
+
+
 R.planned = (ctx, b) => {
   const cards = (currentProgress.cards||[]).filter(c=>c.stage==="Planned");
   const sec = section(b);
@@ -1017,22 +1114,79 @@ R.screenshot = (ctx, b) => {
   });
   return sec;
 };
+// "+33%", "−12%", "×4.2" and "new" become the same badges as in the built-in tables.
+function deltaTokenHtml(v){
+  const e = esc(v);
+  if(/^[+▲]\s?[\d\s\u00a0.,]+\s?%$/.test(v) || /^[×x]\s?\d[\d.,]*$/.test(v)) return `<span class="delta-badge delta-up">${e}</span>`;
+  if(/^[−–\-▼]\s?[\d\s\u00a0.,]+\s?%$/.test(v)) return `<span class="delta-badge delta-down">${e}</span>`;
+  if(/^(new|новый|новая|новое|запуск)$/i.test(v)) return `<span class="delta-badge delta-new">${e}</span>`;
+  return null;
+}
+const splitLine = l => l.includes("\t") ? l.split("\t") : (l.includes("|") ? l.split("|") : l.split(","));
+// Lines starting with "#" are footnotes under a table or a set of tiles.
+function footnotes(lines){ return lines.filter(l=>l.startsWith("#")).map(l=>l.replace(/^#\s?/, "")); }
+function appendNotes(sec, notes){ notes.forEach(n=>{ const d = document.createElement("div"); d.className = "table-note"; d.textContent = n; sec.appendChild(d); }); }
+
+// One tile per line: Label | Value | Note. A note that starts with +33% / −12% / ×4.2 / new gets a badge.
+R.numbers = (ctx, b) => {
+  const lines = (b.tilesText||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const tiles = lines.filter(l=>!l.startsWith("#"));
+  if(!tiles.length) return null;
+  const sec = section(b, "");
+  const g = document.createElement("div"); g.className = "glance-strip";
+  // balanced rows: 2–4 tiles in one row, 5–6 as 3 + 2/3, 7–8 as 4 + 3/4
+  const cols = tiles.length <= 4 ? tiles.length : (tiles.length <= 6 ? 3 : 4);
+  g.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  g.innerHTML = tiles.map(l=>{
+    const [label, value, note] = splitLine(l).map(x=>(x||"").trim());
+    let noteHtml = "";
+    if(note){ const m = note.match(/^(\S+)\s*(.*)$/); const badge = m ? deltaTokenHtml(m[1]) : null; noteHtml = `<div class="glance-yoy">${badge ? badge + (m[2] ? " " + esc(m[2]) : "") : esc(note)}</div>`; }
+    return `<div class="glance-item"><div class="glance-label">${esc(label)}</div><div class="glance-val">${esc(value||"")}</div>${noteHtml}</div>`;
+  }).join("");
+  sec.appendChild(g);
+  appendNotes(sec, footnotes(lines));
+  return sec;
+};
+
+// "What we did" next to "what changed": a short list of work on the left, 2–3 result tiles on the right, an optional comment under.
+R.story = (ctx, b) => {
+  const done = (b.doneText||"").trim();
+  const tiles = (b.tilesText||"").split(/\r?\n/).map(l=>l.trim()).filter(l=>l && !l.startsWith("#"));
+  const comment = (b.commentText||"").trim();
+  if(!done && !tiles.length) return null;
+  const sec = section(b, "");
+  const wrap = document.createElement("div"); wrap.className = "story" + ((done && tiles.length) ? "" : " one");
+  if(done){
+    const l = document.createElement("div"); l.innerHTML = `<div class="story-label">${T("storyDid")}</div><div class="season-note">${renderNote(done)}</div>`; wrap.appendChild(l);
+  }
+  if(tiles.length){
+    const r = document.createElement("div"); r.innerHTML = `<div class="story-label">${T("storyResult")}</div>`;
+    const g = document.createElement("div"); g.className = "glance-strip";
+    g.style.gridTemplateColumns = `repeat(${tiles.length >= 3 ? 2 : tiles.length}, minmax(0, 1fr))`;
+    g.innerHTML = tiles.map(l=>{
+      const [label, value, note] = splitLine(l).map(x=>(x||"").trim());
+      let nh = "";
+      if(note){ const m = note.match(/^(\S+)\s*(.*)$/); const badge = m ? deltaTokenHtml(m[1]) : null; nh = `<div class="glance-yoy">${badge ? badge + (m[2] ? " " + esc(m[2]) : "") : esc(note)}</div>`; }
+      return `<div class="glance-item"><div class="glance-label">${esc(label)}</div><div class="glance-val">${esc(value||"")}</div>${nh}</div>`;
+    }).join("");
+    r.appendChild(g); wrap.appendChild(r);
+  }
+  sec.appendChild(wrap);
+  if(comment){ const c = document.createElement("div"); c.className = "story-comment"; c.innerHTML = `<b>${T("storyWhy")}:</b> ${esc(comment)}`; sec.appendChild(c); }
+  return sec;
+};
+
 R.table = (ctx, b) => {
   const text = (b.tableText||"").trim(); if(!text) return null;
-  const lines = text.split(/\r?\n/).filter(l=>l.trim());
-  const rows = lines.map(l=> l.includes("\t") ? l.split("\t") : l.split(","));
+  const allLines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const lines = allLines.filter(l=>!l.startsWith("#"));
+  if(!lines.length) return null;
+  const rows = lines.map(splitLine);
   const sec = section(b, T("t_table"));
   const t = document.createElement("table"); t.className = "rtable custom";
-  // Cells that look like changes (+33%, −32%, ×18,7, "new") get the same badges as the built-in tables.
-  const cellHtml = raw => {
-    const v = String(raw).trim(), e = esc(v);
-    if(/^[+▲]\s?[\d\s\u00a0.,]+\s?%$/.test(v) || /^[×x]\s?\d[\d.,]*$/.test(v)) return `<span class="delta-badge delta-up">${e}</span>`;
-    if(/^[−–\-▼]\s?[\d\s\u00a0.,]+\s?%$/.test(v)) return `<span class="delta-badge delta-down">${e}</span>`;
-    if(/^(new|новый|новая|новое|запуск)$/i.test(v)) return `<span class="delta-badge delta-new">${e}</span>`;
-    return e;
-  };
+  const cellHtml = raw => { const v = String(raw).trim(); return deltaTokenHtml(v) || esc(v); };
   t.innerHTML = `<tr>${rows[0].map(c=>`<th>${esc(c.trim())}</th>`).join("")}</tr>` + rows.slice(1).map(r=>`<tr${/^(total|всего|итого)/i.test(String(r[0]||"").trim()) ? ' class="row-total"' : ""}>${r.map(c=>`<td>${cellHtml(c)}</td>`).join("")}</tr>`).join("");
-  sec.appendChild(t); return sec;
+  sec.appendChild(t); appendNotes(sec, footnotes(allLines)); return sec;
 };
 // Neutral, factual limitations — safe for the client. The full diagnosis lives in the Internal checks panel.
 R.datanotes = (ctx, b) => {
@@ -1055,9 +1209,9 @@ function renderReport(){
   if(!ctx){ root.innerHTML = '<div class="empty-note">Select a report period above.</div>'; return; }
   const rep = document.createElement("div"); rep.className = "report";
   rep.innerHTML = (ctx.isInternal ? `<div class="internal-banner">Internal view — contains data that is not for the client</div>` : "") +
-    `<div class="report-header"><div class="report-kicker">Exely Digital Marketing Hub</div><div class="report-title">${esc(getField("hotelData","name") || currentHotel.id)}</div><div class="report-sub">${esc((report.subtitle && report.subtitle.trim()) || (periodDisplay(ctx.periodLabel) + " · " + (ctx.isOverall ? T("overallResults") : T("trackedResults"))))}</div></div>`;
+    `<div class="report-header"><div class="report-kicker">Exely Digital Marketing Hub</div><div class="report-title">${esc((report.hotelName && report.hotelName.trim()) || getField("hotelData","name") || currentHotel.id)}</div><div class="report-sub">${esc((report.subtitle && report.subtitle.trim()) || (periodDisplay(ctx.periodLabel) + " · " + (ctx.isOverall ? T("overallResults") : T("trackedResults"))))}</div></div>`;
   const body = document.createElement("div"); body.className = "report-body"; rep.appendChild(body);
-  const EMPTY_MSG = {text:"is empty — write it in the editor.", screenshot:"has no screenshots yet — paste one (Ctrl+V) or drop a file in the editor.", table:"is empty — paste rows from a spreadsheet in the editor."};
+  const EMPTY_MSG = {takeaways:"is empty — fill the fields in the editor.", story:"is empty — fill “What we did” and the result tiles in the editor.", numbers:"has no tiles yet — add one per line in the editor (Label | Value | Note).", text:"is empty — write it in the editor.", screenshot:"has no screenshots yet — paste one (Ctrl+V) or drop a file in the editor.", table:"is empty — paste rows from a spreadsheet in the editor."};
   report.blocks.forEach(b=>{
     if(!isBlockVisible(b, ctx) || !R[b.type]) return;
     let node = null; try{ node = R[b.type](ctx, b); }catch(e){ console.error("block "+b.type, e); }
@@ -1161,6 +1315,8 @@ function computeChecks(ctx){
     const miss = ctx.members.filter(p=>!(hasVal(p.totalBookings) && hasVal(p.totalRevenue))).map(p=>p.period);
     if(miss.length) info.push(`Range ${ctx.periodLabel}: ${miss.join(", ")} ha${miss.length>1?"ve":"s"} no overall bookings/revenue, so those totals aren't shown for the range.`);
   }
+  // 9c. template placeholders left in the text
+  (report?.blocks || []).filter(b=>b.enabled).forEach(b=>{ if([b.text, b.tilesText, b.doneText, b.commentText].some(t=>/\[[^\]]{2,}\]/.test(t || ""))) warn.push(`“${titleOf(b)}” still contains [placeholders] to fill in.`); });
   // 10. Reconciliation
   const rev = cur.reduce((a,r)=>a+num(r.revenue), 0);
   if(rev > 0 && ov.revenue > 0 && Math.abs(rev-ov.revenue)/ov.revenue > 0.02) info.push(`Channel revenue adds up to ${money(rev)} but the hotel total is ${money(ov.revenue)} — reconcile before sending.`);
@@ -1200,7 +1356,7 @@ function hiddenReason(b, ctx){
     if(b.type === "datanotes") return "hidden in Client view — tick “Data notes”, or switch Audience to Internal.";
     return "";
   }
-  if(!R[b.type] || ["text","screenshot","table"].includes(b.type)) return "";
+  if(!R[b.type] || ["text","screenshot","table","numbers","story","takeaways"].includes(b.type)) return "";
   let node = null;
   try{ node = R[b.type](ctx, b); }catch(e){ return "this block failed to render (see the browser console)."; }
   if(node) return "";
@@ -1223,16 +1379,20 @@ function renderEditor(){
   root.innerHTML = "";
   const card = document.createElement("div"); card.className = "ed-card";
   card.innerHTML = `<div class="ed-head"><span class="ed-title">Report layout</span>
-    <select id="presetSel"><option value="">Apply preset…</option><option value="first">First report</option><option value="monthly">Monthly</option></select>
+    <select id="presetSel"><option value="">Apply preset…</option><option value="structured">Structured (takeaways template)</option><option value="simple">Simple (client-friendly)</option><option value="first">First report</option><option value="monthly">Monthly</option></select>
     <button class="btn secondary" id="saveNowBtn">Save now</button></div>
     <div class="ed-note"><b>How this works:</b> tick a block to show it in the report, use ↑ ↓ to move it, ↗ to jump to it in the report. Text, screenshot and table blocks stay invisible until they have content. Layout saves automatically (badge at the top). Numbers come from the workspace as of ${esc(loadedAt || "—")} — if you changed them there, click “Reload data”. A new month starts from last month's layout.</div>`;
   const ectx = buildCtx();
   const subRow = document.createElement("div"); subRow.className = "ed-labels"; subRow.style.cssText = "margin:0 0 10px;padding:0 0 10px;border-top:0;border-bottom:1px solid var(--slate-soft);";
   subRow.innerHTML = `<div class="ed-hint" style="margin:0 0 4px;"><b>Report subtitle</b> (optional) — replaces the period line under the hotel name, e.g. “Август–сентябрь 2026”.</div><input type="text" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12.5px;" value="${esc(report.subtitle||"")}" placeholder="Leave empty to show the period">`;
   subRow.querySelector("input").addEventListener("input", e=>{ report.subtitle = e.target.value; changed(false); });
+  const nameRow = document.createElement("div"); nameRow.className = "ed-labels"; nameRow.style.cssText = "margin:0 0 10px;padding:0 0 10px;border-top:0;border-bottom:1px solid var(--slate-soft);";
+  nameRow.innerHTML = `<div class="ed-hint" style="margin:0 0 4px;"><b>Hotel name in the report</b> (optional) — use it to hide an internal number, e.g. “Azure Hotel Pattaya 509699” → “Azure Hotel Pattaya”.</div><input type="text" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12.5px;" value="${esc(report.hotelName||"")}" placeholder="Leave empty to use the name from the hotel record">`;
+  nameRow.querySelector("input").addEventListener("input", e=>{ report.hotelName = e.target.value; changed(false); });
+  card.appendChild(nameRow);
   card.appendChild(subRow);
   report.blocks.forEach((b, i)=>{
-    const custom = ["text","screenshot","table"].includes(b.type);
+    const custom = ["text","screenshot","table","numbers","story","takeaways"].includes(b.type);
     const row = document.createElement("div"); row.className = "ed-row" + (b.enabled ? "" : " off");
     row.innerHTML = `<input type="checkbox" ${b.enabled?"checked":""} title="Show in report">
       <span class="ed-move"><button data-d="-1" title="Move up">↑</button> <button data-d="1" title="Move down">↓</button> <button class="go" data-go="1" title="Show in the report">↗</button></span>
@@ -1258,8 +1418,27 @@ function renderEditor(){
         body.innerHTML = `<textarea placeholder="Write the text. Start lines with • for bullets; a short line without a full stop becomes a bold sub-heading."></textarea>`;
         const ta = body.querySelector("textarea"); ta.value = b.text || "";
         ta.addEventListener("input", ()=>{ b.text = ta.value; changed(false); });
+      } else if(b.type === "takeaways"){
+        if(!b.fields) b.fields = {};
+        const G = [["Commercial results", [["bookings","Bookings","12 (+20% vs last month, +20% vs last year)"],["revenue","Revenue","$4,743, net of cancellations (+59% vs last month, +95% vs last year)"],["paid","From advertising","4 bookings, $1.7k: 33% of bookings, 35% of revenue"],["why","Why — context for weak or unusual numbers","First full month after the work; conversion is the main upside"]]],
+                   ["Traffic", [["organic","Organic","how it moved, new sources"],["refai","Referral & AI","how it moved, new sources"],["paidTraffic","Paid","what is running and what it brought"]]]];
+        body.innerHTML = G.map(([h, fs])=>`<div class="ed-hint" style="margin:8px 0 3px;"><b>${h}</b></div>` + fs.map(([k, l, ph])=>`<div class="ed-hint" style="margin:4px 0 2px;">${l}</div><input type="text" class="cap tk-in" data-k="${k}" placeholder="${esc(ph)}">`).join("")).join("") + `<div class="ed-hint">Same fields every month; empty fields are left out of the report.</div>`;
+        body.querySelectorAll(".tk-in").forEach(i=>{ i.value = b.fields[i.dataset.k] || ""; i.addEventListener("input", ()=>{ b.fields[i.dataset.k] = i.value; changed(false); }); });
+      } else if(b.type === "story"){
+        body.innerHTML = `<div class="ed-hint" style="margin:0 0 3px;"><b>What we did</b> — one bullet per line (start with •)</div><textarea class="s-done" style="min-height:70px;"></textarea>
+          <div class="ed-hint" style="margin:8px 0 3px;"><b>What changed</b> — one tile per line: Label | Value | Note (a note starting with +33%, −12%, ×4.2 or “new” gets a badge)</div><textarea class="s-tiles" style="min-height:70px;"></textarea>
+          <div class="ed-hint" style="margin:8px 0 3px;"><b>Comment</b> (optional) — one line, e.g. why a number is weak or unusual</div><input type="text" class="cap s-comment">`;
+        const d = body.querySelector(".s-done"), t = body.querySelector(".s-tiles"), c = body.querySelector(".s-comment");
+        d.value = b.doneText || ""; t.value = b.tilesText || ""; c.value = b.commentText || "";
+        d.addEventListener("input", ()=>{ b.doneText = d.value; changed(false); });
+        t.addEventListener("input", ()=>{ b.tilesText = t.value; changed(false); });
+        c.addEventListener("input", ()=>{ b.commentText = c.value; changed(false); });
+      } else if(b.type === "numbers"){
+        body.innerHTML = `<textarea placeholder="One tile per line:  Label | Value | Note&#10;Bookings | 80 | ×13.3 vs last year (6 → 80)&#10;Visits to booking form | 2,995 | +354% vs last year"></textarea><div class="ed-hint">A note that starts with +33%, −12%, ×4.2 or “new” gets a badge. Lines starting with # become a footnote. Tab-separated paste from a sheet works too.</div>`;
+        const ta = body.querySelector("textarea"); ta.value = b.tilesText || "";
+        ta.addEventListener("input", ()=>{ b.tilesText = ta.value; changed(false); });
       } else if(b.type === "table"){
-        body.innerHTML = `<textarea placeholder="Paste rows from Excel / Google Sheets (first row = column headers)"></textarea><div class="ed-hint">Tab-separated (paste from a spreadsheet) or comma-separated.</div>`;
+        body.innerHTML = `<textarea placeholder="Paste rows from Excel / Google Sheets (first row = column headers)"></textarea><div class="ed-hint">Tab-separated (paste from a spreadsheet) or “|”-separated. Lines starting with # become a footnote.</div>`;
         const ta = body.querySelector("textarea"); ta.value = b.tableText || "";
         ta.addEventListener("input", ()=>{ b.tableText = ta.value; changed(false); });
       } else {
@@ -1271,6 +1450,13 @@ function renderEditor(){
       const why = hiddenReason(b, ectx);
       if(why){ const wb = document.createElement("div"); wb.className = "ed-body"; wb.innerHTML = `<div class="ed-why">Not in the report right now: ${esc(why)}</div>`; row.appendChild(wb); }
     }
+    if(b.type === "headline"){
+      const hb = document.createElement("div"); hb.className = "ed-body";
+      hb.innerHTML = `<div class="ed-hint" style="margin:0 0 4px;">Numbers to show (fewer is easier to read):</div>` +
+        [["revenue","Revenue"],["bookings","Bookings"],["sessions","Website sessions"],["form","To booking form"]].map(([k,l])=>`<label class="chk" style="margin-right:12px;"><input type="checkbox" data-k="${k}" ${(b.tiles||{})[k] === false ? "" : "checked"}> ${l}</label>`).join("");
+      hb.querySelectorAll("input").forEach(i=>i.addEventListener("change", ()=>{ b.tiles = b.tiles || {}; b.tiles[i.dataset.k] = i.checked; changed(false); }));
+      row.appendChild(hb);
+    }
     if(b.type === "channels"){
       const cb = document.createElement("div"); cb.className = "ed-body";
       cb.innerHTML = `<div class="ed-hint" style="margin:0;">Main channels only: show the top <input type="number" min="1" max="12" style="width:54px;padding:3px 6px;border:1px solid var(--line);border-radius:5px;" value="${esc(b.topN||"")}" placeholder="all"> by sessions and group the rest as “Other channels”. Leave empty to show every channel.</div>`;
@@ -1281,7 +1467,17 @@ function renderEditor(){
       const hb = document.createElement("div"); hb.className = "ed-body"; hb.innerHTML = `<div class="ed-hint" style="margin:0;">${esc(cardHint(b.type))}</div>`; row.appendChild(hb);
     }
     if(b.type === "activities"){
-      const ctx2 = buildCtx(), shown = ctx2 ? activityCardsFor(ctx2) : [];
+      const gb = document.createElement("div"); gb.className = "ed-body";
+      gb.innerHTML = `<div class="ed-hint" style="margin:0 0 3px;"><b>Group</b> — show only cards with these tags (comma-separated, empty = all cards)</div><input type="text" class="cap a-tags" placeholder="e.g. Organic, SEO">
+        <div class="ed-hint" style="margin:8px 0 3px;"><b>What changed</b> — result tiles under the cards, one per line: Label | Value | Note</div><textarea class="a-tiles" style="min-height:60px;"></textarea>
+        <div class="ed-hint" style="margin:8px 0 3px;"><b>Comment</b> (optional)</div><input type="text" class="cap a-comment">`;
+      const at = gb.querySelector(".a-tags"), tl = gb.querySelector(".a-tiles"), ac = gb.querySelector(".a-comment");
+      at.value = b.tagFilter || ""; tl.value = b.tilesText || ""; ac.value = b.commentText || "";
+      at.addEventListener("input", ()=>{ b.tagFilter = at.value; changed(false); });
+      tl.addEventListener("input", ()=>{ b.tilesText = tl.value; changed(false); });
+      ac.addEventListener("input", ()=>{ b.commentText = ac.value; changed(false); });
+      row.appendChild(gb);
+      const ctx2 = buildCtx(), shown = ctx2 ? cardsForBlock(ctx2, b) : [];
       if(shown.length){
         const lb = document.createElement("div"); lb.className = "ed-body";
         lb.innerHTML = `<div class="ed-hint" style="margin:0 0 6px;"><b>Screenshots per activity.</b> A screenshot attached here appears inside that activity and stays with it in later reports.</div>`;
@@ -1294,7 +1490,7 @@ function renderEditor(){
   // add block
   const add = document.createElement("div"); add.className = "ed-add";
   const missing = BUILTINS.filter(t=>!report.blocks.some(b=>b.type===t));
-  add.innerHTML = `<select id="addType"><option value="text">+ Text block</option><option value="screenshot">+ Screenshots</option><option value="table">+ Table (paste)</option>${missing.map(t=>`<option value="${t}">Restore: ${esc(DEFAULT_TITLES[t]||TYPE_LABELS[t])}</option>`).join("")}</select><span class="ed-hint" style="margin:0;">place</span><select id="addAfter"><option value="-1">at the end</option>${report.blocks.map((x,k)=>`<option value="${k}">after “${esc(titleOf(x))}”</option>`).join("")}</select><button class="btn secondary" id="addBtn">Add</button>`;
+  add.innerHTML = `<select id="addType"><option value="text">+ Text block</option><option value="screenshot">+ Screenshots</option><option value="takeaways">+ Key takeaways (form)</option><option value="story">+ Did → changed</option><option value="numbers">+ Number tiles</option><option value="table">+ Table (paste)</option>${missing.map(t=>`<option value="${t}">Restore: ${esc(DEFAULT_TITLES[t]||TYPE_LABELS[t])}</option>`).join("")}</select><span class="ed-hint" style="margin:0;">place</span><select id="addAfter"><option value="-1">at the end</option>${report.blocks.map((x,k)=>`<option value="${k}">after “${esc(titleOf(x))}”</option>`).join("")}</select><button class="btn secondary" id="addBtn">Add</button>`;
   card.appendChild(add);
   // channel labels
   const chans = [...new Set(((ctxRowsForEditor())||[]).map(r=>(r.channel||"").trim()).filter(Boolean))];
@@ -1313,12 +1509,12 @@ function renderEditor(){
   card.querySelector("#presetSel").addEventListener("change", e=>{
     const v = e.target.value; if(!v) return;
     if(confirm("Replace the current layout with the preset? Text, screenshots and tables you added will be removed from this report.")){
-      const p = presetLayout(v); report.blocks = p.blocks; report.settings = p.settings; applySettings(p.settings); changed(true);
+      const p = presetLayout(v, el("langSelect").value); p.settings.lang = el("langSelect").value; p.settings.rangeFrom = el("periodFromSelect").value; report.blocks = p.blocks; report.settings = p.settings; applySettings(p.settings); changed(true);
     } else e.target.value = "";
   });
   card.querySelector("#addBtn").addEventListener("click", ()=>{
     const t = card.querySelector("#addType").value;
-    const b = t==="text" ? mkBlock("text",{title:"", text:""}) : t==="screenshot" ? mkBlock("screenshot",{title:"Screenshots", images:[]}) : t==="table" ? mkBlock("table",{title:"", tableText:""}) : mkBlock(t);
+    const b = t==="text" ? mkBlock("text",{title:"", text:""}) : t==="screenshot" ? mkBlock("screenshot",{title:"Screenshots", images:[]}) : t==="table" ? mkBlock("table",{title:"", tableText:""}) : t==="takeaways" ? mkBlock("takeaways",{title:"", fields:{}}) : t==="story" ? mkBlock("story",{title:"", doneText:"", tilesText:"", commentText:""}) : t==="numbers" ? mkBlock("numbers",{title:"", tilesText:""}) : mkBlock(t);
     const at = parseInt(card.querySelector("#addAfter").value, 10);
     if(at < 0) report.blocks.push(b); else report.blocks.splice(at+1, 0, b);
     pendingScroll = b.id; changed(true);
@@ -1483,6 +1679,8 @@ el("loadBtn").addEventListener("click", ()=>{ const id = el("hotelSelect").value
 el("editBtn").addEventListener("click", ()=>{ editMode = !editMode; el("editBtn").textContent = editMode ? "Done editing" : "Edit layout"; document.querySelector(".shell").classList.toggle("editing", editMode); renderEditor(); renderReport(); });
 el("printBtn").addEventListener("click", ()=>{
   if(el("audienceSelect").value === "internal" && !confirm("You're in Internal view — the PDF will include internal data and a banner. Print anyway?")) return;
+  const open = (report?.blocks || []).filter(b=>b.enabled).some(b=>[b.text, b.tilesText, b.doneText, b.commentText].some(t=>/\[[^\]]{2,}\]/.test(t || "")));
+  if(open && !confirm("Some text still contains [placeholders] to fill in. Print anyway?")) return;
   window.print();
 });
 el("audienceSelect").addEventListener("change", ()=>{ syncAudienceUi(); renderChecks(); renderReport(); if(editMode) renderEditor(); });
