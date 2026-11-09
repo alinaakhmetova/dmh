@@ -34,10 +34,13 @@ table.grid{border-collapse:separate;border-spacing:0;width:100%;min-width:1280px
 .grid td{padding:7px 10px;border-bottom:1px solid #eee9f3;vertical-align:middle;white-space:nowrap;}
 .grid tbody tr:hover{background:#faf7fd;} .grid td.mid{border-left:1px solid var(--line);}
 .grid tfoot td{position:sticky;bottom:0;background:#fbf9fd;font-weight:600;border-top:1px solid var(--line);}
-.grid td{padding:6px 8px;} .grid th{padding:9px 8px;} input.cell{width:72px;} .chip{padding:2px 6px;font-size:10.5px;}
-.grid td:nth-child(1),.grid th:nth-child(1){position:sticky;left:0;z-index:1;background:#fff;min-width:74px;max-width:74px;} .grid th:nth-child(1){background:#fbf9fd;z-index:3;}
-.grid td:nth-child(2),.grid th:nth-child(2){position:sticky;left:74px;z-index:1;background:#fff;box-shadow:1px 0 0 var(--line);min-width:170px;} .grid th:nth-child(2){background:#fbf9fd;z-index:3;}
-.grid tbody tr:hover td:nth-child(1),.grid tbody tr:hover td:nth-child(2){background:#faf7fd;} .grid tfoot td:nth-child(1),.grid tfoot td:nth-child(2){background:#fbf9fd;}
+.grid td{padding:6px 8px;} .grid th{padding:9px 8px;} .grid th.num{text-align:right;}
+input.cell,.ro{width:84px;box-sizing:border-box;} .ro{padding:4px 6px;border:1px solid transparent;} .share{display:inline-block;width:34px;text-align:left;} .chip{padding:2px 6px;font-size:10.5px;}
+.grid .stk1{position:sticky;left:0;z-index:1;background:#fff;min-width:74px;max-width:74px;} .grid th.stk1{background:#fbf9fd;z-index:3;}
+.grid .stk2{position:sticky;left:74px;z-index:1;background:#fff;box-shadow:1px 0 0 var(--line);min-width:170px;} .grid .stk2.solo{left:0;} .grid th.stk2{background:#fbf9fd;z-index:3;}
+.grid tbody tr:hover .stk1,.grid tbody tr:hover .stk2{background:#faf7fd;} .grid tfoot .stk1,.grid tfoot .stk2{background:#fbf9fd;}
+.grid td.wrap{white-space:normal;min-width:210px;max-width:270px;} .nt{font-size:12px;line-height:1.3;padding:1px 0;}
+.menu{position:absolute;right:0;top:38px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:30;display:flex;flex-direction:column;gap:7px;min-width:170px;} .menu[hidden]{display:none;} .menu .chk{color:var(--ink);}
 .id{font:12px 'IBM Plex Mono',monospace;color:var(--ink-soft);}
 a.hname{font-weight:600;color:var(--brand);cursor:pointer;text-decoration:none;} a.hname:hover{text-decoration:underline;}
 input.cell{width:84px;border:1px solid transparent;border-radius:6px;padding:4px 6px;text-align:right;background:transparent;}
@@ -82,7 +85,7 @@ table.mini{width:100%;border-collapse:collapse;} .mini th{font:600 10.5px 'IBM P
 </head>
 <body>
 <header class="top"><div class="logo">EXELY · DMH HUB</div>
-<nav id="tabs"><button data-act="tab" data-t="hotels" class="on">Hotels</button><button data-act="tab" data-t="todo">To do<span class="badge" id="todoBadge" hidden></span></button><button data-act="tab" data-t="settings">Settings</button></nav>
+<nav id="tabs"><button data-act="tab" data-t="hotels" class="on">Hotels</button><button data-act="tab" data-t="todo">Notes<span class="badge" id="todoBadge" hidden></span></button><button data-act="tab" data-t="settings">Settings</button></nav>
 <div id="status"></div></header>
 <div id="demoBanner" class="demo" hidden>Demo data (not saved anywhere). The hub reads your real hotels, results and activities from the same Google Sheet as the other DMH tools.</div>
 <main id="app"><div class="empty">Loading…</div></main>
@@ -90,7 +93,7 @@ table.mini{width:100%;border-collapse:collapse;} .mini th{font:600 10.5px 'IBM P
 <script>
 /* =============== backend (same Google Sheet as the other DMH tools) =============== */
 const KEY_URL = "dmh-sheets-url";
-let SHEETS_WEBAPP_URL = "PASTE_YOUR_DEPLOYED_WEB_APP_URL_HERE";
+let SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxKHZNNI6QlVeyv9Q982-ErEYSXkIdD6vTt0Lpq5z2YMCA_-cR1KROjWjM_p_tzolDSVw/exec";
 (function remember(){
   try{
     const ok = u => /^https:\/\/script\.google\.com\//.test(String(u||"").trim());
@@ -114,6 +117,8 @@ async function stGetBulk(keys){
   return out;
 }
 async function stSet(key, value){ backendOk(); const r = await withTimeout(fetch(SHEETS_WEBAPP_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, cache:"no-store", body:JSON.stringify({action:"set", key, value})}), 20000, "saving " + key); return r.json(); }
+async function stDel(key){ backendOk(); const r = await withTimeout(fetch(SHEETS_WEBAPP_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, cache:"no-store", body:JSON.stringify({action:"delete", key})}), 20000, "deleting " + key); return r.json(); }
+async function stList(prefix){ backendOk(); try{ const r = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?list=1&prefix=${encodeURIComponent(prefix)}&_=${Date.now()}`, {cache:"no-store"}), 15000, "listing"); const d = await r.json(); return d.keys || []; }catch(e){ return []; } }
 const jget = async k => { try{ const v = await stGet(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } };
 const parse = v => { try{ return v ? JSON.parse(v) : null; }catch(e){ return null; } };
 
@@ -158,6 +163,9 @@ const DEFAULT_AREAS = [{n:"Website", g:"Website"}, {n:"SEO", g:"Website"}, {n:"C
 let CFG = {channels:DEFAULT_CHANNELS, areas:DEFAULT_AREAS, reportUrl:"dmh_hotel_report.html"};
 const norm = s => String(s || "").toLowerCase().replace(/[^a-z0-9а-яё]+/g, "");
 let hotels = [];
+const COLS = [{k:"id", n:"ID"}, {k:"hotel", n:"Hotel", fixed:true}, {k:"tariff", n:"Tariff"}, {k:"csm", n:"CSM"}, {k:"channels", n:"Channels"}, {k:"notes", n:"Notes"},
+  {k:"rev", n:"Revenue", num:1, m:1}, {k:"bk", n:"Bookings", num:1, m:1}, {k:"pbk", n:"Paid bookings", num:1, m:1}, {k:"prev", n:"Paid revenue", num:1, m:1}, {k:"spend", n:"Ad spend", num:1, m:1}, {k:"fee", n:"Our fee", num:1, m:1}, {k:"rep", n:"Report", m:1}];
+const hiddenCols = () => { try{ return new Set(JSON.parse(localStorage.getItem("dmh-hub-cols") || "[]")); }catch(e){ return new Set(); } };
 const state = {tab:"hotels", hotel:null, month:null, f:{q:"", country:"", todo:false}, showDone:false, openWork:{}, openTd:{}};
 const byId = id => hotels.find(h=>h.id === id);
 const F = (h, k) => h.rec.sections.hotelData.fields[k] || "";
@@ -193,6 +201,10 @@ function snap(h, l){
   const p = periodOf(h, l); if(!p) return null; const rows = p.rows || [];
   return {p, rev:p.totalRevenue, bk:p.totalBookings, form:p.totalBeTraffic, sess:p.totalWebsiteTraffic, rows, paidBk:sumRows(rows, "bookings"), paidRev:sumRows(rows, "revenue"), spend:sumRows(rows, "spend")};
 }
+// The hotel's Exely number (the one that sits in its name, e.g. "Astoria Tbilisi 504673") is a separate field; the technical key (HTL-…) stays hidden.
+const tail = n => { const m = String(n || "").match(/^(.*?)[\s\-–—·]*(\d{3,})\s*$/); return m ? {base:m[1].trim(), num:m[2]} : null; };
+const exId = h => h.rec.hub.num || (tail(F(h, "name")) || {}).num || "";
+const dispName = h => { const t = tail(F(h, "name")); return (t && t.base && (!h.rec.hub.num || h.rec.hub.num === t.num)) ? t.base : (F(h, "name") || "Hotel"); };
 const country = h => h.rec.hub.country || String(F(h, "location")).split(",").pop().trim();
 function tariff(h){
   const f = h.rec.hub.fee; if(f && f.type) return f;
@@ -240,51 +252,55 @@ function render(){
 
 function renderHotels(){
   const csms = [...new Set(hotels.map(h=>F(h, "csm")).filter(Boolean))].sort(), countries = [...new Set(hotels.map(country).filter(Boolean))].sort();
-  app.innerHTML = `<h1>Hotels</h1><p class="sub">Everything at a glance. Numbers for the chosen month can be typed straight into the table.</p>
+  app.innerHTML = `<h1>Hotels</h1><p class="sub">Everything at a glance. Numbers for the chosen month can be typed straight into the table; hide columns you don’t need under “Columns”.</p>
   <div class="bar">
     <input type="search" id="q" placeholder="Search name, ID, country…" value="${esc(state.f.q)}">
     <select data-flt="country"><option value="">All countries</option>${countries.map(c=>`<option ${state.f.country === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>
-    <label class="chk"><input type="checkbox" data-flt="todo" ${state.f.todo ? "checked" : ""}> open to-dos only</label>
-    <span style="margin-left:auto"></span><button class="btn" data-act="addhotel">+ Add hotel</button>
+    <label class="chk"><input type="checkbox" data-flt="todo" ${state.f.todo ? "checked" : ""}> with open notes</label>
+    <span style="margin-left:auto"></span><span style="position:relative"><button class="btn sec" data-act="colmenu">Columns ▾</button><div id="colMenu" class="menu" hidden>${COLS.filter(c=>!c.fixed).map(c=>`<label class="chk"><input type="checkbox" data-col="${c.k}" ${hiddenCols().has(c.k) ? "" : "checked"}> ${c.n}</label>`).join("")}</div></span><button class="btn" data-act="addhotel">+ Add hotel</button>
   </div><div id="gridHost"></div>`;
   renderGrid();
 }
 function filtered(){
   const f = state.f, q = f.q.trim().toLowerCase();
   return hotels.filter(h=>{
-    if(q && ![h.id, F(h, "name"), country(h), F(h, "location")].join(" ").toLowerCase().includes(q)) return false;
+    if(q && ![h.id, exId(h), F(h, "name"), country(h), F(h, "location")].join(" ").toLowerCase().includes(q)) return false;
     if(f.country && country(h) !== f.country) return false;
     if(f.todo && !h.rec.hub.todo.some(x=>!x.done)) return false; return true;
   });
 }
+const trunc = (t, n) => String(t || "").length > n ? String(t).slice(0, n - 1) + "…" : String(t || "");
 function renderGrid(){
-  const list = filtered(), ms = allMonths(), T = {rev:0, bk:0, pbk:0, prev:0, spend:0, fee:0, anyFee:false};
-  const body = list.map(h=>{
+  const list = filtered(), ms = allMonths(), hide = hiddenCols(), vis = COLS.filter(c=>!hide.has(c.k) || c.fixed), T = {rev:0, bk:0, pbk:0, prev:0, spend:0, fee:0, anyFee:false};
+  const firstM = (vis.find(c=>c.m) || {}).k, hasId = vis.some(c=>c.k === "id");
+  const tdCls = c => [c.num ? "num" : "", c.k === firstM ? "mid" : "", c.k === "id" ? "stk1" : "", c.k === "hotel" ? (hasId ? "stk2" : "stk2 solo") : ""].join(" ").trim();
+  const rows = list.map(h=>{
     const s = snap(h, state.month), hub = h.rec.hub, fee = feeOf(h, s), open = hub.todo.filter(x=>!x.done), multi = s && s.rows.length > 1;
     if(s){ T.rev += num(s.rev); T.bk += num(s.bk); T.pbk += s.paidBk; T.prev += s.paidRev; T.spend += s.spend; } if(fee !== null){ T.fee += fee; T.anyFee = true; }
-    const chips = CFG.channels.map(c=>hub.channels[c.k] ? `<span class="chip ${hub.channels[c.k]}" title="${esc(c.n)} — ${hub.channels[c.k]}"><i></i>${esc(c.s)}</span>` : "").join("") || `<span class="muted sm">—</span>`;
     const cell = (f, v, cur) => { const raw = has(v) ? String(v) : "", shown = raw === "" ? "" : (cur ? "$" : "") + Math.round(num(raw)).toLocaleString("en-US"); return `<input class="cell" inputmode="decimal" data-cell="${f}" data-h="${esc(h.id)}" data-raw="${esc(raw)}" data-fmt="${esc(shown)}" value="${esc(shown)}">`; };
     const paid = (f, v, shown, cur) => multi ? `<span class="ro" data-act="month" data-h="${esc(h.id)}" title="${s.rows.length} campaigns — click to edit">${shown}</span>` : cell(f, v, cur);
-    const share = s && has(s.bk) && s.paidBk ? `<span class="muted sm"> ${Math.round(s.paidBk / num(s.bk) * 100)}%</span>` : "";
+    const share = s && has(s.bk) && s.paidBk ? `<span class="muted sm share"> ${Math.round(s.paidBk / num(s.bk) * 100)}%</span>` : "";
     const rep = hub.reports[state.month] || "";
-    return `<tr>
-      <td class="id">${esc(h.id)}</td><td><a class="hname" data-act="hotel" data-h="${esc(h.id)}">${esc(F(h, "name") || h.id)}</a><div class="muted sm">${esc(country(h))}</div></td>
-      <td class="sm">${esc(tariffLabel(h))}</td><td>${esc(F(h, "csm")) || '<span class="muted">—</span>'}</td>
-      <td><div class="chips nw">${chips}</div></td>
-      <td class="mid num">${cell("rev", s && s.rev, true)}</td><td class="num">${cell("bk", s && s.bk)}</td>
-      <td class="num">${paid("pbk", s && s.rows.length ? s.paidBk : "", s ? intf(s.paidBk) : "—")}${share}</td>
-      <td class="num">${paid("prev", s && s.rows.length ? s.paidRev : "", s && s.paidRev ? money(s.paidRev) : "—", true)}</td>
-      <td class="num">${paid("spend", s && s.spend ? s.spend : "", s && s.spend ? money(s.spend) : "—", true)}</td>
-      <td class="num">${fee === null ? (tariff(h) ? '<span class="muted">—</span>' : `<span class="pill warn" data-act="hotel" data-h="${esc(h.id)}" style="cursor:pointer">set tariff</span>`) : money(fee)}</td>
-      <td><select class="mini" data-rep="${esc(h.id)}"><option value="">—</option>${["draft", "ready", "sent"].map(x=>`<option value="${x}" ${rep === x ? "selected" : ""}>${x}</option>`).join("")}</select>
-          <button class="btn ghost sm" data-act="report" data-h="${esc(h.id)}" title="Open the report for ${esc(state.month)}">↗</button></td>
-      <td>${open.length ? `<span class="pill warn" title="${esc(open.map(x=>x.text).join(" • "))}">${open.length}</span>` : ""}</td></tr>`;
+    const chips = CFG.channels.map(c=>hub.channels[c.k] ? `<span class="chip ${hub.channels[c.k]}" title="${esc(c.n)} — ${hub.channels[c.k]}"><i></i>${esc(c.s)}</span>` : "").join("") || `<span class="muted sm">—</span>`;
+    const C = {
+      id:`<span class="id" title="${esc(h.id)}">${esc(exId(h)) || '<span class="muted">—</span>'}</span>`,
+      hotel:`<a class="hname" data-act="hotel" data-h="${esc(h.id)}">${esc(dispName(h))}</a><div class="muted sm">${esc(country(h))}</div>`,
+      tariff:`<span class="sm">${esc(tariffLabel(h))}</span>`, csm:esc(F(h, "csm")) || '<span class="muted">—</span>', channels:`<div class="chips nw">${chips}</div>`,
+      rev:cell("rev", s && s.rev, true), bk:cell("bk", s && s.bk),
+      pbk:paid("pbk", s && s.rows.length ? s.paidBk : "", s ? intf(s.paidBk) : "—") + share,
+      prev:paid("prev", s && s.rows.length ? s.paidRev : "", s && s.paidRev ? money(s.paidRev) : "—", true),
+      spend:paid("spend", s && s.spend ? s.spend : "", s && s.spend ? money(s.spend) : "—", true),
+      fee:fee === null ? (tariff(h) ? '<span class="muted">—</span>' : `<span class="pill warn" data-act="hotel" data-h="${esc(h.id)}" style="cursor:pointer">set tariff</span>`) : money(fee),
+      rep:`<select class="mini" data-rep="${esc(h.id)}"><option value="">—</option>${["draft", "ready", "sent"].map(x=>`<option value="${x}" ${rep === x ? "selected" : ""}>${x}</option>`).join("")}</select> <button class="btn ghost sm" data-act="report" data-h="${esc(h.id)}" title="Open the report for ${esc(state.month)}">↗</button>`,
+      notes:open.length ? open.slice(0, 2).map(x=>`<div class="nt" title="${esc(x.text + (x.note ? " — " + x.note : ""))}">${esc(trunc(x.text, 42))}</div>`).join("") + (open.length > 2 ? `<div class="muted sm">+${open.length - 2} more</div>` : "") : ""};
+    return `<tr>${vis.map(c=>`<td class="${tdCls(c)}${c.k === "notes" ? " wrap" : ""}">${C[c.k]}</td>`).join("")}</tr>`;
   }).join("");
-  $("gridHost").innerHTML = list.length ? `<div class="tablewrap"><table class="grid"><thead>
-    <tr><th class="grp" colspan="5">Hotel</th><th class="grp mid" colspan="7">Month <select data-flt="month">${ms.map(m=>`<option ${m === state.month ? "selected" : ""}>${esc(m)}</option>`).join("")}</select></th><th class="grp"></th></tr>
-    <tr><th>ID</th><th>Hotel</th><th>Tariff</th><th>CSM</th><th>Channels</th><th class="mid num">Revenue</th><th class="num">Bookings</th><th class="num">Paid bookings</th><th class="num">Paid revenue</th><th class="num">Ad spend</th><th class="num" title="Our fee: tariff × revenue (all or tracked)">Our fee</th><th>Report</th><th>To do</th></tr></thead>
-    <tbody>${body}</tbody><tfoot><tr><td colspan="5">${list.length} hotel${list.length === 1 ? "" : "s"}</td><td class="mid num">${money(T.rev)}</td><td class="num">${intf(T.bk)}</td><td class="num">${intf(T.pbk)}</td><td class="num">${money(T.prev)}</td><td class="num">${T.spend ? money(T.spend) : "—"}</td><td class="num">${T.anyFee ? money(T.fee) : "—"}</td><td></td><td></td></tr></tfoot></table></div>`
-    : `<div class="empty">No hotels match. <button class="btn sec sm" data-act="addhotel">+ Add hotel</button></div>`;
+  const grp = (pred) => vis.filter(pred).length;
+  const head1 = `<tr>${grp(c=>!c.m) ? `<th class="grp" colspan="${grp(c=>!c.m)}">Hotel</th>` : ""}${grp(c=>c.m) ? `<th class="grp mid" colspan="${grp(c=>c.m)}">Month <select data-flt="month">${ms.map(m=>`<option ${m === state.month ? "selected" : ""}>${esc(m)}</option>`).join("")}</select></th>` : ""}</tr>`;
+  const head2 = `<tr>${vis.map(c=>`<th class="${tdCls(c)}"${c.k === "fee" ? ' title="Our fee: tariff × revenue (all or tracked)"' : ""}>${c.n}</th>`).join("")}</tr>`;
+  const F2 = {rev:money(T.rev), bk:intf(T.bk), pbk:intf(T.pbk), prev:money(T.prev), spend:T.spend ? money(T.spend) : "—", fee:T.anyFee ? money(T.fee) : "—"};
+  const foot = `<tr>${vis.map((c, i)=>`<td class="${tdCls(c)}">${c.k === "hotel" ? `${list.length} hotel${list.length === 1 ? "" : "s"}` : (F2[c.k] || "")}</td>`).join("")}</tr>`;
+  $("gridHost").innerHTML = list.length ? `<div class="tablewrap"><table class="grid"><thead>${head1}${head2}</thead><tbody>${rows}</tbody><tfoot>${foot}</tfoot></table></div>` : `<div class="empty">No hotels match. <button class="btn sec sm" data-act="addhotel">+ Add hotel</button></div>`;
 }
 
 /* ---------------- one hotel ---------------- */
@@ -294,20 +310,20 @@ function renderHotel(){
   const open = hub.todo, cards = h.progress.cards, items = cards.map(c=>({c, st:statusOf(c.stage)}));
   const grp = (st, title) => { let list = items.filter(x=>x.st === st); if(!list.length) return ""; const hide = st === "done" && !state.showDone && list.length > 4; if(hide) list = list.slice(-4); return `<div class="grp-title">${title} · ${items.filter(x=>x.st === st).length}</div>${list.map(x=>workHtml(h, x.c)).join("")}${hide ? `<button class="btn ghost sm" data-act="showdone">Show all ${items.filter(x=>x.st === "done").length} done</button>` : ""}`; };
   const rows = h.results.periods.slice().sort((a, b)=>(parsePeriod(b.period) || 0) - (parsePeriod(a.period) || 0)).slice(0, 12).map(p=>{ const s = snap(h, p.period), fee = feeOf(h, s), lab = labelOf(parsePeriod(p.period)); return `<tr><td>${esc(p.period)}</td><td>${money(s.rev)}</td><td>${intf(s.bk)}</td><td>${intf(s.form)}</td><td>${s.rows.length ? intf(s.paidBk) : "—"}</td><td>${s.rows.length ? money(s.paidRev) : "—"}</td><td>${s.spend ? money(s.spend) : "—"}</td><td>${fee === null ? "—" : money(fee)}</td><td><select class="mini" data-rep="${esc(h.id)}" data-m="${esc(lab)}"><option value="">—</option>${["draft", "ready", "sent"].map(x=>`<option value="${x}" ${hub.reports[lab] === x ? "selected" : ""}>${x}</option>`).join("")}</select></td><td><button class="btn sec sm" data-act="month" data-h="${esc(h.id)}" data-m="${esc(p.period)}">Edit</button> <button class="btn ghost sm" data-act="report" data-h="${esc(h.id)}" data-m="${esc(p.period)}">Report ↗</button></td></tr>`; }).join("");
-  app.innerHTML = `<div class="bar"><button class="btn sec sm" data-act="back">← Hotels</button><h1 style="margin:0">${hd("name") || esc(h.id)}</h1><span class="id">${esc(h.id)}</span>
-      <span style="margin-left:auto"></span><select class="mini" id="repMonth">${monthsFor(h).map(m=>`<option ${m === state.month ? "selected" : ""}>${esc(m)}</option>`).join("")}</select><button class="btn" data-act="report" data-h="${esc(h.id)}" data-pick="1">Open report ↗</button></div>
+  app.innerHTML = `<div class="bar"><button class="btn sec sm" data-act="back">← Hotels</button><h1 style="margin:0">${esc(dispName(h))}</h1><span class="id" title="technical key: ${esc(h.id)}">${esc(exId(h)) || ""}</span>
+      <span style="margin-left:auto"></span><select class="mini" id="repMonth">${monthsFor(h).map(m=>`<option ${m === state.month ? "selected" : ""}>${esc(m)}</option>`).join("")}</select><button class="btn" data-act="report" data-h="${esc(h.id)}" data-pick="1">Open report ↗</button><button class="btn bad sm" data-act="deletehotel">Delete hotel</button></div>
   <div class="cols"><div>
     <div class="card"><h2>Hotel</h2><div class="fields">
-      <div class="full"><label>Name</label><input data-prof="name" value="${hd("name")}"></div>
+      <div><label>Name</label><input data-prof="name" value="${hd("name")}"></div><div><label>Exely ID (number)</label><input data-hub="num" value="${esc(h.rec.hub.num || (tail(F(h, "name")) || {}).num || "")}" placeholder="e.g. 504673"></div>
       <div><label>Location (city, country)</label><input data-prof="location" value="${hd("location")}"></div><div><label>CSM</label><input data-prof="csm" value="${hd("csm")}"></div>
       <div><label>Website</label><input data-prof="website" value="${hd("website")}"></div><div><label>Promo code</label><input data-hub="promo" value="${esc(hub.promo || "")}"></div>
       <div><label>Brief (link)</label><input data-hub="brief" value="${esc(hub.brief || "")}"></div><div><label>Hotel materials (link)</label><input data-hub="materials" value="${esc(hub.materials || "")}"></div>
       <div><label>Tariff</label><select data-fee="type"><option value="">— not set —</option><option value="all" ${t.type === "all" ? "selected" : ""}>% of all bookings</option><option value="tracked" ${t.type === "tracked" ? "selected" : ""}>% of tracked bookings</option><option value="fixed" ${t.type === "fixed" ? "selected" : ""}>Fixed per month</option></select></div>
       <div><label>${t.type === "fixed" ? "Amount, $" : "Percent, %"}</label><input data-fee="${t.type === "fixed" ? "fixed" : "pct"}" value="${esc(t.type === "fixed" ? t.fixed : t.pct)}"></div>
       <div class="full"><label>Notes</label><textarea data-hub="note" rows="2">${esc(hub.note || "")}</textarea></div></div>
-      <div class="feehint">“Tracked” = revenue from the campaign rows entered for the month. Model note from the old card: ${esc(F(h, "modelType")) || "—"}.</div></div>
-    <div class="card"><h2>To do</h2>${open.map(x=>tdHtml(h, x, true)).join("") || '<div class="muted">Nothing open.</div>'}
-      <div class="addrow"><input id="tdText" placeholder="Add: access, question, follow-up…"><input id="tdDue" type="date" style="flex:none;width:140px"><button class="btn sm" data-act="addtodo">Add</button></div></div>
+      <div class="feehint">The number from the name is shown in the ID column and hidden from the name here; Settings → “Move numbers out of names” cleans the saved names. “Tracked” = revenue from the campaign rows entered for the month. Model note from the old card: ${esc(F(h, "modelType")) || "—"}.</div></div>
+    <div class="card"><h2>Notes</h2>${open.map(x=>tdHtml(h, x, true)).join("") || '<div class="muted">No open notes.</div>'}
+      <div class="addrow"><input id="tdText" placeholder="Add: access requested, waiting for the hotel, legal…"><input id="tdDue" type="date" style="flex:none;width:140px"><button class="btn sm" data-act="addtodo">Add</button></div></div>
     <div class="card"><h2>Channels</h2><div class="chips">${CFG.channels.map(c=>{ const st = hub.channels[c.k] || ""; return `<button class="chip ${st || "off"}" data-act="chan" data-k="${c.k}" title="Click: planned → live → paused → off"><i></i>${esc(c.n)}${st ? " · " + st : ""}</button>`; }).join("")}</div></div>
   </div><div>
     <div class="card"><h2>Work</h2><div class="addrow" style="margin:0 0 4px"><input id="wTitle" placeholder="New work item — what are we doing?"><select class="mini" id="wArea">${areaNames().map(a=>`<option>${esc(a)}</option>`).join("")}</select><select class="mini" id="wStatus">${STATUSES.map(([k, n])=>`<option value="${k}">${n}</option>`).join("")}</select><button class="btn sm" data-act="addwork">Add</button></div>
@@ -376,9 +392,9 @@ function renderTodo(){
   if(!state.showDone) all = all.filter(a=>!a.x.done);
   all.sort((a, b)=>(a.x.done - b.x.done) || (a.x.due || "9999").localeCompare(b.x.due || "9999"));
   const row = a=>tdHtml(a.h, a.x, false);
-  app.innerHTML = `<h1>To do</h1><p class="sub">Open items from all hotels, soonest first.</p><div class="bar"><select data-flt="todoCsm"><option value="">All CSMs</option>${csms.map(c=>`<option ${csm === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select><label class="chk"><input type="checkbox" data-flt="showDone" ${state.showDone ? "checked" : ""}> show done</label></div>
-  <div class="card">${all.map(row).join("") || '<div class="muted">Nothing to do. 🎉</div>'}
-  <div class="addrow"><select class="mini" id="tdHotel" style="flex:none">${hotels.map(h=>`<option value="${esc(h.id)}">${esc(F(h, "name"))}</option>`).join("")}</select><input id="tdText" placeholder="New to-do"><input id="tdDue" type="date" style="flex:none;width:140px"><button class="btn sm" data-act="addtodo" data-all="1">Add</button></div></div>`;
+  app.innerHTML = `<h1>Notes</h1><p class="sub">Blockers and things we are waiting for, across all hotels — access requested, waiting for the hotel or legal. Planned work lives in each hotel’s work list.</p><div class="bar"><select data-flt="todoCsm"><option value="">All CSMs</option>${csms.map(c=>`<option ${csm === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select><label class="chk"><input type="checkbox" data-flt="showDone" ${state.showDone ? "checked" : ""}> show done</label></div>
+  <div class="card">${all.map(row).join("") || '<div class="muted">No open notes.</div>'}
+  <div class="addrow"><select class="mini" id="tdHotel" style="flex:none">${hotels.map(h=>`<option value="${esc(h.id)}">${esc(F(h, "name"))}</option>`).join("")}</select><input id="tdText" placeholder="New note — e.g. access requested, waiting for the hotel"><input id="tdDue" type="date" style="flex:none;width:140px"><button class="btn sm" data-act="addtodo" data-all="1">Add</button></div></div>`;
 }
 function makeDraft(){ return {channels:CFG.channels.map(c=>Object.assign({}, c, {orig:c.k})), areas:CFG.areas.map(a=>Object.assign({}, a, {orig:a.n})), cmoves:[], amoves:[], err:""}; }
 const usedChan = k => hotels.filter(h=>h.rec.hub.channels[k]).length;
@@ -395,6 +411,7 @@ function renderSettings(){
   <div class="card" style="max-width:760px"><h2>Activity types</h2><div class="muted sm" style="margin-bottom:8px">Types of work in the work list. “Report group” decides where an item appears in the client report: under website work or under advertising.</div>
     ${d.areas.map((a, i)=>`<div class="addrow" style="margin:4px 0;flex-wrap:nowrap"><input data-dr="ar" data-i="${i}" data-k="n" value="${esc(a.n)}"><select class="mini" data-dr="ar" data-i="${i}" data-k="g" style="flex:none;width:150px"><option ${a.g !== "Advertising" ? "selected" : ""}>Website</option><option ${a.g === "Advertising" ? "selected" : ""}>Advertising</option></select><span class="muted sm" style="width:90px;flex:none">${a.orig ? usedArea(a.orig) + " item" + (usedArea(a.orig) === 1 ? "" : "s") : "new"}</span><button class="btn ghost sm" data-act="delarea" data-i="${i}">✕</button></div>`).join("")}
     <button class="btn sec sm" data-act="addarea" style="margin-top:8px">+ Type</button></div>
+  <div class="card" style="max-width:760px"><h2>Hotel names</h2><div class="muted sm" style="margin-bottom:8px">Hotels whose name ends with their Exely number (“Astoria Tbilisi 504673”) can be split into a clean name and a separate Exely ID. The number is already shown separately in this tool; this also cleans the saved names (other tools and report headers).</div><button class="btn sec" data-act="splitnames">Move numbers out of names</button></div>
   <div id="setErr" class="pill bad" style="display:${d.err ? "inline-block" : "none"};margin-bottom:10px">${esc(d.err)}</div>
   <div><button class="btn" data-act="savesettings">Save settings</button> <button class="btn sec" data-act="cancelsettings">Discard changes</button></div>`;
 }
@@ -442,6 +459,25 @@ const H = {
   addcamp(){ state.drawer.rows.push({}); drawCamps(); }, delcamp(t){ state.drawer.rows.splice(+t.dataset.i, 1); drawCamps(); feeLine(); },
   report(t){ const h = byId(t.dataset.h); const m = t.dataset.pick ? $("repMonth").value : (t.dataset.m || state.month); window.open(`${CFG.reportUrl}#hotel=${encodeURIComponent(h.id)}&period=${encodeURIComponent(m)}`, "_blank"); },
   showdone(){ state.showDone = true; render(); },
+  colmenu(){ const m = $("colMenu"); m.hidden = !m.hidden; },
+  deletehotel(){
+    const h = byId(state.hotel); $("modal").hidden = false;
+    $("modal").innerHTML = `<div class="sheet" style="max-width:520px"><h2>Delete “${esc(dispName(h))}”?</h2><p>This permanently removes the hotel with its results, activities, notes and saved reports from the Google Sheet — it disappears from all DMH tools. Uploaded screenshots stay in the sheet but are no longer used. Tip: make a copy of the sheet first.</p><p>Type <b>DELETE</b> to confirm:</p><input class="inp" id="delConfirm"><div class="foot"><button class="btn sec" data-act="closemodal">Cancel</button><button class="btn bad" data-act="confirmdelete">Delete hotel</button></div></div>`;
+  },
+  async confirmdelete(){
+    if($("delConfirm").value.trim() !== "DELETE") return say("Type DELETE to confirm", true);
+    const id = state.hotel; closeModal();
+    await guard(async ()=>{ const keys = [`dmh-hotel:${id}`, `dmh-results:${id}`, `dmh-progress:${id}`, `dmh-strategy:${id}`, ...(await stList(`dmh-report:${id}:`))]; for(const k of keys){ try{ await stDel(k); }catch(e){} } await mutate("dmh-hotel-index", [], ix=>{ const i = ix.findIndex(x=>x.id === id); if(i >= 0) ix.splice(i, 1); }); });
+    hotels = hotels.filter(h=>h.id !== id); state.hotel = null; render();
+  },
+  async splitnames(){
+    const list = hotels.filter(h=>{ const t = tail(F(h, "name")); return t && t.base && (!h.rec.hub.num || h.rec.hub.num === t.num); });
+    if(!list.length) return say("Nothing to clean up");
+    const t0 = tail(F(list[0], "name"));
+    if(!confirm(`Move the number out of the name for ${list.length} hotel(s)? For example “${F(list[0], "name")}” becomes “${t0.base}” with ID ${t0.num}. The name also changes in the other DMH tools and in reports.`)) return;
+    await guard(async ()=>{ for(const h of list){ const t = tail(F(h, "name")); await mutateRecord(h, r=>{ r.hub.num = t.num; r.sections.hotelData.fields.name = t.base; }); } await mutate("dmh-hotel-index", [], ix=>{ list.forEach(h=>{ const x = ix.find(i=>i.id === h.id); if(x) x.name = F(h, "name"); }); }); });
+    hotels.sort((a, b)=>F(a, "name").localeCompare(F(b, "name"))); render();
+  },
   toggletd(t){ state.openTd[t.dataset.id] = !state.openTd[t.dataset.id]; render(); },
   async chan(t){ const h = byId(state.hotel), order = ["", "planned", "live", "paused"], cur = h.rec.hub.channels[t.dataset.k] || "", nx = order[(order.indexOf(cur) + 1) % 4]; await guard(()=>mutateRecord(h, r=>{ if(nx) r.hub.channels = Object.assign({}, r.hub.channels, {[t.dataset.k]:nx}); else { const c = Object.assign({}, r.hub.channels); delete c[t.dataset.k]; r.hub.channels = c; } })); render(); },
   async addtodo(t){ const all = !!t.dataset.all, h = byId(all ? $("tdHotel").value : state.hotel), text = $("tdText").value.trim(); if(!text) return; const due = $("tdDue").value; await guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).concat([{id:uid("t"), text, due, done:false}]); })); render(); },
@@ -455,11 +491,13 @@ const H = {
   addphoto(t){ const f = document.createElement("input"); f.type = "file"; f.accept = "image/*"; f.multiple = true; f.onchange = ()=>addImages(t.dataset.id, [...f.files]); f.click(); },
   async delimg(t){ const h = byId(state.hotel); await guard(()=>mutateProgress(h, p=>{ const c = p.cards.find(x=>x.id === t.dataset.id); if(c) (c.images = c.images || []).splice(+t.dataset.i, 1); })); render(); },
   addhotel(){
-    $("modal").hidden = false; $("modal").innerHTML = `<div class="sheet" style="max-width:520px"><h2>Add hotel</h2><div class="fields"><div><label>Exely ID</label><input class="inp" id="nh-id"></div><div><label>Name</label><input class="inp" id="nh-name"></div><div><label>Location (city, country)</label><input class="inp" id="nh-loc"></div><div><label>CSM</label><input class="inp" id="nh-csm"></div></div><div class="foot"><button class="btn sec" data-act="closemodal">Cancel</button><button class="btn" data-act="savehotel">Create</button></div></div>`;
+    $("modal").hidden = false; $("modal").innerHTML = `<div class="sheet" style="max-width:520px"><h2>Add hotel</h2><div class="fields"><div><label>Exely ID (number)</label><input class="inp" id="nh-num" placeholder="e.g. 504673"></div><div><label>Name</label><input class="inp" id="nh-name" placeholder="without the number"></div><div><label>Location (city, country)</label><input class="inp" id="nh-loc"></div><div><label>CSM</label><input class="inp" id="nh-csm"></div></div><div class="foot"><button class="btn sec" data-act="closemodal">Cancel</button><button class="btn" data-act="savehotel">Create</button></div></div>`;
   },
   async savehotel(){
-    const id = $("nh-id").value.trim(), name = $("nh-name").value.trim(); if(!id || !name) return say("ID and name are required", true); if(byId(id)) return say("A hotel with this ID already exists", true);
-    const rec = {id, sections:{hotelData:{fields:{name, location:$("nh-loc").value.trim(), csm:$("nh-csm").value.trim()}, tables:{}, tags:{}}}, hub:{channels:{}, todo:[], reports:{}}};
+    const name = $("nh-name").value.trim(), numv = $("nh-num").value.trim(); if(!name) return say("Name is required", true);
+    if(numv && hotels.some(h=>exId(h) === numv)) return say("A hotel with this Exely ID already exists", true);
+    let id; do{ id = "HTL-" + Math.random().toString(36).slice(2, 7).toUpperCase(); }while(byId(id));
+    const rec = {id, sections:{hotelData:{fields:{name, location:$("nh-loc").value.trim(), csm:$("nh-csm").value.trim()}, tables:{}, tags:{}}}, hub:{num:numv, channels:{}, todo:[], reports:{}}};
     await guard(async ()=>{ await stSet(`dmh-hotel:${id}`, JSON.stringify(rec)); await mutate("dmh-hotel-index", [], ix=>{ if(!ix.some(x=>x.id === id)) ix.push({id, name}); }); });
     hotels.push({id, rec, results:{periods:[]}, progress:{cards:[], ideas:[], generalNotes:[]}}); normalize(hotels[hotels.length - 1]); hotels.sort((a, b)=>F(a, "name").localeCompare(F(b, "name"))); closeModal(); state.hotel = id; render();
   },
@@ -471,7 +509,7 @@ const H = {
   cancelsettings(){ state.draft = null; renderSettings(); },
   savesettings: applySettings
 };
-document.addEventListener("click", e=>{ const t = e.target.closest("[data-act]"); if(t && H[t.dataset.act]){ e.preventDefault(); H[t.dataset.act](t, e); } });
+document.addEventListener("click", e=>{ const t = e.target.closest("[data-act]"); if(t && H[t.dataset.act]){ e.preventDefault(); H[t.dataset.act](t, e); } const m = $("colMenu"); if(m && !m.hidden && !e.target.closest("#colMenu") && !(t && t.dataset.act === "colmenu")) m.hidden = true; });
 document.addEventListener("input", e=>{
   const t = e.target; if(t.id === "q"){ state.f.q = t.value; renderGrid(); }
   if(t.dataset.cr !== undefined){ state.drawer.rows[+t.dataset.cr][t.dataset.k] = t.value; if(t.dataset.k === "revenue") feeLine(); }
@@ -485,7 +523,8 @@ document.addEventListener("change", async e=>{
     await guard(()=>mutateResults(h, state.month, p=>{ if(f === "rev") p.totalRevenue = val; else if(f === "bk") p.totalBookings = val; else { p.rows = p.rows || []; if(!p.rows.length) p.rows.push({campaign:"Paid (total)", channel:"Paid", spend:"", traffic:"", bookings:"", revenue:""}); p.rows[0][{pbk:"bookings", prev:"revenue", spend:"spend"}[f]] = val; } })); return renderGrid(); }
   if(d.rep){ const h = byId(d.rep), lab = d.m || state.month; await guard(()=>mutateRecord(h, r=>{ r.hub.reports = Object.assign({}, r.hub.reports, {[lab]:t.value}); })); return; }
   if(d.prof){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ r.sections.hotelData.fields[d.prof] = t.value.trim(); })); if(d.prof === "name") await guard(()=>mutate("dmh-hotel-index", [], ix=>{ const x = ix.find(i=>i.id === h.id); if(x) x.name = t.value.trim(); })); return; }
-  if(d.hub){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ r.hub[d.hub] = t.value.trim(); })); return; }
+  if(d.col){ const hid = hiddenCols(); if(t.checked) hid.delete(d.col); else hid.add(d.col); localStorage.setItem("dmh-hub-cols", JSON.stringify([...hid])); return renderGrid(); }
+  if(d.hub){ const h = byId(state.hotel); const v = t.value.trim(); if(d.hub === "num" && v && hotels.some(x=>x.id !== h.id && exId(x) === v)){ say("Another hotel already has this Exely ID", true); t.value = h.rec.hub.num || ""; return; } await guard(()=>mutateRecord(h, r=>{ r.hub[d.hub] = v; })); if(d.hub === "num") render(); return; }
   if(d.fee){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ const f = Object.assign({}, r.hub.fee || (tariff(h) || {})); delete f.derived; if(d.fee === "type"){ if(!t.value){ delete r.hub.fee; r.hub.fee = {type:""}; return; } f.type = t.value; } else f[d.fee] = num(t.value); r.hub.fee = f; })); return render(); }
   if(d.tdnote){ const h = byId(d.h); await guard(()=>mutateRecord(h, r=>{ const x = (r.hub.todo || []).find(i=>i.id === d.tdnote); if(x) x.note = t.value; })); return; }
   if(d.td){ const h = byId(d.h || state.hotel); await guard(()=>mutateRecord(h, r=>{ const x = (r.hub.todo || []).find(i=>i.id === d.td); if(x) x.done = t.checked; })); return render(); }
