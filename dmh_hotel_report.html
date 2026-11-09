@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DMH Hotel Report</title>
+<title>DMH Report Builder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
@@ -48,6 +48,13 @@
   .section{margin-bottom:30px;}
   .layer-heading{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:600;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent-soft);}
   .layer-heading:first-of-type{margin-top:4px;}
+  .season-note, .activity-result{white-space:pre-line;}
+  .rtable tr.row-hl td{background:var(--accent-soft);}
+  .rtable tr.row-total td{font-weight:700;border-top:2px solid var(--brand-soft);}
+  .rtable .delta-badge{font-size:10.5px;padding:0 6px;margin-left:6px;border-radius:5px;}
+  .delta-badge.delta-flat{background:var(--slate-soft);color:var(--ink-soft);}
+  .delta-badge.delta-new{background:var(--brand-soft);color:var(--brand);}
+  .table-note{font-size:11px;color:var(--ink-soft);margin-top:6px;}
   .section-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;margin:0 0 14px;color:var(--brand);position:relative;padding-left:14px;}
   .group-sublabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin:14px 0 8px;}
   .group-sublabel:first-of-type{margin-top:0;}
@@ -88,10 +95,10 @@
   .activity-result{background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:6px;padding:8px 12px;margin-top:10px;font-size:12.5px;}
   .activity-result .result-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);font-weight:700;margin-bottom:2px;}
   .activity-media{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;}
-  .activity-media img{max-width:220px;max-height:150px;border-radius:8px;border:1px solid var(--line);object-fit:cover;}
+  .activity-media img{max-width:100%;max-height:280px;width:auto;height:auto;border-radius:8px;border:1px solid var(--line);object-fit:contain;background:#fff;}
   .activity-media a.file-link{font-size:12px;color:var(--brand);text-decoration:none;background:var(--brand-soft);padding:6px 10px;border-radius:6px;display:inline-block;}
 
-  .season-note{background:var(--accent-soft);color:#8A3A18;border-radius:8px;padding:10px 14px;font-size:12.5px;}
+  .season-note{background:var(--brand-soft);color:var(--ink);border-radius:8px;padding:12px 16px;font-size:12.5px;line-height:1.55;}
   .empty-note{color:var(--ink-soft);font-size:12.5px;font-style:italic;}
 
   @media (max-width:600px){
@@ -103,12 +110,128 @@
   }
 
   @media print{
+    .activity-card, .rtable tr, .glance-item, .kpi, .season-note{break-inside:avoid;page-break-inside:avoid;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .section-title, .layer-heading{break-after:avoid;page-break-after:avoid;}
+    .section:has(> .rtable){break-inside:avoid;page-break-inside:avoid;}
     body{background:#fff;}
     .controls, .no-print{display:none !important;}
     .report{border:none;padding:0;box-shadow:none;border-radius:0;}
     .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .shell{max-width:100%;padding:0;}
   }
+                                                                /* ---- Builder UI ---- */
+  .chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;cursor:pointer;}
+  .ed-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:18px;}
+  .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+  .ed-title{font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:var(--brand);margin-right:auto;}
+  .ed-row{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--slate-soft);}
+  .ed-row.off{opacity:.55;}
+  .ed-type{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);background:var(--slate-soft);padding:2px 8px;border-radius:9px;white-space:nowrap;}
+  .ed-move button, .ed-del{border:1px solid var(--line);background:#fff;border-radius:5px;cursor:pointer;font-size:12px;padding:2px 7px;color:var(--ink-soft);}
+  .ed-body{grid-column:1/-1;padding:6px 0 6px 28px;}
+  .ed-body textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;}
+  .ed-body input[type=text].cap{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px;}
+  .ed-hint{font-size:11px;color:var(--ink-soft);margin-top:4px;}
+  .ed-add{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+  .ed-labels{margin-top:14px;padding-top:12px;border-top:1px solid var(--slate-soft);}
+  .ed-labels .lab-row{display:flex;gap:8px;align-items:center;margin-top:6px;font-size:12.5px;}
+  .ed-labels .lab-row span.k{min-width:140px;color:var(--ink-soft);}
+  .dropzone{border:1.5px dashed var(--line);border-radius:8px;padding:12px;text-align:center;color:var(--ink-soft);cursor:pointer;font-size:12px;}
+  .dropzone:focus, .dropzone.over{border-color:var(--brand);background:var(--brand-soft);outline:none;}
+  .thumb-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:8px;}
+  .thumb-row img{height:48px;max-width:110px;object-fit:contain;border-radius:5px;border:1px solid var(--line);background:#fff;}
+  .checks{background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:12px 16px;margin-bottom:18px;}
+  .checks summary{cursor:pointer;font-family:'Fraunces',serif;font-weight:600;color:var(--brand);font-size:15px;}
+  .check-item{padding:8px 11px;border-radius:7px;margin-top:7px;font-size:12.5px;line-height:1.45;}
+  .check-warn{background:var(--accent-soft);}
+  .check-info{background:var(--slate-soft);}
+  .check-sub{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin:14px 0 2px;}
+  .internal-banner{background:#2E0D45;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:8px 40px;}
+  .ss-fig{margin:0 0 16px;}
+  .ss-fig img{max-width:100%;max-height:420px;border-radius:8px;border:1px solid var(--line);background:#fff;}
+  .ss-fig figcaption{font-size:11.5px;color:var(--ink-soft);margin-top:5px;}
+  .rtable.custom td, .rtable.custom th{white-space:pre-wrap;}
+  .delta-badge.delta-abs{background:var(--slate-soft);color:var(--ink);}
+
+  /* ---- editor beside the report, save state, placeholders ---- */
+  #workArea{display:block;}
+  .shell.editing{max-width:1420px;}
+  @media (min-width:1150px){
+    .shell.editing #workArea{display:grid;grid-template-columns:450px minmax(0,1fr);gap:22px;align-items:start;}
+    .shell.editing #sideCol{position:sticky;top:10px;max-height:calc(100vh - 20px);overflow-y:auto;padding-right:4px;}
+  }
+  .save-badge{font-size:11.5px;font-weight:600;padding:3px 11px;border-radius:12px;background:var(--slate-soft);color:var(--ink-soft);}
+  .save-badge:empty{display:none;}
+  .save-badge.ok{background:#E3F3EA;color:#1D6B43;}
+  .save-badge.saving{background:var(--brand-soft);color:var(--brand);}
+  .save-badge.err{background:#FBE3E0;color:#A12B1F;}
+  .block-ph{border:1.5px dashed var(--line);border-radius:10px;padding:16px;margin-bottom:24px;color:var(--ink-soft);font-size:12.5px;text-align:center;background:#fbfafd;}
+  .flash{animation:flashbox 1.8s ease;}
+  @keyframes flashbox{0%{box-shadow:0 0 0 4px var(--accent);}100%{box-shadow:0 0 0 4px rgba(246,89,37,0);}}
+  .ed-move .go{color:var(--brand);}
+  .ed-note{font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.45;}
+  @media print{ #workArea{display:block !important;} #sideCol{display:none !important;} .block-ph{display:none !important;} }
+
+  .ed-row{grid-template-columns:auto auto minmax(0,1fr) auto auto;}
+  .ed-move{display:inline-flex;gap:3px;white-space:nowrap;}
+  .ed-type{max-width:118px;overflow:hidden;text-overflow:ellipsis;}
+
+  .card-img{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:#fcfbfe;}
+  .ci-title{font-size:12.5px;font-weight:600;color:var(--brand-dark);margin-bottom:6px;}
+  .dropzone.small{padding:7px;font-size:11.5px;}
+  .act-fig{margin:0;max-width:100%;}
+  .act-fig img{max-width:100%;max-height:300px;width:auto;height:auto;border-radius:8px;border:1px solid var(--line);background:#fff;display:block;}
+  .act-fig figcaption{font-size:11px;color:var(--ink-soft);margin-top:4px;}
+
+  .ed-why{font-size:11.5px;color:#8A3A18;background:var(--accent-soft);padding:6px 9px;border-radius:6px;line-height:1.4;}
+
+  /* ---- print: let long content flow instead of leaving half-empty pages ---- */
+  @media print{
+    .activity-card, .season-note{break-inside:auto;page-break-inside:auto;box-decoration-break:clone;-webkit-box-decoration-break:clone;}
+    .activity-title, .activity-meta{break-after:avoid;page-break-after:avoid;break-inside:avoid;}
+    .activity-result{break-inside:avoid;page-break-inside:avoid;}
+    .activity-media{display:block;}
+    .activity-media > *{display:inline-block;vertical-align:top;margin:0 10px 10px 0;max-width:100%;break-inside:avoid;page-break-inside:avoid;}
+    .activity-media img, .act-fig img, .ss-fig img{max-height:330px;}
+    .ss-fig{break-inside:avoid;page-break-inside:avoid;}
+    .season-note{orphans:3;widows:3;}
+  }
+
+  .block-caption{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--brand);margin:0 0 10px;}
+
+  @media print{ .section:has(> .glance-strip){break-inside:avoid;page-break-inside:avoid;} }
+
+  .story{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+  .story.one{grid-template-columns:1fr;}
+  .story-label{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
+  .story-comment{font-size:12.5px;color:var(--ink);margin-top:10px;padding:8px 12px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;}
+  @media print{ .section:has(> .story){break-inside:avoid;page-break-inside:avoid;} }
+
+  .tk{display:grid;grid-template-columns:1fr 1fr;gap:20px;background:var(--brand-soft);border-radius:8px;padding:14px 18px;font-size:12.5px;line-height:1.55;}
+  .tk.one{grid-template-columns:1fr;}
+  .tk-head{font-weight:700;color:var(--brand);margin-bottom:6px;font-size:12.5px;}
+  .tk ul{margin:0;padding:0;list-style:none;}
+  .tk li{margin-bottom:6px;}
+  .tk-why{margin-top:8px;padding:8px 11px;background:rgba(255,255,255,.6);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;}
+  .act-results{margin-top:6px;}
+  @media print{ .tk, .act-results{break-inside:avoid;page-break-inside:avoid;} }
+
+  @media print{ .section:has(> .act-results){break-inside:avoid;page-break-inside:avoid;} }
+
+  @media print{ .story-comment{break-before:avoid;page-break-before:avoid;} .act-results + .story-comment{break-before:avoid;} }
+
+  .card-notice{margin:0 0 12px;padding:10px 14px;border:1px solid #f0c9a8;background:#fff6ec;border-radius:8px;font-size:12.5px;line-height:1.5;color:#6b3a10;}
+  .card-notice b{color:#8a4a10;} .card-notice ul{margin:4px 0 0 18px;padding:0;}
+  @media print{ .card-notice{display:none !important;} }
+
+  .btn-mini{font:inherit;font-size:12px;padding:4px 10px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;color:var(--brand);}
+  .btn-mini:hover{background:var(--brand-soft);}
+
+  .ss-row{display:flex;gap:14px;align-items:flex-start;}
+  .ss-row .ss-fig{flex:1 1 0;min-width:0;margin:0;}
+  .ss-row .ss-fig img{width:100%;height:auto;max-height:none;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff;}
+  @media print{ .ss-row{break-inside:avoid;page-break-inside:avoid;} .ss-row .ss-fig img{max-height:none;} }
 </style>
 </head>
 <body>
@@ -121,576 +244,1710 @@
         <select id="hotelSelect"><option value="">Loading...</option></select>
       </div>
       <button class="btn secondary" id="loadBtn">Load data</button>
-      <button class="btn" id="printBtn">Print / Export</button>
-      <span class="status-text" id="statusText"></span>
+      <button class="btn secondary" id="editBtn">Edit layout</button>
+      <button class="btn" id="printBtn">Print / Export PDF</button>
+      <button class="btn secondary" id="importBtn" title="Import a hotel's data from a JSON file">Import data</button>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+      <span class="save-badge" id="saveBadge"></span><span class="status-text" id="statusText"></span>
     </div>
     <div class="row" style="margin-top:12px;">
       <div class="field">
-        <label>Report period</label>
+        <label>Report period (end)</label>
         <select id="periodSelect"></select>
       </div>
       <div class="field">
+        <label>Range from (optional)</label>
+        <select id="periodFromSelect"><option value="">— single month —</option></select>
+      </div>
+      <div class="field">
+        <label>Report language</label>
+        <select id="langSelect"><option value="en">English</option><option value="ru">Русский</option></select>
+      </div>
+      <div class="field">
+        <label>Audience</label>
+        <select id="audienceSelect">
+          <option value="client">Client (what the hotel sees)</option>
+          <option value="internal">Internal (everything + checks)</option>
+        </select>
+      </div>
+      <div class="field">
         <label>Reporting basis</label>
-        <div class="toggle-row">
-          <select id="basisSelect">
-            <option value="overall">Overall (all sources)</option>
-            <option value="tracked">Tracked marketing only</option>
-          </select>
-        </div>
+        <select id="basisSelect">
+          <option value="overall">Overall (all sources)</option>
+          <option value="tracked">Tracked marketing only</option>
+        </select>
       </div>
       <div class="field">
         <label>Comparisons</label>
-        <div class="toggle-row"><input type="checkbox" id="showComparisonsToggle" checked> <label for="showComparisonsToggle" style="text-transform:none;font-weight:400;">Show MoM &amp; YoY</label></div>
+        <div class="toggle-row" style="gap:14px;flex-wrap:wrap;">
+          <label class="chk"><input type="checkbox" id="compPrevToggle" checked> vs previous period</label>
+          <label class="chk"><input type="checkbox" id="compYoyToggle" checked> vs last year</label>
+        </div>
       </div>
       <div class="field">
-        <label>Costs</label>
-        <div class="toggle-row"><input type="checkbox" id="showSpendToggle"> <label for="showSpendToggle" style="text-transform:none;font-weight:400;">Show spend &amp; ROAS</label></div>
+        <label>Activities</label>
+        <select id="activityScopeSelect">
+          <option value="period">This period only</option>
+          <option value="all">Since start (up to this period)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" id="clientShowRow" style="margin-top:10px;">
+      <div class="field">
+        <label>Client view also shows</label>
+        <div class="toggle-row" style="gap:16px;flex-wrap:wrap;">
+          <label class="chk"><input type="checkbox" id="cs_spend"> Spend, cost per booking &amp; ROAS</label>
+          <label class="chk"><input type="checkbox" id="cs_brand"> Campaign-level split (Brand etc.)</label>
+          <label class="chk"><input type="checkbox" id="cs_diag"> Data notes</label>
+        </div>
       </div>
     </div>
   </div>
 
-  <div id="reportRoot"></div>
+  <div id="workArea">
+    <div id="sideCol" class="no-print">
+      <div id="editorRoot" style="display:none;"></div>
+      <div id="checksRoot"></div>
+    </div>
+    <div id="cardNotice" class="card-notice" style="display:none"></div>
+    <div id="reportRoot"></div>
+  </div>
 
 </div>
 
 <script>
-const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxKHZNNI6QlVeyv9Q982-ErEYSXkIdD6vTt0Lpq5z2YMCA_-cR1KROjWjM_p_tzolDSVw/exec";
+let SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxKHZNNI6QlVeyv9Q982-ErEYSXkIdD6vTt0Lpq5z2YMCA_-cR1KROjWjM_p_tzolDSVw/exec";
+// Your data lives in the Google Sheet, not in this file — replacing the file never deletes it. The only thing a fresh copy
+// of this file lacks is the URL, so the URL is remembered in this browser: paste it once (in any DMH tool on this site)
+// and every later copy of every tool picks it up. A URL written in the file always wins and is remembered.
+(function rememberSheetsUrl(){
+  try{
+    const KEY = "dmh-sheets-url", isScript = u => /^https:\/\/script\.google\.com\//.test(String(u||"").trim());
+    if(SHEETS_WEBAPP_URL.indexOf("PASTE_YOUR") !== 0){ if(isScript(SHEETS_WEBAPP_URL)) localStorage.setItem(KEY, SHEETS_WEBAPP_URL.trim()); return; }
+    let saved = localStorage.getItem(KEY);
+    if(!isScript(saved)){
+      const v = typeof prompt === "function" ? prompt("Paste your Apps Script web app URL (the same one the other DMH tools use). It is remembered in this browser, so you only do this once.") : "";
+      saved = isScript(v) ? v.trim() : "";
+      if(saved) localStorage.setItem(KEY, saved);
+    }
+    if(saved) SHEETS_WEBAPP_URL = saved;
+  }catch(e){}
+})();
 const el = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+let LANG = "en";
+const fmt = n => (typeof n === "number" && isFinite(n)) ? n.toLocaleString(LANG === "ru" ? "ru-RU" : "en-US", {maximumFractionDigits: 1}) : "—";
+const money = n => "$" + fmt(Math.round(n));
+const newId = () => "b" + Math.random().toString(36).slice(2, 8);
 
+/* ================= report language (EN / RU) =================
+   Only the client-facing report is translated; the editor and the internal checks stay in English. */
+const DICT = {
+  en: {
+    revenue:"Revenue", bookings:"Bookings", websiteSessions:"Website sessions", toForm:"To booking form", traffic:"Traffic", sessions:"Sessions",
+    vsMonth:"vs last month", vsPrev:"vs previous period", vsYear:"vs last year", newTag:"new",
+    noPrior:"No prior period to compare yet — comparisons will appear once a second period is logged.",
+    emptyOverall:"Overall hotel results haven't been filled in for this period yet — add them in the main workspace, or switch the basis to Tracked marketing.",
+    emptyTracked:"No tracked campaigns logged for this period yet.",
+    adsRevenue:"Revenue from ads", adsBookings:"Bookings from ads", adsVisits:"Visits from ads",
+    storyDid:"What we did", storyResult:"What changed", storyWhy:"Comment",
+    t_takeaways:"Key takeaways", tkCommercial:"Commercial results", tkTraffic:"Traffic", tkBookings:"Bookings", tkRevenue:"Revenue", tkAds:"From advertising", tkWhy:"Why", tkSite:"Site-wide", tkOrganic:"Organic", tkRefAi:"Referral & AI", tkPaid:"Paid",
+    ofRevenue:"{p}% of all revenue", ofBookings:"{p}% of all bookings", ofSessions:"{p}% of all website sessions",
+    channel:"Channel", campaign:"Campaign", cr:"CR", total:"Total", otherChannels:"Other channels",
+    crNote:"CR is not shown for rows with fewer than {n} sessions.",
+    spend:"Spend", costPerBooking:"Cost / booking", roas:"ROAS", totalTracked:"Total tracked", noCampaigns:"No tracked campaigns logged for this period.",
+    budgetSpent:"Budget spent", trackedBookings:"Tracked bookings", costPerBookingKpi:"Cost per booking", trackedRevenue:"Tracked revenue",
+    noSpend:"No spend entered for this period — cost per booking and ROAS can't be calculated.",
+    metric:"Metric", change:"Change", clicks:"Clicks", clicksPerDay:"Clicks per day", impressions:"Impressions", impressionsPerDay:"Impressions per day",
+    ctr:"CTR", avgPos:"Average position", positionWord:"{n} position", positionWords:"{n} positions", pp:"pp",
+    posNote:"Average position: a lower number is better.",
+    dailyNote:"{prev} covers {pd} days of data vs {cd} in {cur}, so per-day figures carry the comparison.",
+    signal:"Signal", thisPeriod:"This period",
+    result:"Result", plan:"Plan", completed:"completed", ongoing:"ongoing", targeting:"targeting",
+    noActivities:"No activities logged for this period yet.", noPlanned:"No planned activities logged yet.",
+    dnUnassigned:"\"Unassigned\" traffic ({p}% of sessions) has no channel attribution in GA4, so it may include organic and paid visits.",
+    dnGsc:"Search Console data covers part of the month for at least one period, so per-day figures are used for comparison.",
+    dnYoy:"No year-over-year comparison is available yet.",
+    t_channels:"Traffic by channel", t_ads:"From advertising", t_campaigns:"Campaign performance", t_investment:"Investment & return",
+    t_gsc:"Organic search (Google Search Console)", t_visibility:"Visibility", t_activities:"Activities", t_planned:"Activities planned",
+    t_materials:"Supporting materials", t_notes:"Notes", t_datanotes:"Data notes", t_screenshot:"Screenshots", t_table:"Table",
+    overallResults:"Overall results", trackedResults:"Tracked marketing results",
+  },
+  ru: {
+    revenue:"Выручка", bookings:"Брони", websiteSessions:"Сессии сайта", toForm:"Входы в форму бронирования", traffic:"Трафик", sessions:"Сессии",
+    vsMonth:"к прошлому месяцу", vsPrev:"к предыдущему периоду", vsYear:"к прошлому году", newTag:"новый",
+    noPrior:"Пока не с чем сравнивать — сравнения появятся, когда будет внесён второй период.",
+    emptyOverall:"Общие данные по отелю за этот период ещё не внесены.",
+    emptyTracked:"За этот период нет данных по рекламным кампаниям.",
+    adsRevenue:"Выручка от рекламы", adsBookings:"Брони от рекламы", adsVisits:"Визиты из рекламы",
+    storyDid:"Что сделали", storyResult:"Что изменилось", storyWhy:"Комментарий",
+    t_takeaways:"Ключевые выводы", tkCommercial:"Коммерческие результаты", tkTraffic:"Трафик", tkBookings:"Брони", tkRevenue:"Выручка", tkAds:"Из рекламы", tkWhy:"Почему так", tkSite:"Весь сайт", tkOrganic:"Органика", tkRefAi:"Реферал и ИИ", tkPaid:"Реклама",
+    ofRevenue:"{p}% всей выручки", ofBookings:"{p}% всех броней", ofSessions:"{p}% всех сессий сайта",
+    channel:"Канал", campaign:"Кампания", cr:"Конверсия", total:"Всего", otherChannels:"Прочие каналы",
+    crNote:"Конверсия не показана для строк с числом сессий меньше {n}.",
+    spend:"Расход", costPerBooking:"Стоимость брони", roas:"ROAS", totalTracked:"Итого по рекламе", noCampaigns:"За этот период нет рекламных кампаний.",
+    budgetSpent:"Расход бюджета", trackedBookings:"Брони (реклама)", costPerBookingKpi:"Стоимость брони", trackedRevenue:"Выручка (реклама)",
+    noSpend:"Расход за период не внесён — стоимость брони и ROAS посчитать нельзя.",
+    metric:"Показатель", change:"Изменение", clicks:"Клики", clicksPerDay:"Клики в день", impressions:"Показы", impressionsPerDay:"Показы в день",
+    ctr:"CTR", avgPos:"Средняя позиция", positionWord:"{n}", positionWords:"{n}", pp:"п.п.",
+    posNote:"Средняя позиция: чем меньше число, тем лучше.",
+    dailyNote:"За {prev} данные собраны за {pd} дн., за {cur} — за {cd} дн., поэтому сравнение идёт по показателям в день.",
+    signal:"Показатель", thisPeriod:"За период",
+    result:"Результат", plan:"План", completed:"завершено", ongoing:"в процессе", targeting:"планируется на",
+    noActivities:"За этот период активностей пока нет.", noPlanned:"Запланированных активностей пока нет.",
+    dnUnassigned:"Трафик «Unassigned» ({p}% сессий) не имеет атрибуции по каналу в GA4 и может включать органические и платные визиты.",
+    dnGsc:"Данные Search Console за один из периодов собраны не за весь месяц, поэтому сравнение идёт по показателям в день.",
+    dnYoy:"Сравнение с прошлым годом пока недоступно.",
+    t_channels:"Трафик по каналам", t_ads:"Из них реклама", t_campaigns:"Результаты кампаний", t_investment:"Расходы и отдача",
+    t_gsc:"Органический поиск (Google Search Console)", t_visibility:"Видимость", t_activities:"Что сделано", t_planned:"Следующие шаги",
+    t_materials:"Материалы", t_notes:"Комментарии", t_datanotes:"Примечания к данным", t_screenshot:"Скриншоты", t_table:"Таблица",
+    overallResults:"Общие результаты", trackedResults:"Результаты по рекламе (tracked)",
+  }
+};
+const T = (k, v) => { let s = (DICT[LANG] && DICT[LANG][k]) || DICT.en[k] || k; if(v) for(const x in v) s = s.split("{" + x + "}").join(v[x]); return s; };
+const MONTHS_RU = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+// Period labels stay English in the data ("September 2026"); the Russian report shows them in Russian.
+const MONTHS_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+function periodDisplay(label){
+  const one = l => { const t = parsePeriodDate(l); if(t === null) return null; const d = new Date(t); return {m: (LANG === "ru" ? MONTHS_RU : MONTHS_EN)[d.getMonth()], y: d.getFullYear()}; };
+  if(String(label).includes(" – ")){
+    const [a, b] = String(label).split(" – "), pa = one(a), pb = one(b);
+    if(!pa || !pb) return label;
+    const m2 = LANG === "ru" ? pb.m.toLowerCase() : pb.m;
+    return pa.y === pb.y ? `${pa.m} – ${m2} ${pb.y}` : `${pa.m} ${pa.y} – ${m2} ${pb.y}`;
+  }
+  if(LANG !== "ru") return label;
+  const p = one(label); return p ? p.m + " " + p.y : label;
+}
+// Russian plural for "позиция": 1 позиция, 2–4 позиции, 5+ позиций
+const ruPos = n => { const a = Math.abs(n), m10 = a % 10, m100 = a % 100; const w = (m10 === 1 && m100 !== 11) ? "позиция" : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? "позиции" : "позиций"; return fmt(a) + " " + w; };
+
+/* ================= storage ================= */
 function withTimeout(promise, ms, label){
-  return Promise.race([
-    promise,
-    new Promise((_, reject)=> setTimeout(()=> reject(new Error(`Timed out waiting for ${label} (no response after ${ms/1000}s)`)), ms))
-  ]);
+  return Promise.race([promise, new Promise((_, rej)=> setTimeout(()=> rej(new Error(`Timed out waiting for ${label} (no response after ${ms/1000}s)`)), ms))]);
 }
 function checkBackendConfigured(){
   if(!SHEETS_WEBAPP_URL || SHEETS_WEBAPP_URL.indexOf("PASTE_YOUR") === 0){
     throw new Error("Backend not configured — paste the same Apps Script URL used in the main workspace into SHEETS_WEBAPP_URL near the top of this file.");
   }
 }
+const bust = () => Date.now() + "_" + Math.random().toString(36).slice(2);
 async function stGet(key){
   checkBackendConfigured();
-  const bust = Date.now() + "_" + Math.random().toString(36).slice(2);
-  const res = await withTimeout(
-    fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}&_=${bust}`, { cache: "no-store" }),
-    12000, `loading "${key}"`
-  );
+  const res = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}&_=${bust()}`, {cache:"no-store"}), 12000, `loading "${key}"`);
   const data = await res.json();
   if(data.error) throw new Error(data.error);
   return data.value;
 }
-
-let hotelIndex = [];
-let currentHotel = null;
-let currentResults = null;
-let currentProgress = null;
-let primaryPeriodLabel = null;
-
-async function loadHotelIndex(){
-  try{ hotelIndex = JSON.parse(await stGet("dmh-hotel-index")); } catch(e){ hotelIndex = []; }
+async function stGetBulk(keys){
+  checkBackendConfigured();
+  try{
+    const res = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?keys=${encodeURIComponent(keys.join(","))}&_=${bust()}`, {cache:"no-store"}), 20000, "loading data");
+    const data = await res.json();
+    if(data && data.values) return data.values;
+  }catch(e){}
+  const out = {};
+  await Promise.all(keys.map(async k=>{ try{ out[k] = await stGet(k); }catch(e){} }));
+  return out;
 }
-function populateHotelSelect(){
-  const sel = el("hotelSelect");
-  sel.innerHTML = '<option value="">Select a hotel...</option>';
-  hotelIndex.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(h=>{
-    const opt = document.createElement("option"); opt.value = h.id; opt.textContent = h.name; sel.appendChild(opt);
+async function stSet(key, value){
+  checkBackendConfigured();
+  const res = await withTimeout(fetch(SHEETS_WEBAPP_URL, {
+    method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, cache:"no-store",
+    body: JSON.stringify({action:"set", key, value})
+  }), 20000, `saving "${key}"`);
+  return res.json();
+}
+
+/* ============ images: compressed and stored in chunks ============
+   A Google Sheets cell holds ~50k characters, so a screenshot is saved as
+   several ~40k chunks. Every chunk is prefixed with "~" so Sheets never reads
+   a chunk that happens to start with = + - as a formula. */
+const CHUNK = 40000;
+const imgCache = {}, imgPromises = {};
+async function storeImage(dataUrl){
+  const id = "im" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const n = Math.ceil(dataUrl.length / CHUNK);
+  for(let i = 0; i < n; i++) await stSet(`dmh-img:${id}:c${i}`, "~" + dataUrl.slice(i*CHUNK, (i+1)*CHUNK));
+  await stSet(`dmh-img:${id}`, JSON.stringify({n, len:dataUrl.length}));
+  imgCache[id] = dataUrl;
+  return id;
+}
+function fetchImage(id){
+  if(imgCache[id]) return Promise.resolve(imgCache[id]);
+  if(imgPromises[id]) return imgPromises[id];
+  imgPromises[id] = (async ()=>{
+    const meta = JSON.parse(await stGet(`dmh-img:${id}`));
+    const keys = Array.from({length:meta.n}, (_, i)=>`dmh-img:${id}:c${i}`);
+    const parts = await stGetBulk(keys);
+    const url = keys.map(k=>{ if(parts[k]==null) throw new Error("image chunk missing"); return String(parts[k]).replace(/^~/, ""); }).join("");
+    imgCache[id] = url; return url;
+  })();
+  imgPromises[id].catch(()=>{ delete imgPromises[id]; });
+  return imgPromises[id];
+}
+function hydrateImages(root){
+  root.querySelectorAll("img[data-imgid]").forEach(img=>{
+    fetchImage(img.dataset.imgid).then(u=>{ img.src = u; }).catch(()=>{ img.alt = "image unavailable"; });
   });
 }
-
-async function loadAllForHotel(id){
-  el("statusText").textContent = "Loading...";
-  try{
-    currentHotel = JSON.parse(await stGet(`dmh-hotel:${id}`));
-  } catch(e){ currentHotel = null; }
-  try{
-    currentResults = JSON.parse(await stGet(`dmh-results:${id}`));
-  } catch(e){ currentResults = { periods: [] }; }
-  try{
-    currentProgress = JSON.parse(await stGet(`dmh-progress:${id}`));
-  } catch(e){ currentProgress = { cards: [] }; }
-  const periods = sortPeriodsChronologically(currentResults.periods || []);
-  primaryPeriodLabel = periods.length ? periods[periods.length-1].period : null;
-  el("statusText").textContent = "Loaded " + new Date().toLocaleTimeString('en-US');
-  renderPeriodSelect();
-  renderReport();
+async function compressImage(file){
+  const bmp = await createImageBitmap(file);
+  let scale = Math.min(1, 1000 / bmp.width), q = 0.8, out = "";
+  for(let a = 0; a < 7; a++){
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const cx = c.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h); cx.drawImage(bmp, 0, 0, w, h);
+    out = c.toDataURL("image/jpeg", q);
+    if(out.length <= 140000) break;
+    if(q > 0.5) q -= 0.1; else scale *= 0.85;
+  }
+  return out;
+}
+function isImageUrl(url){
+  const u = String(url||"").trim();
+  return /^img:/.test(u) || /^data:image\//i.test(u) || /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(u);
+}
+function imgEl(link, alt){
+  const img = document.createElement("img"); img.alt = alt || "attachment";
+  const u = String(link).trim();
+  if(/^img:/.test(u)) img.dataset.imgid = u.slice(4); else img.src = u;
+  return img;
 }
 
-function getField(sectionId, key){ return currentHotel?.sections?.[sectionId]?.fields?.[key] || ""; }
+/* ================= state ================= */
+let hotelIndex = [], currentHotel = null, currentResults = null, currentProgress = null;
+let primaryPeriodLabel = null, report = null, editMode = false, saveTimer = null, lastTarget = null;
+const setStatus = m => { el("statusText").textContent = m; };
+let loadedAt = "", rangeFromWanted = "";
+function setSave(state, text){ const b = el("saveBadge"); b.className = "save-badge " + state; b.textContent = text; }
 
 function parsePeriodDate(label){
   const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-  const m = (label||"").trim().match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
+  const txt = (label||"").trim();
+  // numeric spellings: 2026-09, 09/2026, 09.2026
+  let n = txt.match(/^(\d{4})[-/.](\d{1,2})$/), n2 = txt.match(/^(\d{1,2})[-/.](\d{4})$/);
+  if(n || n2){ const y = parseInt(n ? n[1] : n2[2], 10), mo = parseInt(n ? n[2] : n2[1], 10); return (mo >= 1 && mo <= 12) ? new Date(y, mo - 1, 1).getTime() : null; }
+  const m = txt.match(/^([A-Za-z]{3,9})\.?,?\s+(\d{4})$/);
   if(!m) return null;
   const key = m[1].slice(0,3).toLowerCase();
   if(!(key in months)) return null;
   return new Date(parseInt(m[2],10), months[key], 1).getTime();
 }
 function sortPeriodsChronologically(periods){
-  return periods.map((p,i)=>({p, i, t: parsePeriodDate(p.period)}))
-    .sort((a,b)=>{
-      if(a.t===null && b.t===null) return a.i-b.i;
-      if(a.t===null) return 1;
-      if(b.t===null) return -1;
-      return a.t-b.t;
-    })
-    .map(x=>x.p);
+  return periods.map((p,i)=>({p, i, t: parsePeriodDate(p.period)})).sort((a,b)=>{
+    if(a.t===null && b.t===null) return a.i-b.i;
+    if(a.t===null) return 1; if(b.t===null) return -1; return a.t-b.t;
+  }).map(x=>x.p);
 }
+const getField = (sec, key) => currentHotel?.sections?.[sec]?.fields?.[key] || "";
 
-function renderPeriodSelect(){
-  const sel = el("periodSelect");
-  const periods = sortPeriodsChronologically(currentResults?.periods || []);
-  if(periods.length === 0){ sel.innerHTML = '<option value="">No periods logged</option>'; return; }
-  sel.innerHTML = periods.map(p=>`<option value="${p.period}" ${p.period===primaryPeriodLabel?"selected":""}>${p.period}</option>`).join("");
-  sel.onchange = ()=>{ primaryPeriodLabel = sel.value; renderReport(); };
-}
+/* ================= report model: blocks, presets, settings ================= */
+const DEFAULT_TITLES = {
+  channels:"Traffic by channel", ads:"From advertising", campaigns:"Campaign performance", investment:"Investment & return",
+  gsc:"Organic search (Google Search Console)", visibility:"Visibility", activities:"Activities",
+  planned:"Activities planned", materials:"Supporting materials", notes:"Notes", datanotes:"Data notes"
+};
+const TYPE_LABELS = {
+  headline:"Headline numbers", ads:"From advertising", channels:"Channels (GA4)", campaigns:"Campaigns", investment:"Spend & ROAS", gsc:"Search Console",
+  visibility:"Visibility", activities:"Activities", planned:"Planned", materials:"Materials", notes:"Period note", datanotes:"Data notes",
+  text:"Text", screenshot:"Screenshots", table:"Table", numbers:"Number tiles", story:"Did → changed", takeaways:"Key takeaways"
+};
+const BUILTINS = ["headline","ads","channels","campaigns","investment","gsc","visibility","activities","planned","materials","notes","datanotes"];
+const mkBlock = (type, extra) => Object.assign({id:newId(), type, enabled:true, title:""}, extra||{});
 
-function renderReport(){
-  const root = el("reportRoot");
-  root.innerHTML = "";
-  if(!currentHotel){ root.innerHTML = '<div class="empty-note">Select a hotel and click Load data.</div>'; return; }
-
-  // Sort chronologically by parsing "Mon YYYY" labels — periods can be added
-  // out of date order, so array/insertion order can't be trusted for
-  // "previous period" or trend-window logic. Unparseable labels fall back
-  // to the end, in their original relative order, rather than breaking.
-  function parsePeriodDate(label){
-    const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-    const m = (label||"").trim().match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
-    if(!m) return null;
-    const key = m[1].slice(0,3).toLowerCase();
-    if(!(key in months)) return null;
-    return new Date(parseInt(m[2],10), months[key], 1).getTime();
+// "Key takeaways" are comments, not a second copy of the numbers: what explains the result, and short answers to the
+// questions a reader is likely to ask. The template stays; a new month starts from it again.
+const SKELETON = {
+  en: "• [Comment on the results: what explains them, how to read them]\n• [A likely question or objection → a short, factual answer]",
+  ru: "• [Комментарий к результатам: чем объясняются, как их читать]\n• [Вероятный вопрос или возражение → короткий фактический ответ]"
+};
+function presetLayout(name, lang){
+  if(name === "structured"){
+    const sk = SKELETON[lang === "ru" ? "ru" : "en"], ru = lang === "ru";
+    return {
+      blocks:[mkBlock("headline",{tiles:{sessions:false}}),
+              mkBlock("text",{title:ru ? "Ключевые выводы" : "Key takeaways", text:sk, skeleton:sk}),
+              mkBlock("activities",{title:ru ? "Реклама" : "Paid media", tagFilter:"Advertising", tilesText:"", commentText:"", resultsLabel:""}),
+              mkBlock("activities",{title:ru ? "Работы по сайту" : "Website work", tagFilter:"Website", tilesText:"", commentText:"", resultsLabel:""}),
+              mkBlock("planned")],
+      settings:{basis:"overall", comparisons:true, compPrev:true, compYoy:true, activityScope:"all", clientShow:{spend:false, brand:false, diag:false}}
+    };
   }
-  const rawPeriods = currentResults.periods || [];
-  const allPeriods = rawPeriods.map((p,i)=>({p, i, t: parsePeriodDate(p.period)}))
-    .sort((a,b)=>{
-      if(a.t===null && b.t===null) return a.i-b.i;
-      if(a.t===null) return 1;
-      if(b.t===null) return -1;
-      return a.t-b.t;
-    })
-    .map(x=>x.p);
-  const primaryPeriod = allPeriods.find(p=>p.period===primaryPeriodLabel) || null;
-  if(!primaryPeriod){ root.innerHTML = '<div class="empty-note">Select a report period above.</div>'; return; }
-
-  const showSpend = el("showSpendToggle").checked;
-  const showComparisons = el("showComparisonsToggle").checked;
-  const basis = el("basisSelect").value; // "overall" or "tracked"
-  const periodLabel = primaryPeriod.period;
-  const allRows = primaryPeriod.rows || [];
-  const notesText = [primaryPeriod.seasonalNote].filter(Boolean);
-
-  // Tracked (marketing-attributed) totals — only what's logged against a
-  // campaign/channel in the workspace.
-  const totals = allRows.reduce((acc,r)=>({
-    spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
-  }), {spend:0,traffic:0,bookings:0,revenue:0});
-  const roas = totals.spend>0 ? (totals.revenue/totals.spend).toFixed(2) : "—";
-
-  // Overall hotel results — the whole property, organic + tracked combined.
-  const overallTotals = {
-    websiteTraffic: parseFloat(primaryPeriod.totalWebsiteTraffic)||0,
-    beTraffic: parseFloat(primaryPeriod.totalBeTraffic)||0,
-    bookings: parseFloat(primaryPeriod.totalBookings)||0,
-    revenue: parseFloat(primaryPeriod.totalRevenue)||0,
+  if(name === "simple"){
+    return {
+      blocks:[mkBlock("headline",{tiles:{form:false}}), mkBlock("text",{title:"Highlights", text:""}), mkBlock("activities"), mkBlock("text",{title:"What's next", text:""})],
+      settings:{basis:"overall", comparisons:true, compPrev:true, compYoy:false, activityScope:"all", clientShow:{spend:false, brand:false, diag:false}}
+    };
+  }
+  if(name === "first"){
+    return {
+      blocks:[mkBlock("headline"), mkBlock("ads"), mkBlock("channels"), mkBlock("campaigns"), mkBlock("gsc"), mkBlock("activities"), mkBlock("planned"),
+              mkBlock("text",{title:"Key takeaways", text:""}), mkBlock("text",{title:"Data limitations", text:""}), mkBlock("datanotes"), mkBlock("notes")],
+      settings:{basis:"overall", comparisons:false, activityScope:"all", clientShow:{spend:false, brand:false, diag:false}}
+    };
+  }
+  return {
+    blocks:[mkBlock("headline"), mkBlock("ads"), mkBlock("channels"), mkBlock("campaigns"), mkBlock("investment"), mkBlock("gsc"), mkBlock("visibility"),
+            mkBlock("activities"), mkBlock("planned"), mkBlock("materials"), mkBlock("datanotes"), mkBlock("notes")],
+    settings:{basis:"overall", comparisons:true, activityScope:"period", clientShow:{spend:false, brand:false, diag:false}}
   };
-  const hasOverallData = overallTotals.beTraffic>0 || overallTotals.bookings>0 || overallTotals.revenue>0;
-
-  const primaryIndex = allPeriods.findIndex(p=>p.period===periodLabel);
-  const previousPeriod = primaryIndex > 0 ? allPeriods[primaryIndex-1] : null;
-  const prevTotals = previousPeriod ? (previousPeriod.rows||[]).reduce((acc,r)=>({
-    spend: acc.spend+(r.spend||0), traffic: acc.traffic+(r.traffic||0), bookings: acc.bookings+(r.bookings||0), revenue: acc.revenue+(r.revenue||0)
-  }), {spend:0,traffic:0,bookings:0,revenue:0}) : null;
-  const prevOverallTotals = previousPeriod ? {
-    beTraffic: parseFloat(previousPeriod.totalBeTraffic)||0,
-    bookings: parseFloat(previousPeriod.totalBookings)||0,
-    revenue: parseFloat(previousPeriod.totalRevenue)||0,
-  } : null;
-
-  const TREND_WINDOW = 6;
-  const trendPeriods = primaryIndex >= 0 ? allPeriods.slice(Math.max(0, primaryIndex-TREND_WINDOW+1), primaryIndex+1) : [];
-
-  function pctDelta(curr, prev){
-    if(prev===null || prev===undefined || prev===0 || !curr) return null;
-    return ((curr-prev)/prev*100);
+}
+function normalizeReport(r){
+  if(!Array.isArray(r.blocks)) r.blocks = presetLayout("monthly").blocks;
+  r.blocks.forEach(b=>{
+    if(!b.id) b.id = newId();
+    if(b.enabled === undefined) b.enabled = true;
+    if(b.type === "screenshot" && !Array.isArray(b.images)) b.images = [];
+  });
+  // Layouts saved before "From advertising" existed get it right after the headline (once).
+  if(!r.v || r.v < 2){
+    if(!r.blocks.some(b=>b.type === "ads")){ const i = r.blocks.findIndex(b=>b.type === "headline"); r.blocks.splice(i >= 0 ? i + 1 : 0, 0, mkBlock("ads")); }
+    r.v = 2;
   }
-  function deltaBadge(curr, prev, goodWhenUp=true){
-    const d = pctDelta(curr, prev);
-    if(d === null) return "";
-    const up = d >= 0;
-    const positive = goodWhenUp ? up : !up;
-    const cls = positive ? "delta-up" : "delta-down";
-    const arrow = up ? "▲" : "▼";
-    return `<span class="delta-badge ${cls}">${arrow} ${Math.abs(d).toFixed(0)}%</span>`;
+  if(!r.hiddenCards) r.hiddenCards = {};
+  if(!r.shownCards) r.shownCards = {};
+  if(!r.hiddenImages) r.hiddenImages = {};
+  if(!r.channelLabels) r.channelLabels = {};
+  if(r.subtitle === undefined) r.subtitle = "";
+  if(r.hotelName === undefined) r.hotelName = "";
+  r.settings = Object.assign({rangeFrom:"", lang:"en", basis:"overall", comparisons:true, activityScope:"period"}, r.settings||{});
+  if(r.settings.compPrev === undefined) r.settings.compPrev = r.settings.comparisons !== false;
+  if(r.settings.compYoy === undefined) r.settings.compYoy = r.settings.comparisons !== false;
+  r.settings.clientShow = Object.assign({spend:false, brand:false, diag:false}, r.settings.clientShow||{});
+}
+// New month: keep the structure (blocks, titles, labels, settings) but not last month's text, screenshots or tables.
+function structureFrom(base){
+  const r = JSON.parse(JSON.stringify(base));
+  if(r.settings) r.settings.rangeFrom = "";   // a new month starts as a single month
+  r.blocks.forEach(b=>{ b.id = newId(); if(b.type==="text") b.text = b.skeleton || ""; if(b.type==="screenshot") b.images=[]; if(b.type==="table") b.tableText=""; if(b.type==="numbers") b.tilesText=""; if(b.type==="story"){ b.doneText=""; b.tilesText=""; b.commentText=""; } if(b.type==="takeaways") b.fields = {}; if(b.type==="activities"){ b.tilesText=""; b.commentText=""; } });
+  return r;
+}
+function readSettings(){
+  return {rangeFrom:el("periodFromSelect").value, lang:el("langSelect").value, basis:el("basisSelect").value, comparisons:el("compPrevToggle").checked || el("compYoyToggle").checked, compPrev:el("compPrevToggle").checked, compYoy:el("compYoyToggle").checked, activityScope:el("activityScopeSelect").value,
+          clientShow:{spend:el("cs_spend").checked, brand:el("cs_brand").checked, diag:el("cs_diag").checked}};
+}
+function applySettings(s){
+  rangeFromWanted = s.rangeFrom || ""; el("langSelect").value = s.lang || "en"; el("basisSelect").value = s.basis; el("compPrevToggle").checked = s.compPrev !== undefined ? !!s.compPrev : !!s.comparisons; el("compYoyToggle").checked = s.compYoy !== undefined ? !!s.compYoy : !!s.comparisons; el("activityScopeSelect").value = s.activityScope;
+  el("cs_spend").checked = !!s.clientShow.spend; el("cs_brand").checked = !!s.clientShow.brand; el("cs_diag").checked = !!s.clientShow.diag;
+}
+const reportKey = (hid, period) => `dmh-report:${hid}:${period}`;
+async function loadReportForPeriod(){
+  report = null;
+  if(!currentHotel || !primaryPeriodLabel) return;
+  try{ report = JSON.parse(await stGet(reportKey(currentHotel.id, primaryPeriodLabel))); }catch(e){ report = null; }
+  if(!report){
+    const periods = sortPeriodsChronologically(currentResults.periods||[]);
+    const i = periods.findIndex(p=>p.period===primaryPeriodLabel);
+    let base = null;
+    for(let j = i-1; j >= 0 && j >= i-3 && !base; j--){
+      try{ base = JSON.parse(await stGet(reportKey(currentHotel.id, periods[j].period))); }catch(e){}
+    }
+    report = base ? structureFrom(base) : presetLayout("monthly");
   }
+  normalizeReport(report);
+  applySettings(report.settings);
+}
+function scheduleSave(){ clearTimeout(saveTimer); setSave("saving", "Saving…"); saveTimer = setTimeout(saveReport, 900); }
+async function saveReport(){
+  clearTimeout(saveTimer); saveTimer = null;
+  if(!report || !currentHotel || !primaryPeriodLabel) return;
+  report.settings = readSettings();
+  setSave("saving", "Saving…");
+  try{ await stSet(reportKey(currentHotel.id, primaryPeriodLabel), JSON.stringify(report)); setSave("ok", "✓ Layout saved " + new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"})); }
+  catch(e){ setSave("err", "⚠ Not saved — " + e.message); }
+}
+function changed(structural){
+  scheduleSave(); renderReport(); renderChecks();
+  if(structural) renderEditor();
+}
 
-  // Headline figures follow whichever basis is selected — this is the one
-  // switch that decides the whole story: a hotel on a full-booking
-  // commission model reads "Overall", one paying only for tracked
-  // marketing results reads "Tracked marketing only". YoY only applies to
-  // Overall — there was no tracking a year ago to compare against.
-  const isOverall = basis === "overall";
-  const head = isOverall ? {
-    revenue: overallTotals.revenue, bookings: overallTotals.bookings, traffic: overallTotals.beTraffic,
-    prevRevenue: prevOverallTotals?.revenue, prevBookings: prevOverallTotals?.bookings, prevTraffic: prevOverallTotals?.beTraffic,
-    hasPrev: !!prevOverallTotals, hasData: hasOverallData,
-    yoyRevenue: primaryPeriod.yoyRevenue, yoyBookings: primaryPeriod.yoyBookings, yoyTraffic: primaryPeriod.yoyTraffic,
-    hasYoy: ["yoyRevenue","yoyTraffic","yoyBookings"].some(k=>!isNaN(parseFloat(primaryPeriod[k]))),
+// Two period labels mean the same month ("Sep 2026" = "September 2026" = "2026-09").
+function samePeriod(a, b){
+  const x = String(a||"").trim().toLowerCase(), y = String(b||"").trim().toLowerCase();
+  if(!x || !y) return false;
+  if(x === y) return true;
+  const px = parsePeriodDate(a), py = parsePeriodDate(b);
+  return px !== null && py !== null && px === py;
+}
+
+/* ================= context: everything the blocks need ================= */
+function pctDelta(curr, prev){ if(prev===null || prev===undefined || prev===0 || !curr) return null; return (curr-prev)/prev*100; }
+function deltaBadge(curr, prev, goodWhenUp=true){
+  const d = pctDelta(curr, prev);
+  if(d === null) return "";
+  if(Math.round(d) === 0) return `<span class="delta-badge delta-flat">0%</span>`;
+  const up = d >= 0, positive = goodWhenUp ? up : !up;
+  if(d >= 500) return `<span class="delta-badge ${positive?"delta-up":"delta-down"}">× ${fmt(Math.round(curr/prev*10)/10)}</span>`;
+  return `<span class="delta-badge ${positive?"delta-up":"delta-down"}">${up?"▲":"▼"} ${Math.abs(d).toFixed(0)}%</span>`;
+}
+// Percent changes on tiny bases mislead (7 → 2 is "-71%"), so counts under 10 on both sides show the absolute change.
+function countBadge(curr, prev){
+  if(prev > 0 && prev < 10 && curr < 10){
+    const d = curr - prev;
+    return d === 0 ? `<span class="delta-badge delta-flat">0</span>` : `<span class="delta-badge delta-abs">${d>0?"▲":"▼"} ${Math.abs(d)}</span>`;
+  }
+  return deltaBadge(curr, prev);
+}
+const chRowsOf = p => (p && Array.isArray(p.channels)) ? p.channels.filter(r=>r.channel && String(r.channel).trim()) : [];
+const sumField = (rows, rx, f) => rows.filter(r=>rx.test(r.channel)).reduce((a,r)=>a+num(r[f]), 0);
+const MIN_CR_SESSIONS = 100;
+
+/* ---- ranges: "from … to" merges several months into one virtual period ---- */
+const monthIndex = label => { const t = parsePeriodDate(label); if(t === null) return null; const d = new Date(t); return d.getFullYear()*12 + d.getMonth(); };
+const hasVal = v => v !== undefined && v !== null && String(v).trim() !== "" && !isNaN(parseFloat(v));
+// Sums months into one period. A total (bookings, revenue…) is only kept when EVERY month has it —
+// a half-filled range would otherwise compare a partial sum with a full one.
+function mergePeriods(ps, label){
+  if(ps.length === 1) return Object.assign({}, ps[0], {memberLabels:[ps[0].period]});
+  const out = {period:label, memberLabels:ps.map(p=>p.period), rows:[], channels:[], gsc:null,
+    visibilityMetrics:(ps[ps.length-1].visibilityMetrics||[]), seasonalNote:ps.map(p=>p.seasonalNote).filter(Boolean).join("\n")};
+  ["totalWebsiteTraffic","totalBeTraffic","totalBookings","totalRevenue","yoyRevenue","yoyTraffic","yoyForm","yoyBookings"].forEach(k=>{
+    out[k] = ps.every(p=>hasVal(p[k])) ? ps.reduce((a,p)=>a+num(p[k]), 0) : "";
+  });
+  const rm = {};
+  ps.forEach(p=>(p.rows||[]).forEach(r=>{
+    const k = String(r.campaign||"").trim().toLowerCase() + "|" + String(r.channel||"").trim().toLowerCase();
+    const o = rm[k] || (rm[k] = {campaign:r.campaign, channel:r.channel, spend:0, traffic:0, bookings:0, revenue:0});
+    o.spend += num(r.spend); o.traffic += num(r.traffic); o.bookings += num(r.bookings); o.revenue += num(r.revenue);
+  }));
+  out.rows = Object.values(rm);
+  const cm = {};
+  ps.forEach(p=>chRowsOf(p).forEach(r=>{
+    const k = String(r.channel).trim().toLowerCase();
+    const o = cm[k] || (cm[k] = {channel:r.channel, sessions:0, form:0, bookings:0, revenue:0, _f:false});
+    o.sessions += num(r.sessions); o.form += num(r.form); o.bookings += num(r.bookings); o.revenue += num(r.revenue); if(hasVal(r.form)) o._f = true;
+  }));
+  out.channels = Object.values(cm).map(o=>{ const f = o._f ? o.form : ""; delete o._f; o.form = f; return o; });
+  const gs = ps.map(p=>p.gsc).filter(g=>g && (hasVal(g.clicks) || hasVal(g.impressions)));
+  if(gs.length){
+    const clicks = gs.reduce((a,g)=>a+num(g.clicks), 0), imps = gs.reduce((a,g)=>a+num(g.impressions), 0);
+    const wpos = gs.filter(g=>hasVal(g.position)); const wsum = wpos.reduce((a,g)=>a+(num(g.impressions)||1), 0);
+    out.gsc = {clicks, impressions:imps, days:gs.reduce((a,g)=>a+num(g.days), 0),
+      ctr: imps > 0 ? Math.round(clicks/imps*1000)/10 : "",
+      position: wpos.length ? Math.round(wpos.reduce((a,g)=>a+num(g.position)*(num(g.impressions)||1), 0)/wsum*10)/10 : ""};
+  }
+  return out;
+}
+function cardPeriodOk(c, ctx){
+  const members = ctx.memberLabels || [ctx.periodLabel];
+  if(c.stage === "Live" && c.period){ const t0 = parsePeriodDate(c.period), p0 = parsePeriodDate(ctx.endLabel || ctx.periodLabel); if(t0 !== null && p0 !== null) return t0 <= p0; }   // ongoing work keeps showing until it is marked done
+  if(ctx.st.activityScope !== "all") return members.some(m=>samePeriod(m, c.period));
+  if(!c.period) return true;
+  const pt = parsePeriodDate(ctx.endLabel || ctx.periodLabel), tt = parsePeriodDate(c.period);
+  return (tt === null || pt === null) ? members.some(m=>samePeriod(m, c.period)) : tt <= pt;
+}
+
+function buildCtx(){
+  if(!currentResults || !report) return null;
+  const allPeriods = sortPeriodsChronologically(currentResults.periods||[]);
+  const endP = allPeriods.find(p=>p.period===primaryPeriodLabel) || null;
+  if(!endP) return null;
+  const endIdx = allPeriods.indexOf(endP);
+  // range start (optional); only periods up to the end are valid
+  let startIdx = endIdx;
+  const fromLabel = el("periodFromSelect").value;
+  if(fromLabel){ const fi = allPeriods.findIndex(p=>p.period===fromLabel); if(fi >= 0 && fi <= endIdx) startIdx = fi; }
+  const members = allPeriods.slice(startIdx, endIdx + 1);
+  const isRange = members.length > 1;
+  const rangeLabel = isRange ? `${members[0].period} – ${members[members.length-1].period}` : endP.period;
+  const primary = isRange ? mergePeriods(members, rangeLabel) : endP;
+  const idx = endIdx;
+  // Comparison = the same number of months right before the start. Calendar months when the labels are dates
+  // (so Jun 2026 is never compared with Sep 2025); otherwise the previous periods in the list.
+  const fm = monthIndex(members[0].period), lm = monthIndex(members[members.length-1].period);
+  let prevMembers = null;
+  if(fm !== null && lm !== null){
+    const span = lm - fm + 1;
+    const found = Array.from({length:span}, (_, i)=>allPeriods.find(p=>monthIndex(p.period) === fm - span + i));
+    prevMembers = found.every(Boolean) ? found : null;
+  } else if(startIdx - members.length >= 0){
+    prevMembers = allPeriods.slice(startIdx - members.length, startIdx);
+  }
+  const previous = prevMembers ? mergePeriods(prevMembers, prevMembers.length > 1 ? `${prevMembers[0].period} – ${prevMembers[prevMembers.length-1].period}` : prevMembers[0].period) : null;
+  const sumRows = rows => (rows||[]).reduce((a,r)=>({spend:a.spend+num(r.spend), traffic:a.traffic+num(r.traffic), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {spend:0,traffic:0,bookings:0,revenue:0});
+  const ovOf = p => p ? {websiteTraffic:num(p.totalWebsiteTraffic), beTraffic:num(p.totalBeTraffic), bookings:num(p.totalBookings), revenue:num(p.totalRevenue)} : null;
+  const anyOv = o => !!o && (o.websiteTraffic>0 || o.beTraffic>0 || o.bookings>0 || o.revenue>0);
+  const st = readSettings();
+  const isInternal = el("audienceSelect").value === "internal";
+  const ctx = {
+    allPeriods, primary, previous, idx, periodLabel:primary.period, rows:primary.rows||[], st, isInternal,
+    isRange, members, memberLabels:members.map(p=>p.period), endLabel:endP.period,
+    showComparisons:st.compPrev, showYoy:st.compYoy, isOverall:st.basis==="overall",
+    showSpend:isInternal || st.clientShow.spend, showBrand:isInternal || st.clientShow.brand, showDiag:isInternal || st.clientShow.diag,
+    totals:sumRows(primary.rows), prevTotals:previous ? sumRows(previous.rows) : null,
+    ov:ovOf(primary), prevOv:ovOf(previous),
+  };
+  ctx.hasOv = anyOv(ctx.ov); ctx.hasPrevOv = anyOv(ctx.prevOv);
+  ctx.trendPeriods = allPeriods.slice(Math.max(0, idx-5), idx+1);
+  const useWebsite = !(ctx.ov.beTraffic > 0);
+  ctx.head = ctx.isOverall ? {
+    trafficLabel: useWebsite ? "Website sessions" : "Booking Engine traffic",
+    revenue:ctx.ov.revenue, bookings:ctx.ov.bookings, traffic:useWebsite ? ctx.ov.websiteTraffic : ctx.ov.beTraffic,
+    prevRevenue:ctx.prevOv?.revenue, prevBookings:ctx.prevOv?.bookings, prevTraffic:useWebsite ? ctx.prevOv?.websiteTraffic : ctx.prevOv?.beTraffic,
+    hasPrev:ctx.hasPrevOv, hasData:ctx.hasOv,
+    yoyRevenue:primary.yoyRevenue, yoyBookings:primary.yoyBookings, yoyTraffic:primary.yoyTraffic, yoyForm:primary.yoyForm,
+    hasYoy:["yoyRevenue","yoyTraffic","yoyForm","yoyBookings"].some(k=>!isNaN(parseFloat(primary[k]))),
   } : {
-    revenue: totals.revenue, bookings: totals.bookings, traffic: totals.traffic,
-    prevRevenue: prevTotals?.revenue, prevBookings: prevTotals?.bookings, prevTraffic: prevTotals?.traffic,
-    hasPrev: !!previousPeriod, hasData: allRows.length>0,
-    hasYoy: false,
+    trafficLabel:"Traffic", revenue:ctx.totals.revenue, bookings:ctx.totals.bookings, traffic:ctx.totals.traffic,
+    prevRevenue:ctx.prevTotals?.revenue, prevBookings:ctx.prevTotals?.bookings, prevTraffic:ctx.prevTotals?.traffic,
+    hasPrev:!!previous, hasData:ctx.rows.length>0, hasYoy:false,
   };
-  function yoyText(curr, manualPrev){
-    if(!showComparisons || !head.hasYoy || !curr) return "";
-    const prevNum = parseFloat(manualPrev);
-    if(isNaN(prevNum)) return "";
-    const badge = deltaBadge(curr, prevNum);
-    return badge ? `<div class="glance-yoy">vs last year: ${badge}</div>` : "";
-  }
-  function momText(curr, prev){
-    if(!showComparisons || !head.hasPrev || !curr) return "";
-    const badge = deltaBadge(curr, prev);
-    return badge ? `<div class="glance-yoy">vs last month: ${badge}</div>` : "";
-  }
-
-  const report = document.createElement("div");
-  report.className = "report";
-
-  report.innerHTML += `
-    <div class="report-header">
-      <div class="report-kicker">Exely Digital Marketing Hub</div>
-      <div class="report-title">${getField("hotelData","name") || currentHotel.id}</div>
-      <div class="report-sub">${periodLabel} · ${isOverall?"Overall results":"Tracked marketing results"}</div>
-    </div>`;
-  const bodyWrap = document.createElement("div"); bodyWrap.className = "report-body";
-  report.appendChild(bodyWrap);
-
-  if(!head.hasData){
-    const note = document.createElement("div"); note.className = "empty-note";
-    note.textContent = isOverall
-      ? "Overall hotel results haven't been filled in for this period yet — add them in the main workspace, or switch to Tracked marketing above."
-      : "No tracked campaigns logged for this period yet.";
-    bodyWrap.appendChild(note);
-  } else {
-    const glance = document.createElement("div"); glance.className = "glance-strip";
-    glance.innerHTML = `
-      <div class="glance-item">
-        <div class="glance-label">Revenue</div>
-        <div class="glance-val">$${head.revenue}</div>
-        ${momText(head.revenue, head.prevRevenue)}
-        ${yoyText(head.revenue, head.yoyRevenue)}
-      </div>
-      <div class="glance-item">
-        <div class="glance-label">Bookings</div>
-        <div class="glance-val">${head.bookings}</div>
-        ${momText(head.bookings, head.prevBookings)}
-        ${yoyText(head.bookings, head.yoyBookings)}
-      </div>
-      <div class="glance-item">
-        <div class="glance-label">Traffic</div>
-        <div class="glance-val">${head.traffic}</div>
-        ${momText(head.traffic, head.prevTraffic)}
-        ${yoyText(head.traffic, head.yoyTraffic)}
-      </div>
-    `;
-    bodyWrap.appendChild(glance);
-    if(showComparisons && !head.hasPrev && !head.hasYoy){
-      const note = document.createElement("div"); note.className = "empty-note"; note.style.textAlign = "center"; note.style.margin = "10px 0 4px";
-      note.textContent = "No prior period to compare yet — comparisons will appear once a second period is logged.";
-      bodyWrap.appendChild(note);
-    }
-  }
-
-  // Campaign performance — the detail behind the tracked side of the
-  // headline above, regardless of which basis is selected.
-  const resultsSection = document.createElement("div"); resultsSection.className = "section";
-  resultsSection.innerHTML = `<div class="section-title">Campaign performance</div>`;
-  if(allRows.length){
-    const byCampaign = {};
-    allRows.forEach(r=>{
-      const name = r.campaign && r.campaign.trim() ? r.campaign.trim() : (r.channel && r.channel.trim() ? r.channel.trim() : "Other");
-      if(!byCampaign[name]) byCampaign[name] = {traffic:0,bookings:0,revenue:0,spend:0,channel:r.channel||""};
-      byCampaign[name].traffic += r.traffic||0; byCampaign[name].bookings += r.bookings||0;
-      byCampaign[name].revenue += r.revenue||0; byCampaign[name].spend += r.spend||0;
-    });
-    const table = document.createElement("table"); table.className = "rtable";
-    table.innerHTML = `<tr><th>Campaign</th><th>Traffic</th><th>Bookings</th><th>Revenue</th>${showSpend?"<th>Spend</th><th>ROAS</th>":""}</tr>` +
-      Object.keys(byCampaign).sort((a,b)=>byCampaign[b].revenue-byCampaign[a].revenue).map(name=>{
-        const c = byCampaign[name];
-        const r = c.spend>0 ? (c.revenue/c.spend).toFixed(2)+"×" : "—";
-        const channelNote = c.channel ? `<div style="font-size:10.5px;color:var(--ink-soft);">${c.channel}</div>` : "";
-        return `<tr><td>${name}${channelNote}</td><td>${c.traffic}</td><td>${c.bookings}</td><td>$${c.revenue}</td>${showSpend?`<td>$${c.spend}</td><td>${r}</td>`:""}</tr>`;
-      }).join("");
-    resultsSection.appendChild(table);
-  } else {
-    resultsSection.innerHTML += `<div class="empty-note">No tracked campaigns logged for this period.</div>`;
-  }
-  bodyWrap.appendChild(resultsSection);
-
-  // Investment & return — always tracked-specific, since spend is
-  // inherently a tracked-marketing concept regardless of reporting basis.
-  if(showSpend){
-    const investSection = document.createElement("div"); investSection.className = "section";
-    investSection.innerHTML = `<div class="section-title">Investment &amp; return</div>`;
-    const grid = document.createElement("div"); grid.className = "kpi-grid";
-    grid.innerHTML = `
-      <div class="kpi"><div class="kpi-label">Budget spent</div><div class="kpi-val">$${totals.spend} ${deltaBadge(totals.spend, prevTotals?.spend, false)}</div></div>
-      <div class="kpi"><div class="kpi-label">Tracked bookings</div><div class="kpi-val">${totals.bookings} ${deltaBadge(totals.bookings, prevTotals?.bookings)}</div></div>
-      <div class="kpi"><div class="kpi-label">Tracked revenue</div><div class="kpi-val accent">$${totals.revenue} ${deltaBadge(totals.revenue, prevTotals?.revenue)}</div></div>
-      <div class="kpi"><div class="kpi-label">ROAS</div><div class="kpi-val accent">${roas}×</div></div>
-    `;
-    investSection.appendChild(grid);
-    bodyWrap.appendChild(investSection);
-  }
-
-  // Visibility — a simple trend line per source, latest value labeled.
-  // A metric with even a single logged value is drawn from a zero
-  // baseline — absence in earlier months usually means "wasn't happening
-  // yet," a real zero, not missing data.
-  function parseNumeric(str){
-    if(str===null || str===undefined) return null;
-    const cleaned = String(str).replace(/[^0-9.\-]/g,"");
-    if(cleaned==="" || cleaned==="-") return null;
-    const n = parseFloat(cleaned);
-    return isNaN(n) ? null : n;
-  }
-  if(trendPeriods.length){
-    const trendPeriodLabels = trendPeriods.map(p=>p.period);
-    const metricNames = new Set();
-    trendPeriods.forEach(p=>(p.visibilityMetrics||[]).forEach(m=>{ if(m.name && m.name.trim()) metricNames.add(m.name.trim()); }));
-    const seriesMap = {};
-    const plainMetrics = [];
-    metricNames.forEach(name=>{
-      const values = trendPeriods.map(p=>{
-        const found = (p.visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name);
-        return found ? parseNumeric(found.value) : null;
-      });
-      if(values.some(v=>v!==null)){
-        seriesMap[name] = values.map(v=>v===null?0:v);
-      } else {
-        for(let i=trendPeriods.length-1; i>=0; i--){
-          const found = (trendPeriods[i].visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name);
-          if(found){ plainMetrics.push(found); break; }
-        }
-      }
-    });
-    if(Object.keys(seriesMap).length || plainMetrics.length){
-      const visSection = document.createElement("div"); visSection.className = "section";
-      visSection.innerHTML = `<div class="section-title">Visibility</div>`;
-      const hasTrend = Object.keys(seriesMap).length > 0;
-      if(hasTrend){
-        visSection.appendChild(buildLineChart(seriesMap, trendPeriodLabels, false));
-      }
-      if(plainMetrics.length){
-        const table = document.createElement("table"); table.className = "rtable";
-        table.innerHTML = `<tr><th>Signal</th><th>This period</th></tr>` +
-          plainMetrics.map(m=>`<tr><td>${m.name||""}</td><td>${m.value||""}</td></tr>`).join("");
-        table.style.marginTop = hasTrend ? "10px" : "0";
-        visSection.appendChild(table);
-      }
-      bodyWrap.appendChild(visSection);
-    }
-  }
-
-  // Activities this period, for the glance/detail below.
-  const doneCards = (currentProgress.cards||[]).filter(c=>
-    c.period===periodLabel && (c.stage==="Done/Paused" || c.stage==="Live")
-  );
-
-  const activitySection = document.createElement("div"); activitySection.className = "section";
-  activitySection.innerHTML = `<div class="section-title">Activities</div>`;
-  if(doneCards.length){
-    doneCards.forEach(c=>{
-      const item = document.createElement("div"); item.className = "activity-card";
-      const tagPills = (c.tags||[]).map(t=>`<span class="pill">${t}</span>`).join("");
-      item.innerHTML = `
-        <div class="activity-title">${c.title||"(untitled)"}</div>
-        <div class="activity-meta">${tagPills} ${c.period?("· "+c.period):""} ${c.stage==="Live"?"· ongoing":"· completed"}</div>
-        ${c.notes ? `<div class="activity-result"><div class="result-label">Result</div>${c.notes}</div>` : ""}
-      `;
-      const linkedSubtasks = (c.subtasks||[]).filter(s=>s.link && s.link.trim());
-      if(linkedSubtasks.length){
-        const media = document.createElement("div"); media.className = "activity-media";
-        linkedSubtasks.forEach(s=>{
-          if(isImageUrl(s.link)){
-            const img = document.createElement("img"); img.src = s.link; img.alt = s.text || "attachment";
-            media.appendChild(img);
-          } else {
-            const a = document.createElement("a"); a.className = "file-link"; a.href = s.link; a.target = "_blank"; a.textContent = "🔗 " + (s.text || "View");
-            media.appendChild(a);
-          }
-        });
-        item.appendChild(media);
-      }
-      activitySection.appendChild(item);
-    });
-  } else {
-    activitySection.innerHTML += `<div class="empty-note">No activities logged for this period yet.</div>`;
-  }
-  bodyWrap.appendChild(activitySection);
-
-  const plannedCards = (currentProgress.cards||[]).filter(c=> c.stage==="Planned");
-  const plannedSection = document.createElement("div"); plannedSection.className = "section";
-  plannedSection.innerHTML = `<div class="section-title">Activities planned</div>`;
-  if(plannedCards.length){
-    plannedCards.forEach(c=>{
-      const item = document.createElement("div"); item.className = "activity-card";
-      const tagPills = (c.tags||[]).map(t=>`<span class="pill">${t}</span>`).join("");
-      item.innerHTML = `
-        <div class="activity-title">${c.title||"(untitled)"}</div>
-        <div class="activity-meta">${tagPills} ${c.period?("· targeting "+c.period):""}</div>
-        ${c.notes ? `<div class="activity-result"><div class="result-label">Plan</div>${c.notes}</div>` : ""}
-      `;
-      plannedSection.appendChild(item);
-    });
-  } else {
-    plannedSection.innerHTML += `<div class="empty-note">No planned activities logged yet.</div>`;
-  }
-  bodyWrap.appendChild(plannedSection);
-
-  const generalNotes = (currentProgress.generalNotes || []).filter(n=>n.link && n.link.trim());
-  if(generalNotes.length){
-    const materialsSection = document.createElement("div"); materialsSection.className = "section";
-    materialsSection.innerHTML = `<div class="section-title">Supporting materials</div>`;
-    const media = document.createElement("div"); media.className = "activity-media";
-    generalNotes.forEach(n=>{
-      if(isImageUrl(n.link)){
-        const img = document.createElement("img"); img.src = n.link; img.alt = n.note || "attachment";
-        media.appendChild(img);
-      } else {
-        const a = document.createElement("a"); a.className = "file-link"; a.href = n.link; a.target = "_blank"; a.textContent = "🔗 " + (n.note || "View");
-        media.appendChild(a);
-      }
-    });
-    materialsSection.appendChild(media);
-    bodyWrap.appendChild(materialsSection);
-  }
-
-  if(notesText.length){
-    const notesSection = document.createElement("div"); notesSection.className = "section";
-    notesSection.innerHTML = `<div class="section-title">Notes</div>` +
-      notesText.map(n=>`<div class="season-note" style="margin-bottom:8px;">${n}</div>`).join("");
-    bodyWrap.appendChild(notesSection);
-  }
-
-  root.appendChild(report);
+  return ctx;
+}
+function isBlockVisible(b, ctx){
+  if(!b.enabled) return false;
+  if(b.type === "investment" && !ctx.showSpend) return false;
+  if(b.type === "datanotes" && !ctx.showDiag) return false;
+  return true;
 }
 
-function buildLineChart(seriesMap, periodLabels, showPct){
-  if(showPct === undefined) showPct = true;
-  const wrap = document.createElement("div");
-  const width = 640, height = 260, padL = 44, padR = 50, padT = 16, padB = 34;
-  const plotW = width - padL - padR, plotH = height - padT - padB;
-  const allValues = Object.values(seriesMap).flat().filter(v=>v!==null && v!==undefined);
-  const maxVal = Math.max(...allValues, 1);
-  const n = periodLabels.length;
-  const xStep = n > 1 ? plotW / (n - 1) : 0;
-  const colors = ["#4D1774", "#F65925", "#2E5FA3", "#1D9E75", "#993556", "#A9791B"];
+/* ================= block renderers ================= */
+function renderNote(txt){
+  return String(txt).replace(/&/g,"&amp;").replace(/</g,"&lt;").split("\n").map(line=>{
+    const t = line.trim();
+    return (t && !t.startsWith("•") && t.length <= 40 && !/[.:;]$/.test(t)) ? `<strong>${t}</strong>` : line;
+  }).join("\n");
+}
+function section(b, fallbackTitle){
+  const s = document.createElement("div"); s.className = "section";
+  const title = (b.title && b.title.trim()) || fallbackTitle || (DEFAULT_TITLES[b.type] ? T("t_" + b.type) : "");
+  if(title) s.innerHTML = `<div class="section-title">${esc(title)}</div>`;
+  return s;
+}
+const R = {};
 
-  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;" role="img" aria-label="Visibility trend by source">`;
-  svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${height-padB}" stroke="var(--line)" stroke-width="1"/>`;
-  svg += `<line x1="${padL}" y1="${height-padB}" x2="${width-padR}" y2="${height-padB}" stroke="var(--line)" stroke-width="1"/>`;
-  periodLabels.forEach((label,i)=>{
-    const x = padL + i*xStep;
-    svg += `<text x="${x}" y="${height-padB+18}" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)">${label}</text>`;
-  });
-  [0, 0.5, 1].forEach(frac=>{
-    const y = padT + plotH - frac*plotH;
-    const val = Math.round(frac*maxVal);
-    svg += `<text x="${padL-8}" y="${y+3}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${val}</text>`;
-  });
-
-  const legendItems = [];
-  let colorIdx = 0;
-  Object.keys(seriesMap).forEach(name=>{
-    const color = colors[colorIdx % colors.length]; colorIdx++;
-    legendItems.push({name, color});
-    const values = seriesMap[name];
-    const points = [];
-    values.forEach((v,i)=>{
-      if(v===null || v===undefined) return;
-      const x = padL + i*xStep;
-      const y = padT + plotH - (v/maxVal*plotH);
-      points.push([x,y,v]);
-    });
-    if(points.length){
-      const path = points.map((p,i)=> (i===0?"M":"L")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
-      svg += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
-      points.forEach(p=>{ svg += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="${color}"/>`; });
-      // Label the most recent point with its exact figure, plus the %
-      // change from the first point in the window — labeling every point
-      // gets cluttered once there are several months and series; the
-      // gridlines on the left give a rough read on the rest.
-      const first = points[0];
-      const last = points[points.length-1];
-      let pctText = "";
-      if(showPct && points.length > 1){
-        if(first[2] === 0){
-          pctText = last[2] > 0 ? " (new)" : "";
-        } else {
-          const pct = Math.round((last[2]-first[2])/first[2]*100);
-          pctText = ` (${pct>=0?"▲":"▼"}${Math.abs(pct)}%)`;
-        }
-      }
-      svg += `<text x="${(last[0]-4).toFixed(1)}" y="${(last[1]-9).toFixed(1)}" font-size="10.5" text-anchor="end" fill="${color}" font-weight="600">${Math.round(last[2])}${pctText}</text>`;
+R.headline = (ctx, b) => {
+  const wrap = document.createElement("div"); wrap.className = "block-headline";
+  const h = ctx.head, P = ctx.primary;
+  if(!h.hasData){
+    wrap.innerHTML = `<div class="empty-note">${ctx.isOverall ? T("emptyOverall") : T("emptyTracked")}</div>`;
+    return wrap;
+  }
+  const tiles = [
+    {key:"revenue", label:T("revenue"), cur:h.revenue, prev:h.prevRevenue, yoy:h.yoyRevenue, money:true},
+    {key:"bookings", label:T("bookings"), cur:h.bookings, prev:h.prevBookings, yoy:h.yoyBookings, small:true},
+  ];
+  if(ctx.isOverall){
+    // "Total" and "to the booking form" are two different traffic numbers, so they get two tiles.
+    const hasSite = ctx.ov.websiteTraffic > 0, hasForm = ctx.ov.beTraffic > 0;
+    if(hasSite) tiles.push({key:"sessions", label:T("websiteSessions"), cur:ctx.ov.websiteTraffic, prev:ctx.prevOv?.websiteTraffic, yoy:P.yoyTraffic});
+    if(hasForm) tiles.push({key:"form", label:T("toForm"), cur:ctx.ov.beTraffic, prev:ctx.prevOv?.beTraffic, yoy:(P.yoyForm !== undefined && String(P.yoyForm).trim() !== "") ? P.yoyForm : (hasSite ? undefined : P.yoyTraffic)});
+  } else tiles.push({key:"sessions", label:T("traffic"), cur:h.traffic, prev:h.prevTraffic});
+  const sel = b.tiles || {};
+  for(let i = tiles.length - 1; i >= 0; i--) if(sel[tiles[i].key] === false) tiles.splice(i, 1);
+  if(!tiles.length) return null;
+  const lines = t => {
+    let out = "";
+    if(ctx.showComparisons && h.hasPrev && t.cur && t.prev !== undefined){
+      const badge = t.small ? countBadge(t.cur, t.prev) : deltaBadge(t.cur, t.prev);
+      if(badge) out += `<div class="glance-yoy">${T(ctx.isRange ? "vsPrev" : "vsMonth")}: ${badge}</div>`;
     }
+    if(ctx.showYoy && h.hasYoy && t.cur && t.yoy !== undefined){
+      const p = parseFloat(t.yoy), badge = isNaN(p) ? "" : deltaBadge(t.cur, p);
+      if(badge) out += `<div class="glance-yoy">${T("vsYear")}: ${badge}</div>`;
+    }
+    return out;
+  };
+  if(b.title && b.title.trim()){ const cap = document.createElement("div"); cap.className = "block-caption"; cap.textContent = b.title; wrap.appendChild(cap); }
+  const g = document.createElement("div"); g.className = "glance-strip";
+  g.innerHTML = tiles.map(t=>`<div class="glance-item"><div class="glance-label">${t.label}</div><div class="glance-val">${t.money ? money(t.cur) : fmt(t.cur)}</div>${lines(t)}</div>`).join("");
+  wrap.appendChild(g);
+  if((ctx.showComparisons || ctx.showYoy) && !(ctx.showComparisons && h.hasPrev) && !(ctx.showYoy && h.hasYoy)){
+    const n = document.createElement("div"); n.className = "empty-note"; n.style.cssText = "text-align:center;margin:10px 0 4px;";
+    n.textContent = T("noPrior");
+    wrap.appendChild(n);
+  }
+  wrap.style.marginBottom = "30px";
+  return wrap;
+};
+
+// The advertising slice of the headline: what the tracked campaigns brought, and how much of the hotel's total that is.
+R.ads = (ctx, b) => {
+  if(!ctx.isOverall || !ctx.rows.length) return null;
+  const Tt = ctx.totals, O = ctx.ov;
+  const of = (a, tot, key) => tot > 0 ? `<div class="glance-yoy">${T(key, {p:Math.round(a/tot*100)})}</div>` : "";
+  const sec = section(b);
+  const g = document.createElement("div"); g.className = "glance-strip";
+  g.innerHTML = `
+    <div class="glance-item"><div class="glance-label">${T("adsRevenue")}</div><div class="glance-val">${money(Tt.revenue)}</div>${of(Tt.revenue, O.revenue, "ofRevenue")}</div>
+    <div class="glance-item"><div class="glance-label">${T("adsBookings")}</div><div class="glance-val">${fmt(Tt.bookings)}</div>${of(Tt.bookings, O.bookings, "ofBookings")}</div>
+    <div class="glance-item"><div class="glance-label">${T("adsVisits")}</div><div class="glance-val">${fmt(Tt.traffic)}</div>${of(Tt.traffic, O.websiteTraffic, "ofSessions")}</div>`;
+  sec.appendChild(g);
+  return sec;
+};
+
+R.channels = (ctx, b) => {
+  let rows = chRowsOf(ctx.primary);
+  if(!ctx.isOverall || !rows.length) return null;
+  let prevRows = chRowsOf(ctx.previous);
+  const key = c => String(c).trim().toLowerCase();
+  // "Main channels only": keep the top N by sessions and fold the rest into one row.
+  const N = parseInt(b.topN, 10);
+  if(N > 0 && rows.length > N + 1){
+    const keep = new Set(rows.slice().sort((a,c)=>num(c.sessions)-num(a.sessions)).slice(0, N).map(r=>key(r.channel)));
+    const merge = rs => rs.reduce((a,r)=>({channel:T("otherChannels"), sessions:a.sessions+num(r.sessions), form:a.form+num(r.form), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {channel:T("otherChannels"), sessions:0, form:0, bookings:0, revenue:0});
+    const group = rs => { const kept = rs.filter(r=>keep.has(key(r.channel))), rest = rs.filter(r=>!keep.has(key(r.channel))); return rest.length ? kept.concat([merge(rest)]) : kept; };
+    rows = group(rows); prevRows = group(prevRows);
+  }
+  const sec = section(b);
+  const prevCh = {}; prevRows.forEach(r=>{ prevCh[key(r.channel)] = r; });
+  const hasPrev = ctx.showComparisons && prevRows.length > 0;
+  const hasForm = rows.some(r=>num(r.form) > 0);
+  const sumC = rs => rs.reduce((a,r)=>({sessions:a.sessions+num(r.sessions), form:a.form+num(r.form), bookings:a.bookings+num(r.bookings), revenue:a.revenue+num(r.revenue)}), {sessions:0,form:0,bookings:0,revenue:0});
+  const cell = (curr, prev, kind) => {
+    const shown = kind === "money" ? money(curr) : fmt(curr);
+    if(!hasPrev || prev === undefined) return shown;
+    if(prev === 0 && curr > 0) return `${shown}<span class="delta-badge delta-new">${T("newTag")}</span>`;
+    return shown + (kind === "count" ? countBadge(curr, prev) : deltaBadge(curr, prev));
+  };
+  let crHidden = false;
+  const cr = (bk, s) => { if(s < MIN_CR_SESSIONS){ crHidden = crHidden || s > 0; return "—"; } return (bk/s*100).toFixed(1) + "%"; };
+  const curTot = sumC(rows), prevTotC = sumC(prevRows);
+  const tot = {sessions:ctx.ov.websiteTraffic || curTot.sessions, form:ctx.ov.beTraffic || curTot.form, bookings:ctx.ov.bookings || curTot.bookings, revenue:ctx.ov.revenue || curTot.revenue};
+  const prevTot = ctx.previous ? {sessions:ctx.prevOv?.websiteTraffic || prevTotC.sessions, form:ctx.prevOv?.beTraffic || prevTotC.form, bookings:ctx.prevOv?.bookings || prevTotC.bookings, revenue:ctx.prevOv?.revenue || prevTotC.revenue} : null;
+  const pv = (pr, f) => pr ? num(pr[f]) : (hasPrev ? 0 : undefined);
+  const formCell = (r, pr) => hasForm ? `<td>${cell(num(r.form), pv(pr,"form"), "n")}</td>` : "";
+  const t = document.createElement("table"); t.className = "rtable";
+  t.innerHTML = `<tr><th>${T("channel")}</th><th>${T("sessions")}</th>${hasForm?`<th>${T("toForm")}</th>`:""}<th>${T("bookings")}</th><th>${T("revenue")}</th><th>${T("cr")}</th></tr>` +
+    rows.map(r=>{
+      const pr = prevCh[key(r.channel)];
+      return `<tr${/paid/i.test(r.channel)?' class="row-hl"':""}><td>${esc(r.channel)}</td><td>${cell(num(r.sessions), pv(pr,"sessions"), "n")}</td>${formCell(r, pr)}<td>${cell(num(r.bookings), pv(pr,"bookings"), "count")}</td><td>${cell(num(r.revenue), pv(pr,"revenue"), "money")}</td><td>${cr(num(r.bookings), num(r.sessions))}</td></tr>`;
+    }).join("") +
+    `<tr class="row-total"><td>${T("total")}</td><td>${cell(tot.sessions, prevTot&&hasPrev?prevTot.sessions:undefined, "n")}</td>${hasForm?`<td>${cell(tot.form, prevTot&&hasPrev?prevTot.form:undefined, "n")}</td>`:""}<td>${cell(tot.bookings, prevTot&&hasPrev?prevTot.bookings:undefined, "count")}</td><td>${cell(tot.revenue, prevTot&&hasPrev?prevTot.revenue:undefined, "money")}</td><td>${cr(tot.bookings, tot.sessions)}</td></tr>`;
+  sec.appendChild(t);
+  if(crHidden){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = T("crNote", {n:MIN_CR_SESSIONS}); sec.appendChild(n); }
+  return sec;
+};
+
+R.campaigns = (ctx, b) => {
+  const sec = section(b);
+  if(!ctx.rows.length){ sec.innerHTML += `<div class="empty-note">${T("noCampaigns")}</div>`; return sec; }
+  const cols = ctx.showSpend && ctx.totals.spend > 0;
+  const labels = report.channelLabels || {};
+  const by = {};
+  ctx.rows.forEach(r=>{
+    const campaign = (r.campaign||"").trim(), channel = (r.channel||"").trim();
+    let key, sub = "";
+    if(ctx.showBrand){ key = campaign || channel || "Other"; sub = channel; }
+    else { key = channel ? (labels[channel] || channel) : (campaign || "Other"); }
+    const o = by[key] || (by[key] = {traffic:0,bookings:0,revenue:0,spend:0,sub});
+    o.traffic += num(r.traffic); o.bookings += num(r.bookings); o.revenue += num(r.revenue); o.spend += num(r.spend);
+  });
+  let crHidden = false;
+  const ht = ctx.rows.some(r=>num(r.traffic) > 0);   // traffic per campaign known?
+  const cr = (bk, t) => { if(t < MIN_CR_SESSIONS){ crHidden = crHidden || t > 0; return "—"; } return (bk/t*100).toFixed(1) + "%"; };
+  const cpb = (s, bk) => bk > 0 ? money(s/bk) : "—";
+  const Tt = ctx.totals;
+  const t = document.createElement("table"); t.className = "rtable";
+  t.innerHTML = `<tr><th>${ctx.showBrand?T("campaign"):T("channel")}</th>${ht?`<th>${T("traffic")}</th>`:""}<th>${T("bookings")}</th>${ht?`<th>${T("cr")}</th>`:""}<th>${T("revenue")}</th>${cols?`<th>${T("spend")}</th><th>${T("costPerBooking")}</th><th>${T("roas")}</th>`:""}</tr>` +
+    Object.keys(by).sort((a,c)=>by[c].revenue-by[a].revenue).map(k=>{
+      const o = by[k];
+      return `<tr><td>${esc(k)}${o.sub?`<div style="font-size:10.5px;color:var(--ink-soft);">${esc(o.sub)}</div>`:""}</td>${ht?`<td>${fmt(o.traffic)}</td>`:""}<td>${fmt(o.bookings)}</td>${ht?`<td>${cr(o.bookings,o.traffic)}</td>`:""}<td>${money(o.revenue)}</td>${cols?`<td>${money(o.spend)}</td><td>${cpb(o.spend,o.bookings)}</td><td>${o.spend>0?(o.revenue/o.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
+    }).join("") +
+    `<tr class="row-total"><td>${T("totalTracked")}</td>${ht?`<td>${fmt(Tt.traffic)}</td>`:""}<td>${fmt(Tt.bookings)}</td>${ht?`<td>${cr(Tt.bookings,Tt.traffic)}</td>`:""}<td>${money(Tt.revenue)}</td>${cols?`<td>${money(Tt.spend)}</td><td>${cpb(Tt.spend,Tt.bookings)}</td><td>${Tt.spend>0?(Tt.revenue/Tt.spend).toFixed(2)+"×":"—"}</td>`:""}</tr>`;
+  sec.appendChild(t);
+  if(crHidden){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = T("crNote", {n:MIN_CR_SESSIONS}); sec.appendChild(n); }
+  return sec;
+};
+
+R.investment = (ctx, b) => {
+  const Tt = ctx.totals, P = ctx.prevTotals;
+  const sec = section(b);
+  if(!(Tt.spend > 0)){
+    if(!ctx.isInternal) return null;
+    sec.innerHTML += `<div class="empty-note">${T("noSpend")}</div>`;
+    return sec;
+  }
+  const g = document.createElement("div"); g.className = "kpi-grid";
+  g.innerHTML = `
+    <div class="kpi"><div class="kpi-label">${T("budgetSpent")}</div><div class="kpi-val">${money(Tt.spend)} ${deltaBadge(Tt.spend, P?.spend, false)}</div></div>
+    <div class="kpi"><div class="kpi-label">${T("trackedBookings")}</div><div class="kpi-val">${fmt(Tt.bookings)} ${P?countBadge(Tt.bookings,P.bookings):""}</div></div>
+    <div class="kpi"><div class="kpi-label">${T("costPerBookingKpi")}</div><div class="kpi-val">${Tt.bookings>0?money(Tt.spend/Tt.bookings):"—"}</div></div>
+    <div class="kpi"><div class="kpi-label">${T("trackedRevenue")}</div><div class="kpi-val accent">${money(Tt.revenue)} ${deltaBadge(Tt.revenue, P?.revenue)}</div></div>
+    <div class="kpi"><div class="kpi-label">${T("roas")}</div><div class="kpi-val accent">${(Tt.revenue/Tt.spend).toFixed(2)}×</div></div>`;
+  sec.appendChild(g);
+  return sec;
+};
+
+R.gsc = (ctx, b) => {
+  const gscOf = per => {
+    const g = per && per.gsc; if(!g) return null;
+    const n = v => { const x = parseFloat(v); return isNaN(x) ? null : x; };
+    const o = {clicks:n(g.clicks), impressions:n(g.impressions), ctr:n(g.ctr), position:n(g.position), days:n(g.days)};
+    return (o.clicks!==null || o.impressions!==null || o.ctr!==null || o.position!==null) ? o : null;
+  };
+  const cur = gscOf(ctx.primary), prev = ctx.showComparisons ? gscOf(ctx.previous) : null;
+  if(!ctx.isOverall || !cur) return null;
+  const sec = section(b);
+  const daily = !!(prev && cur.days>0 && prev.days>0 && cur.days!==prev.days);
+  const pct = (c,p) => (c===null||p===null||p===0) ? "" : deltaBadge(c,p);
+  const rows = [];
+  const add = (label, c, p, change, suffix="") => rows.push(`<tr><td>${label}</td>${prev?`<td>${p===null?"—":fmt(p)+suffix}</td>`:""}<td>${c===null?"—":fmt(c)+suffix}</td>${prev?`<td>${change||"—"}</td>`:""}</tr>`);
+  if(daily){
+    const pd = (v,d,dec=1) => (v===null||!d) ? null : (dec===0 ? Math.round(v/d) : Math.round(v/d*10)/10);
+    add(T("clicks"), cur.clicks, prev.clicks, "");
+    add(T("clicksPerDay"), pd(cur.clicks,cur.days), pd(prev.clicks,prev.days), pct(pd(cur.clicks,cur.days), pd(prev.clicks,prev.days)));
+    add(T("impressions"), cur.impressions, prev.impressions, "");
+    add(T("impressionsPerDay"), pd(cur.impressions,cur.days,0), pd(prev.impressions,prev.days,0), pct(pd(cur.impressions,cur.days,0), pd(prev.impressions,prev.days,0)));
+  } else {
+    add(T("clicks"), cur.clicks, prev?.clicks ?? null, prev ? pct(cur.clicks, prev.clicks) : "");
+    add(T("impressions"), cur.impressions, prev?.impressions ?? null, prev ? pct(cur.impressions, prev.impressions) : "");
+  }
+  const pp = (prev && cur.ctr!==null && prev.ctr!==null) ? (()=>{ const d = Math.round((cur.ctr-prev.ctr)*10)/10; return d===0 ? "" : `<span class="delta-badge ${d>0?"delta-up":"delta-down"}">${d>0?"▲":"▼"} ${Math.abs(d)} ${T("pp")}</span>`; })() : "";
+  add(T("ctr"), cur.ctr, prev?.ctr ?? null, pp, "%");
+  const ps = (prev && cur.position!==null && prev.position!==null) ? (()=>{ const d = Math.round((prev.position-cur.position)*10)/10; return d===0 ? "" : `<span class="delta-badge ${d>0?"delta-up":"delta-down"}">${d>0?"▲":"▼"} ${LANG==="ru" ? ruPos(Math.abs(d)) : (Math.abs(d)===1 ? T("positionWord",{n:fmt(Math.abs(d))}) : T("positionWords",{n:fmt(Math.abs(d))}))}</span>`; })() : "";
+  add(T("avgPos"), cur.position, prev?.position ?? null, ps);
+  const t = document.createElement("table"); t.className = "rtable";
+  t.innerHTML = `<tr><th>${T("metric")}</th>${prev?`<th>${esc(periodDisplay(ctx.previous.period))}</th>`:""}<th>${esc(periodDisplay(ctx.periodLabel))}</th>${prev?`<th>${T("change")}</th>`:""}</tr>` + rows.join("");
+  sec.appendChild(t);
+  const notes = [];
+  if(prev) notes.push(T("posNote"));
+  if(daily) notes.push(T("dailyNote", {prev:periodDisplay(ctx.previous.period), pd:prev.days, cd:cur.days, cur:periodDisplay(ctx.periodLabel)}));
+  if(notes.length){ const n = document.createElement("div"); n.className = "table-note"; n.textContent = notes.join(" "); sec.appendChild(n); }
+  return sec;
+};
+
+R.visibility = (ctx, b) => {
+  const parse = s => { if(s==null) return null; const c = String(s).replace(/[^0-9.\-]/g,""); if(c===""||c==="-") return null; const n = parseFloat(c); return isNaN(n)?null:n; };
+  const tp = ctx.trendPeriods; if(!tp.length) return null;
+  const names = new Set(); tp.forEach(p=>(p.visibilityMetrics||[]).forEach(m=>{ if(m.name && m.name.trim()) names.add(m.name.trim()); }));
+  const series = {}, plain = [];
+  names.forEach(name=>{
+    const vals = tp.map(p=>{ const f = (p.visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name); return f ? parse(f.value) : null; });
+    if(vals.some(v=>v!==null)) series[name] = vals.map(v=>v===null?0:v);
+    else for(let i = tp.length-1; i >= 0; i--){ const f = (tp[i].visibilityMetrics||[]).find(m=>m.name && m.name.trim()===name); if(f){ plain.push(f); break; } }
+  });
+  if(!Object.keys(series).length && !plain.length) return null;
+  const sec = section(b);
+  if(Object.keys(series).length) sec.appendChild(buildLineChart(series, tp.map(p=>p.period), false));
+  if(plain.length){
+    const t = document.createElement("table"); t.className = "rtable";
+    t.innerHTML = `<tr><th>${T("signal")}</th><th>${T("thisPeriod")}</th></tr>` + plain.map(m=>`<tr><td>${esc(m.name)}</td><td>${esc(m.value)}</td></tr>`).join("");
+    t.style.marginTop = Object.keys(series).length ? "10px" : "0"; sec.appendChild(t);
+  }
+  return sec;
+};
+
+function mediaNode(link, label){
+  if(isImageUrl(link)) return imgEl(link, label);
+  const a = document.createElement("a"); a.className = "file-link"; a.href = link; a.target = "_blank"; a.textContent = "🔗 " + (label || "View");
+  return a;
+}
+function activityCard(c, kind){
+  const item = document.createElement("div"); item.className = "activity-card";
+  const pills = (c.tags||[]).map(t=>`<span class="pill">${esc(t)}</span>`).join("");
+  const meta = kind === "plan" ? (c.period?("· " + T("targeting") + " " + esc(periodDisplay(c.period))):"") : ((c.period?("· "+esc(periodDisplay(c.period))+" "):"") + (c.stage==="Live" ? "· " + T("ongoing") : "· " + T("completed")));
+  item.innerHTML = `<div class="activity-title">${esc(c.title||"(untitled)")}</div><div class="activity-meta">${pills} ${meta}</div>` +
+    (c.notes ? `<div class="activity-result"><div class="result-label">${kind==="plan"?T("plan"):T("result")}</div>${esc(c.notes)}</div>` : "");
+  const noImg = ((report && report.hiddenImages) || {})[c.id];   // screenshots can be switched off per card
+  const links = noImg ? [] : (c.subtasks||[]).filter(s=>s.link && s.link.trim());
+  if(links.length){ const m = document.createElement("div"); m.className = "activity-media"; links.forEach(s=>m.appendChild(mediaNode(s.link, s.text))); item.appendChild(m); }
+  // Screenshots attached to the card itself (from the report editor) — they live with the activity, so later reports keep showing them.
+  const shots = noImg ? [] : (c.images||[]);
+  if(shots.length){
+    const m = document.createElement("div"); m.className = "activity-media";
+    shots.forEach(im=>{
+      const f = document.createElement("figure"); f.className = "act-fig";
+      const img = document.createElement("img"); img.dataset.imgid = im.id; img.alt = im.caption || "screenshot"; f.appendChild(img);
+      if(im.caption && im.caption.trim()){ const fc = document.createElement("figcaption"); fc.textContent = im.caption; f.appendChild(fc); }
+      m.appendChild(f);
+    });
+    item.appendChild(m);
+  }
+  return item;
+}
+// Repeated cards (e.g. your own card plus the same work imported from a file) are hidden automatically: the first one is kept.
+const STOPW = new Set("the and for with from that this our your their into after before while than then also have has had are was were been being will would can could should not but".split(" "));
+const tokSet = s => new Set(String(s||"").toLowerCase().replace(/[^a-zа-яё0-9\s]/gi, " ").split(/\s+/).filter(w=>w.length > 2 && !STOPW.has(w)));
+const jaccard = (a, b) => { if(!a.size || !b.size) return 0; let i = 0; a.forEach(x=>{ if(b.has(x)) i++; }); return i / (a.size + b.size - i); };
+const cardKind = c => (c.stage === "Planned" || c.stage === "In Preparation") ? "plan" : "done";
+function dupMap(){
+  const seen = [], out = {};
+  (currentProgress.cards || []).forEach(c=>{
+    if(c.stage === "Idea") return;
+    const tt = tokSet(c.title), nt = tokSet(c.notes), k = cardKind(c);
+    const hit = seen.find(s=>s.k === k && ((tt.size && jaccard(tt, s.tt) >= 0.8) || (nt.size >= 4 && s.nt.size >= 4 && jaccard(nt, s.nt) >= 0.5)));
+    if(hit) out[c.id] = hit.c; else seen.push({c, tt, nt, k});
+  });
+  return out;
+}
+function cardIsHidden(c){
+  if(!report) return false;
+  if((report.hiddenCards || {})[c.id]) return true;
+  return !!dupMap()[c.id] && !(report.shownCards || {})[c.id];
+}
+function activityCardsFor(ctx, includeHidden){
+  return (currentProgress.cards||[]).filter(c=>(c.stage==="Done/Paused" || c.stage==="Live") && cardPeriodOk(c, ctx) && (includeHidden || !cardIsHidden(c)));
+}
+// A group of activities can be limited to cards with certain tags (e.g. "Organic" or "Advertising") and can carry a
+// "what changed" strip of result tiles under the cards — so each block reads as: what we did → what it brought.
+function cardsForBlock(ctx, b, includeHidden){
+  const tf = (b.tagFilter||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean);
+  const all = activityCardsFor(ctx, includeHidden);
+  return tf.length ? all.filter(c=>(c.tags||[]).some(t=>tf.includes(String(t).trim().toLowerCase()))) : all;
+}
+function resultTiles(lines, cols){
+  const g = document.createElement("div"); g.className = "glance-strip";
+  g.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  g.innerHTML = lines.map(l=>{
+    const [label, value, note] = splitLine(l).map(x=>(x||"").trim());
+    let nh = "";
+    if(note){ const m = note.match(/^(\S+)\s*(.*)$/); const badge = m ? deltaTokenHtml(m[1]) : null; nh = `<div class="glance-yoy">${badge ? badge + (m[2] ? " " + esc(m[2]) : "") : esc(note)}</div>`; }
+    return `<div class="glance-item"><div class="glance-label">${esc(label)}</div><div class="glance-val">${esc(value||"")}</div>${nh}</div>`;
+  }).join("");
+  return g;
+}
+R.activities = (ctx, b) => {
+  const cards = cardsForBlock(ctx, b);
+  const tiles = (b.tilesText||"").split(/\r?\n/).map(l=>l.trim()).filter(l=>l && !l.startsWith("#"));
+  const comment = (b.commentText||"").trim();
+  const filtered = !!(b.tagFilter||"").trim();
+  if(filtered && !cards.length && !tiles.length) return null;     // an empty group simply isn't shown
+  const sec = section(b);
+  if(!cards.length && !tiles.length) sec.innerHTML += `<div class="empty-note">${T("noActivities")}</div>`;
+  cards.forEach(c=>sec.appendChild(activityCard(c, "done")));
+  if(tiles.length){
+    const r = document.createElement("div"); r.className = "act-results";
+    r.innerHTML = `<div class="story-label">${esc((b.resultsLabel||"").trim() || T("storyResult"))}</div>`;
+    r.appendChild(resultTiles(tiles, Math.min(tiles.length, 4)));
+    sec.appendChild(r);
+  }
+  if(comment){ const c = document.createElement("div"); c.className = "story-comment"; c.innerHTML = `<b>${T("storyWhy")}:</b> ${esc(comment)}`; sec.appendChild(c); }
+  return sec;
+};
+
+// Key takeaways as a fixed form: commercial results (+ why) on one side, traffic on the other. Empty fields are left out.
+R.takeaways = (ctx, b) => {
+  const f = b.fields || {}, has = k => f[k] && String(f[k]).trim();
+  const comm = [["bookings","tkBookings"],["revenue","tkRevenue"],["paid","tkAds"]].filter(([k])=>has(k));
+  const traf = [["site","tkSite"],["organic","tkOrganic"],["refai","tkRefAi"],["paidTraffic","tkPaid"]].filter(([k])=>has(k));
+  const why = has("why");
+  if(!comm.length && !traf.length && !why) return null;
+  const sec = section(b, T("t_takeaways"));
+  const li = ([k, lk]) => `<li><b>${T(lk)}:</b> ${esc(String(f[k]).trim())}</li>`;
+  const cols = [];
+  if(comm.length || why) cols.push(`<div class="tk-col"><div class="tk-head">${T("tkCommercial")}</div><ul>${comm.map(li).join("")}</ul>${why ? `<div class="tk-why"><b>${T("tkWhy")}:</b> ${esc(String(f.why).trim())}</div>` : ""}</div>`);
+  if(traf.length) cols.push(`<div class="tk-col"><div class="tk-head">${T("tkTraffic")}</div><ul>${traf.map(li).join("")}</ul></div>`);
+  const box = document.createElement("div"); box.className = "tk" + (cols.length === 1 ? " one" : ""); box.innerHTML = cols.join("");
+  sec.appendChild(box);
+  return sec;
+};
+
+
+R.planned = (ctx, b) => {
+  const cards = (currentProgress.cards||[]).filter(c=>(c.stage==="Planned" || c.stage==="In Preparation") && !cardIsHidden(c));
+  const sec = section(b);
+  if(!cards.length) sec.innerHTML += `<div class="empty-note">${T("noPlanned")}</div>`;
+  cards.forEach(c=>sec.appendChild(activityCard(c, "plan")));
+  return sec;
+};
+R.materials = (ctx, b) => {
+  const notes = (currentProgress.generalNotes||[]).filter(n=>n.link && n.link.trim());
+  if(!notes.length) return null;
+  const sec = section(b), m = document.createElement("div"); m.className = "activity-media";
+  notes.forEach(n=>m.appendChild(mediaNode(n.link, n.note)));
+  sec.appendChild(m); return sec;
+};
+R.notes = (ctx, b) => {
+  const t = ctx.primary.seasonalNote; if(!t || !String(t).trim()) return null;
+  const sec = section(b); const d = document.createElement("div"); d.className = "season-note"; d.innerHTML = renderNote(t); sec.appendChild(d); return sec;
+};
+R.text = (ctx, b) => {
+  if(!b.text || !b.text.trim()) return null;
+  const sec = section(b, T("t_notes")); const d = document.createElement("div"); d.className = "season-note"; d.innerHTML = renderNote(b.text); sec.appendChild(d); return sec;
+};
+R.screenshot = (ctx, b) => {
+  if(!(b.images||[]).length) return null;
+  const sec = section(b, T("t_screenshot"));
+  let holder = sec;
+  if(b.row){ holder = document.createElement("div"); holder.className = "ss-row"; sec.appendChild(holder); }
+  b.images.forEach(im=>{
+    const f = document.createElement("figure"); f.className = "ss-fig";
+    const img = document.createElement("img"); img.dataset.imgid = im.id; img.alt = im.caption || "screenshot"; f.appendChild(img);
+    if(im.caption && im.caption.trim()){ const c = document.createElement("figcaption"); c.textContent = im.caption; f.appendChild(c); }
+    holder.appendChild(f);
+  });
+  return sec;
+};
+// "+33%", "−12%", "×4.2" and "new" become the same badges as in the built-in tables.
+function deltaTokenHtml(v){
+  const e = esc(v);
+  if(/^[+▲]\s?[\d\s\u00a0.,]+\s?%$/.test(v) || /^[×x]\s?\d[\d.,]*$/.test(v)) return `<span class="delta-badge delta-up">${e}</span>`;
+  if(/^[−–\-▼]\s?[\d\s\u00a0.,]+\s?%$/.test(v)) return `<span class="delta-badge delta-down">${e}</span>`;
+  if(/^(new|новый|новая|новое|запуск)$/i.test(v)) return `<span class="delta-badge delta-new">${e}</span>`;
+  return null;
+}
+const splitLine = l => l.includes("\t") ? l.split("\t") : (l.includes("|") ? l.split("|") : l.split(","));
+// Lines starting with "#" are footnotes under a table or a set of tiles.
+function footnotes(lines){ return lines.filter(l=>l.startsWith("#")).map(l=>l.replace(/^#\s?/, "")); }
+function appendNotes(sec, notes){ notes.forEach(n=>{ const d = document.createElement("div"); d.className = "table-note"; d.textContent = n; sec.appendChild(d); }); }
+
+// One tile per line: Label | Value | Note. A note that starts with +33% / −12% / ×4.2 / new gets a badge.
+R.numbers = (ctx, b) => {
+  const lines = (b.tilesText||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const tiles = lines.filter(l=>!l.startsWith("#"));
+  if(!tiles.length) return null;
+  const sec = section(b, "");
+  const g = document.createElement("div"); g.className = "glance-strip";
+  // balanced rows: 2–4 tiles in one row, 5–6 as 3 + 2/3, 7–8 as 4 + 3/4
+  const cols = tiles.length <= 4 ? tiles.length : (tiles.length <= 6 ? 3 : 4);
+  g.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  g.innerHTML = tiles.map(l=>{
+    const [label, value, note] = splitLine(l).map(x=>(x||"").trim());
+    let noteHtml = "";
+    if(note){ const m = note.match(/^(\S+)\s*(.*)$/); const badge = m ? deltaTokenHtml(m[1]) : null; noteHtml = `<div class="glance-yoy">${badge ? badge + (m[2] ? " " + esc(m[2]) : "") : esc(note)}</div>`; }
+    return `<div class="glance-item"><div class="glance-label">${esc(label)}</div><div class="glance-val">${esc(value||"")}</div>${noteHtml}</div>`;
+  }).join("");
+  sec.appendChild(g);
+  appendNotes(sec, footnotes(lines));
+  return sec;
+};
+
+// "What we did" next to "what changed": a short list of work on the left, 2–3 result tiles on the right, an optional comment under.
+R.story = (ctx, b) => {
+  const done = (b.doneText||"").trim();
+  const tiles = (b.tilesText||"").split(/\r?\n/).map(l=>l.trim()).filter(l=>l && !l.startsWith("#"));
+  const comment = (b.commentText||"").trim();
+  if(!done && !tiles.length) return null;
+  const sec = section(b, "");
+  const wrap = document.createElement("div"); wrap.className = "story" + ((done && tiles.length) ? "" : " one");
+  if(done){
+    const l = document.createElement("div"); l.innerHTML = `<div class="story-label">${T("storyDid")}</div><div class="season-note">${renderNote(done)}</div>`; wrap.appendChild(l);
+  }
+  if(tiles.length){
+    const r = document.createElement("div"); r.innerHTML = `<div class="story-label">${T("storyResult")}</div>`;
+    const g = document.createElement("div"); g.className = "glance-strip";
+    g.style.gridTemplateColumns = `repeat(${tiles.length >= 3 ? 2 : tiles.length}, minmax(0, 1fr))`;
+    g.innerHTML = tiles.map(l=>{
+      const [label, value, note] = splitLine(l).map(x=>(x||"").trim());
+      let nh = "";
+      if(note){ const m = note.match(/^(\S+)\s*(.*)$/); const badge = m ? deltaTokenHtml(m[1]) : null; nh = `<div class="glance-yoy">${badge ? badge + (m[2] ? " " + esc(m[2]) : "") : esc(note)}</div>`; }
+      return `<div class="glance-item"><div class="glance-label">${esc(label)}</div><div class="glance-val">${esc(value||"")}</div>${nh}</div>`;
+    }).join("");
+    r.appendChild(g); wrap.appendChild(r);
+  }
+  sec.appendChild(wrap);
+  if(comment){ const c = document.createElement("div"); c.className = "story-comment"; c.innerHTML = `<b>${T("storyWhy")}:</b> ${esc(comment)}`; sec.appendChild(c); }
+  return sec;
+};
+
+R.table = (ctx, b) => {
+  const text = (b.tableText||"").trim(); if(!text) return null;
+  const allLines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const lines = allLines.filter(l=>!l.startsWith("#"));
+  if(!lines.length) return null;
+  const rows = lines.map(splitLine);
+  const sec = section(b, T("t_table"));
+  const t = document.createElement("table"); t.className = "rtable custom";
+  const cellHtml = raw => { const v = String(raw).trim(); return deltaTokenHtml(v) || esc(v); };
+  t.innerHTML = `<tr>${rows[0].map(c=>`<th>${esc(c.trim())}</th>`).join("")}</tr>` + rows.slice(1).map(r=>`<tr${/^(total|всего|итого)/i.test(String(r[0]||"").trim()) ? ' class="row-total"' : ""}>${r.map(c=>`<td>${cellHtml(c)}</td>`).join("")}</tr>`).join("");
+  sec.appendChild(t); appendNotes(sec, footnotes(allLines)); return sec;
+};
+// Neutral, factual limitations — safe for the client. The full diagnosis lives in the Internal checks panel.
+R.datanotes = (ctx, b) => {
+  const items = [];
+  const rows = chRowsOf(ctx.primary), totS = rows.reduce((a,r)=>a+num(r.sessions), 0);
+  const un = sumField(rows, /unassigned/i, "sessions");
+  if(totS > 0 && un/totS >= 0.05) items.push(T("dnUnassigned", {p:Math.round(un/totS*100)}));
+  const gd = [ctx.primary.gsc?.days, ctx.previous?.gsc?.days].map(num).filter(d=>d>0);
+  if(gd.some(d=>d < 28)) items.push(T("dnGsc"));
+  if(ctx.showYoy && ctx.isOverall && !ctx.head.hasYoy) items.push(T("dnYoy"));
+  if(!items.length) return null;
+  const sec = section(b); const d = document.createElement("div"); d.className = "season-note"; d.innerHTML = items.map(i=>"• "+esc(i)).join("\n"); sec.appendChild(d); return sec;
+};
+
+// Tells why a card from the workspace is NOT in the report (stage, period, tags) — so nothing silently goes missing.
+function renderCardNotice(){
+  const box = el("cardNotice"); if(!box) return;
+  const ctx = (typeof buildCtx === "function" && report && currentProgress) ? buildCtx() : null;
+  if(!ctx){ box.style.display = "none"; return; }
+  const hid = report.hiddenCards || {}, acts = (report.blocks || []).filter(b=>b.enabled && b.type === "activities");
+  const scopeTxt = ctx.st.activityScope === "all" ? "activities up to and including " + periodDisplay(ctx.endLabel || ctx.periodLabel) : "activities with the period “" + periodDisplay(ctx.periodLabel) + "”";
+  const out = [];
+  (currentProgress.cards || []).forEach(c=>{
+    if(cardIsHidden(c)) return;
+    const nm = `“${esc(c.title || "untitled")}”`;
+    if(c.stage === "Idea") out.push(`${nm} — stage “Idea” is not shown in reports (use Done/Paused or Live for activities, Planned or In Preparation for next steps)`);
+    else if(c.stage === "Done/Paused" || c.stage === "Live"){
+      if(!cardPeriodOk(c, ctx)) out.push(`${nm} — period ${c.period ? "“" + esc(c.period) + "”" : "is empty"}; this report shows ${scopeTxt}`);
+      else if(acts.length && !acts.some(b=>cardsForBlock(ctx, b).some(x=>x.id === c.id))) out.push(`${nm} — its tags don't match any Activities group in this report`);
+    }
+  });
+  if(!out.length){ box.style.display = "none"; box.innerHTML = ""; return; }
+  box.style.display = "block";
+  box.innerHTML = `<b>${out.length} ${out.length === 1 ? "activity from the workspace isn't" : "activities from the workspace aren't"} in this report:</b><ul>${out.slice(0, 6).map(t=>`<li>${t}</li>`).join("")}</ul>${out.length > 6 ? `<div>…and ${out.length - 6} more.</div>` : ""}<div style="margin-top:4px;">Fix it in the workspace (Progress tab), then switch back to this tab — the report refreshes by itself.</div>`;
+}
+function renderReport(){ try{ renderCardNotice(); }catch(e){ console.error(e); } return renderReportBody(); }
+function renderReportBody(){
+  LANG = el("langSelect").value;
+  const root = el("reportRoot"); root.innerHTML = "";
+  if(!currentHotel){ root.innerHTML = '<div class="empty-note">Select a hotel and click Load data.</div>'; return; }
+  const ctx = buildCtx();
+  if(!ctx){ root.innerHTML = '<div class="empty-note">Select a report period above.</div>'; return; }
+  const rep = document.createElement("div"); rep.className = "report";
+  rep.innerHTML = (ctx.isInternal ? `<div class="internal-banner">Internal view — contains data that is not for the client</div>` : "") +
+    `<div class="report-header"><div class="report-kicker">Exely Digital Marketing Hub</div><div class="report-title">${esc((report.hotelName && report.hotelName.trim()) || getField("hotelData","name") || currentHotel.id)}</div><div class="report-sub">${esc((report.subtitle && report.subtitle.trim()) || (periodDisplay(ctx.periodLabel) + " · " + (ctx.isOverall ? T("overallResults") : T("trackedResults"))))}</div></div>`;
+  const body = document.createElement("div"); body.className = "report-body"; rep.appendChild(body);
+  const EMPTY_MSG = {takeaways:"is empty — fill the fields in the editor.", story:"is empty — fill “What we did” and the result tiles in the editor.", numbers:"has no tiles yet — add one per line in the editor (Label | Value | Note).", text:"is empty — write it in the editor.", screenshot:"has no screenshots yet — paste one (Ctrl+V) or drop a file in the editor.", table:"is empty — paste rows from a spreadsheet in the editor."};
+  report.blocks.forEach(b=>{
+    if(!isBlockVisible(b, ctx) || !R[b.type]) return;
+    let node = null; try{ node = R[b.type](ctx, b); }catch(e){ console.error("block "+b.type, e); }
+    // While editing, an empty custom block shows where it will appear (never printed).
+    if(!node && editMode && EMPTY_MSG[b.type]){
+      node = document.createElement("div"); node.className = "block-ph no-print";
+      node.textContent = `“${(b.title && b.title.trim()) || TYPE_LABELS[b.type]}” ${EMPTY_MSG[b.type]}`;
+    }
+    if(node){ node.dataset.blockId = b.id; body.appendChild(node); }
+  });
+  root.appendChild(rep);
+  hydrateImages(rep);
+  if(pendingScroll){ const n = root.querySelector(`[data-block-id="${pendingScroll}"]`); pendingScroll = null; if(n) showBlock(n); }
+}
+
+let pendingScroll = null;
+function showBlock(n){ n.scrollIntoView({behavior:"smooth", block:"center"}); n.classList.remove("flash"); void n.offsetWidth; n.classList.add("flash"); }
+
+function buildLineChart(seriesMap, periodLabels){
+  const wrap = document.createElement("div");
+  const width = 640, height = 260, padL = 44, padR = 50, padT = 16, padB = 34, plotW = width-padL-padR, plotH = height-padT-padB;
+  const all = Object.values(seriesMap).flat().filter(v=>v!==null && v!==undefined), maxVal = Math.max(...all, 1);
+  const n = periodLabels.length, xStep = n > 1 ? plotW/(n-1) : 0;
+  const colors = ["#4D1774","#F65925","#2E5FA3","#1D9E75","#993556","#A9791B"];
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;" role="img" aria-label="Visibility trend by source">`;
+  svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${height-padB}" stroke="var(--line)"/><line x1="${padL}" y1="${height-padB}" x2="${width-padR}" y2="${height-padB}" stroke="var(--line)"/>`;
+  periodLabels.forEach((l,i)=>{ svg += `<text x="${padL+i*xStep}" y="${height-padB+18}" font-size="10.5" text-anchor="middle" fill="var(--ink-soft)">${esc(l)}</text>`; });
+  [0,0.5,1].forEach(f=>{ svg += `<text x="${padL-8}" y="${padT+plotH-f*plotH+3}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${Math.round(f*maxVal)}</text>`; });
+  const legend = []; let ci = 0;
+  Object.keys(seriesMap).forEach(name=>{
+    const color = colors[ci++ % colors.length]; legend.push({name, color});
+    const pts = []; seriesMap[name].forEach((v,i)=>{ if(v!==null && v!==undefined) pts.push([padL+i*xStep, padT+plotH-(v/maxVal*plotH), v]); });
+    if(!pts.length) return;
+    svg += `<path d="${pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
+    pts.forEach(p=>{ svg += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="${color}"/>`; });
+    const last = pts[pts.length-1];
+    svg += `<text x="${(last[0]-4).toFixed(1)}" y="${(last[1]-9).toFixed(1)}" font-size="10.5" text-anchor="end" fill="${color}" font-weight="600">${Math.round(last[2])}</text>`;
   });
   svg += `</svg>`;
-
-  const legendHtml = legendItems.map(li=>
-    `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:16px;font-size:11.5px;color:var(--ink-soft);"><span style="width:9px;height:9px;border-radius:50%;background:${li.color};display:inline-block;"></span>${li.name}</span>`
-  ).join("");
-
-  wrap.innerHTML = `<div style="margin-bottom:10px;">${legendHtml}</div>`;
-  wrap.innerHTML += svg;
+  wrap.innerHTML = `<div style="margin-bottom:10px;">${legend.map(l=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:16px;font-size:11.5px;color:var(--ink-soft);"><span style="width:9px;height:9px;border-radius:50%;background:${l.color};display:inline-block;"></span>${esc(l.name)}</span>`).join("")}</div>` + svg;
   return wrap;
 }
 
-function buildComparisonChart(metrics, prevLabel, currLabel, title){
-  const wrap = document.createElement("div"); wrap.className = "section compare-chart";
-  wrap.innerHTML = `<div class="section-title">${title || "What changed vs last time"}</div>
-    <div class="compare-legend">
-      <span><span class="legend-dot" style="background:var(--line);"></span>${prevLabel}</span>
-      <span><span class="legend-dot" style="background:var(--brand);"></span>${currLabel}</span>
-    </div>`;
-  metrics.forEach(m=>{
-    const max = Math.max(m.curr, m.prev, 1);
-    const row = document.createElement("div"); row.className = "compare-row";
-    const pct = m.prev>0 ? Math.round((m.curr-m.prev)/m.prev*100) : null;
-    row.innerHTML = `
-      <div>${m.label}</div>
-      <div class="compare-bars">
-        <div class="compare-bar-track"><div class="compare-bar-fill prev" style="width:${(m.prev/max*100).toFixed(0)}%;"></div></div>
-        <div class="compare-bar-track"><div class="compare-bar-fill curr" style="width:${(m.curr/max*100).toFixed(0)}%;"></div></div>
-      </div>
-      <div style="text-align:right;font-weight:600;color:${pct===null?'var(--ink-soft)':pct>=0?'#8A3A18':'var(--ink-soft)'};">${pct===null?"—":(pct>=0?"+":"")+pct+"%"}</div>
-    `;
-    wrap.appendChild(row);
+/* ================= Internal checks: what to watch, computed from the data ================= */
+function computeChecks(ctx){
+  const warn = [], info = [];
+  const cur = chRowsOf(ctx.primary), prev = chRowsOf(ctx.previous);
+  const totS = cur.reduce((a,r)=>a+num(r.sessions), 0), totB = cur.reduce((a,r)=>a+num(r.bookings), 0);
+  const T = ctx.totals, ov = ctx.ov;
+
+  // 1. Cannibalization: paid grows while organic + direct shrink
+  if(cur.length && prev.length){
+    const g = rows => ({paid:sumField(rows,/paid/i,"bookings"), org:sumField(rows,/organic/i,"bookings"), dir:sumField(rows,/direct/i,"bookings"), tot:rows.reduce((a,r)=>a+num(r.bookings),0)});
+    const c = g(cur), p = g(prev), dPaid = c.paid-p.paid, dOD = (c.org+c.dir)-(p.org+p.dir), dTot = c.tot-p.tot;
+    if(dPaid > 0 && dOD < 0 && -dOD >= 0.3*dPaid){
+      warn.push(`Cannibalization risk: paid bookings ${dPaid>0?"+":""}${dPaid} while organic + direct bookings ${dOD} (net total ${dTot>0?"+":""}${dTot}). Don't say ads caused all the growth; check how much of Brand is incremental before reporting it as results.`);
+    }
+  }
+  // 2. Brand dependence
+  const brand = ctx.rows.filter(r=>/brand/i.test(r.campaign||""));
+  if(brand.length && T.bookings > 0){
+    const bb = brand.reduce((a,r)=>a+num(r.bookings), 0), share = Math.round(bb/T.bookings*100);
+    if(share >= 60) info.push(`Brand campaigns carry ${share}% of tracked bookings (${bb} of ${T.bookings}) — the rest of the campaigns add little so far.`);
+  }
+  // 3. Campaigns that eat traffic and book nothing
+  ctx.rows.forEach(r=>{
+    const t = num(r.traffic);
+    if(T.traffic > 0 && t >= 200 && num(r.bookings) === 0 && t/T.traffic >= 0.25){
+      const sp = T.spend > 0 && num(r.spend) > 0 ? ` and ${Math.round(num(r.spend)/T.spend*100)}% of spend` : "";
+      warn.push(`"${r.campaign||r.channel}": ${fmt(t)} sessions (${Math.round(t/T.traffic*100)}% of tracked traffic)${sp} with 0 bookings — first candidate for optimisation.`);
+    }
   });
-  return wrap;
+  // 4. Unassigned
+  const un = sumField(cur,/unassigned/i,"sessions"), unB = sumField(cur,/unassigned/i,"bookings");
+  if(totS > 0 && un/totS >= 0.05){
+    const msg = `Unassigned is ${Math.round(un/totS*100)}% of sessions${totB>0?` and ${Math.round(unB/totB*100)}% of bookings`:""} — attribution gap (UTM tagging, Google Ads ↔ GA4 link).`;
+    (un/totS >= 0.10 ? warn : info).push(msg);
+  }
+  // 5. Revenue per booking anomalies
+  const avg = ov.bookings > 0 ? ov.revenue/ov.bookings : 0;
+  if(avg > 0) ctx.rows.forEach(r=>{
+    const b = num(r.bookings), rev = num(r.revenue);
+    if(b > 0 && rev/b < 0.4*avg) warn.push(`"${r.campaign||r.channel}": ${money(rev/b)} per booking vs ${money(avg)} hotel average — check attribution, cancellations or currency.`);
+  });
+  // 6. Unexplained "other" sources
+  cur.forEach(r=>{
+    if(/other|email|referral|social/i.test(r.channel) && totB > 0 && num(r.bookings)/totB >= 0.05)
+      info.push(`"${r.channel}" brought ${num(r.bookings)} bookings (${Math.round(num(r.bookings)/totB*100)}%) — make sure you can say where they came from (e.g. a hotel email campaign) before they sit in the report.`);
+  });
+  // 7. Spend
+  if(ctx.rows.length && !(T.spend > 0)) info.push("No spend entered — cost per booking and ROAS are unavailable.");
+  // 8. Small bases
+  if(prev.length && cur.some(r=>{ const p = prev.find(x=>String(x.channel).trim().toLowerCase()===String(r.channel).trim().toLowerCase()); return p && num(p.bookings) > 0 && num(p.bookings) < 10 && num(r.bookings) < 10; }))
+    info.push("Some channels have fewer than 10 bookings on both sides — the report shows the absolute change instead of a percentage.");
+  // 9. Partial data / baseline
+  [ctx.primary, ctx.previous].forEach(p=>{ const d = num(p?.gsc?.days); if(d > 0 && d < 28) info.push(`Search Console covers only ${d} days in ${p.period} — compare per-day numbers, not totals.`); });
+  if(!ctx.previous) info.push("First period: no month-over-month comparison. Consider the First-report preset and state when data collection started.");
+  else if(!ctx.head.hasYoy && ctx.isOverall) info.push("No year-over-year reference entered — leave YoY out, or add last year's figures from the hotel's own analytics.");
+  // 9b. Ranges
+  if(ctx.isRange){
+    const miss = ctx.members.filter(p=>!(hasVal(p.totalBookings) && hasVal(p.totalRevenue))).map(p=>p.period);
+    if(miss.length) info.push(`Range ${ctx.periodLabel}: ${miss.join(", ")} ha${miss.length>1?"ve":"s"} no overall bookings/revenue, so those totals aren't shown for the range.`);
+  }
+  // 9c. template placeholders left in the text
+  (report?.blocks || []).filter(b=>b.enabled).forEach(b=>{ if([b.text, b.tilesText, b.doneText, b.commentText].some(t=>/\[[^\]]{2,}\]/.test(t || ""))) warn.push(`“${titleOf(b)}” still contains [placeholders] to fill in.`); });
+  // 10. Reconciliation
+  const rev = cur.reduce((a,r)=>a+num(r.revenue), 0);
+  if(rev > 0 && ov.revenue > 0 && Math.abs(rev-ov.revenue)/ov.revenue > 0.02) info.push(`Channel revenue adds up to ${money(rev)} but the hotel total is ${money(ov.revenue)} — reconcile before sending.`);
+  return {warn, info};
+}
+const ALWAYS_CHECK = [
+  "Price parity: is the official-site rate in Google (GFL / Hotel Ads) at or below the other sellers for the same dates? It can't be read from the data.",
+  "Google Business Profile: complete and consistent with the website (name, logo, photos, rooms).",
+  "Where does each booking-bearing channel in \"Other\" come from? Anything the hotel did itself shouldn't be presented as our result.",
+  "Seasonality: month-to-month moves can be seasonal — say so, or wait for a year-over-year base."
+];
+function renderChecks(){
+  const root = el("checksRoot"); root.innerHTML = "";
+  if(el("audienceSelect").value !== "internal") return;
+  const ctx = buildCtx(); if(!ctx) return;
+  const {warn, info} = computeChecks(ctx);
+  const d = document.createElement("details"); d.className = "checks"; d.open = true;
+  d.innerHTML = `<summary>Report checks (internal only) — ${warn.length} to look at, ${info.length} notes</summary>` +
+    (warn.length ? `<div class="check-sub">Look at before sending</div>` + warn.map(w=>`<div class="check-item check-warn">${esc(w)}</div>`).join("") : "") +
+    (info.length ? `<div class="check-sub">Good to know</div>` + info.map(w=>`<div class="check-item check-info">${esc(w)}</div>`).join("") : "") +
+    `<div class="check-sub">Always check (not in the data)</div>` + ALWAYS_CHECK.map(w=>`<div class="check-item check-info">${esc(w)}</div>`).join("") +
+    `<div class="check-sub">Rule of thumb</div><div class="check-item check-info">What the client sees is chosen by the Audience switch. Spend, campaign split and data notes are hidden for the client by default; turn them on per case.</div>`;
+  root.appendChild(d);
 }
 
-function isImageUrl(url){
-  return /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url.trim());
+/* ================= Layout editor ================= */
+function typeBadge(b){
+  if(b.type === "investment") return "Spend (opt-in)";
+  if(b.type === "datanotes") return "Data notes (opt-in)";
+  return TYPE_LABELS[b.type] || b.type;
 }
-
-el("loadBtn").addEventListener("click", ()=>{
-  const id = el("hotelSelect").value;
-  if(!id) return;
-  loadAllForHotel(id);
+function titleOf(b){ return (b.title && b.title.trim()) || DEFAULT_TITLES[b.type] || TYPE_LABELS[b.type] || b.type; }
+function hiddenReason(b, ctx){
+  if(!ctx || b.type === "headline") return "";
+  if(!isBlockVisible(b, ctx)){
+    if(b.type === "investment") return "hidden in Client view — tick “Spend, cost per booking & ROAS” under “Client view also shows”, or switch Audience to Internal.";
+    if(b.type === "datanotes") return "hidden in Client view — tick “Data notes”, or switch Audience to Internal.";
+    return "";
+  }
+  if(!R[b.type] || ["text","screenshot","table","numbers","story","takeaways"].includes(b.type)) return "";
+  let node = null;
+  try{ node = R[b.type](ctx, b); }catch(e){ return "this block failed to render (see the browser console)."; }
+  if(node) return "";
+  const overall = "it is shown only when the basis is Overall (in Tracked it would repeat the headline).";
+  return ({
+    ads: ctx.isOverall ? "no campaigns are logged for this period (Results → Campaign / activity results)." : overall,
+    channels: ctx.isOverall ? "no channel rows entered for this period (Results → Traffic by channel)." : "shown only in the Overall basis.",
+    gsc: ctx.isOverall ? "no Search Console figures entered for this period." : "shown only in the Overall basis.",
+    investment: "no spend entered for this period.",
+    datanotes: "nothing to note for this period.",
+    visibility: "no visibility metrics entered.",
+    materials: "no links in Progress → General notes & links.",
+    notes: "this period has no note (Results → Commentary).",
+  })[b.type] || "";
+}
+function renderEditor(){
+  const root = el("editorRoot");
+  root.style.display = editMode ? "block" : "none";
+  if(!editMode || !report) return;
+  root.innerHTML = "";
+  const card = document.createElement("div"); card.className = "ed-card";
+  card.innerHTML = `<div class="ed-head"><span class="ed-title">Report layout</span>
+    <select id="presetSel"><option value="">Apply preset…</option><option value="structured">Standard: results → comments → paid → website</option><option value="simple">Simple (client-friendly)</option><option value="first">First report</option><option value="monthly">Monthly</option></select>
+    <button class="btn secondary" id="saveNowBtn">Save now</button></div>
+    <div class="ed-note"><b>How this works:</b> tick a block to show it in the report, use ↑ ↓ to move it, ↗ to jump to it in the report. Text, screenshot and table blocks stay invisible until they have content. Layout saves automatically (badge at the top). Numbers come from the workspace as of ${esc(loadedAt || "—")} — if you changed them there, click “Reload data”. A new month starts from last month's layout.</div>`;
+  const ectx = buildCtx();
+  const subRow = document.createElement("div"); subRow.className = "ed-labels"; subRow.style.cssText = "margin:0 0 10px;padding:0 0 10px;border-top:0;border-bottom:1px solid var(--slate-soft);";
+  subRow.innerHTML = `<div class="ed-hint" style="margin:0 0 4px;"><b>Report subtitle</b> (optional) — replaces the period line under the hotel name, e.g. “Август–сентябрь 2026”.</div><input type="text" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12.5px;" value="${esc(report.subtitle||"")}" placeholder="Leave empty to show the period">`;
+  subRow.querySelector("input").addEventListener("input", e=>{ report.subtitle = e.target.value; changed(false); });
+  const nameRow = document.createElement("div"); nameRow.className = "ed-labels"; nameRow.style.cssText = "margin:0 0 10px;padding:0 0 10px;border-top:0;border-bottom:1px solid var(--slate-soft);";
+  nameRow.innerHTML = `<div class="ed-hint" style="margin:0 0 4px;"><b>Hotel name in the report</b> (optional) — use it to hide an internal number, e.g. “Azure Hotel Pattaya 509699” → “Azure Hotel Pattaya”.</div><input type="text" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12.5px;" value="${esc(report.hotelName||"")}" placeholder="Leave empty to use the name from the hotel record">`;
+  nameRow.querySelector("input").addEventListener("input", e=>{ report.hotelName = e.target.value; changed(false); });
+  card.appendChild(nameRow);
+  card.appendChild(subRow);
+  report.blocks.forEach((b, i)=>{
+    const custom = ["text","screenshot","table","numbers","story","takeaways"].includes(b.type);
+    const row = document.createElement("div"); row.className = "ed-row" + (b.enabled ? "" : " off");
+    row.innerHTML = `<input type="checkbox" ${b.enabled?"checked":""} title="Show in report">
+      <span class="ed-move"><button data-d="-1" title="Move up">↑</button> <button data-d="1" title="Move down">↓</button> <button class="go" data-go="1" title="Show in the report">↗</button></span>
+      <input type="text" value="${esc(b.title||"")}" placeholder="${b.type==="headline" ? "Caption above the numbers (optional)" : esc(DEFAULT_TITLES[b.type] || TYPE_LABELS[b.type])}">
+      <span class="ed-type" title="${b.type==="investment"||b.type==="datanotes" ? "Shown in Internal view; in Client view only when ticked under ‘Client view also shows’" : ""}">${esc(typeBadge(b))}</span>
+      ${custom ? `<button class="ed-del" title="Delete block">✕</button>` : "<span></span>"}`;
+    const [chk, tin] = row.querySelectorAll("input");
+    chk.addEventListener("change", ()=>{ b.enabled = chk.checked; changed(true); });
+    tin.addEventListener("input", ()=>{ b.title = tin.value; changed(false); });
+    row.querySelector("[data-go]").addEventListener("click", ()=>{
+      const n = document.querySelector(`#reportRoot [data-block-id="${b.id}"]`);
+      if(n) showBlock(n); else setStatus("That block isn't visible in the report right now (switched off, empty, or hidden for this audience).");
+    });
+    row.querySelectorAll(".ed-move button[data-d]").forEach(btn=>btn.addEventListener("click", ()=>{
+      const j = i + parseInt(btn.dataset.d, 10); if(j < 0 || j >= report.blocks.length) return;
+      [report.blocks[i], report.blocks[j]] = [report.blocks[j], report.blocks[i]]; changed(true);
+    }));
+    const del = row.querySelector(".ed-del");
+    if(del) del.addEventListener("click", ()=>{ if(confirm("Delete this block?")){ report.blocks.splice(i,1); changed(true); } });
+    if(custom){
+      const body = document.createElement("div"); body.className = "ed-body";
+      if(b.type === "text"){
+        body.innerHTML = `<textarea placeholder="Write the text. Start lines with • for bullets; a short line without a full stop becomes a bold sub-heading."></textarea>`;
+        const ta = body.querySelector("textarea"); ta.value = b.text || "";
+        ta.addEventListener("input", ()=>{ b.text = ta.value; changed(false); });
+      } else if(b.type === "takeaways"){
+        if(!b.fields) b.fields = {};
+        const G = [["Commercial results", [["bookings","Bookings","12 (+20% vs last month, +20% vs last year)"],["revenue","Revenue","$4,743, net of cancellations (+59% vs last month, +95% vs last year)"],["paid","From advertising","4 bookings, $1.7k: 33% of bookings, 35% of revenue"],["why","Why — context for weak or unusual numbers","First full month after the work; conversion is the main upside"]]],
+                   ["Traffic", [["site","Site-wide","visits and visitors, trend"],["organic","Organic","how it moved, new sources"],["refai","Referral & AI","how it moved, new sources"],["paidTraffic","Paid","what is running and what it brought"]]]];
+        body.innerHTML = G.map(([h, fs])=>`<div class="ed-hint" style="margin:8px 0 3px;"><b>${h}</b></div>` + fs.map(([k, l, ph])=>`<div class="ed-hint" style="margin:4px 0 2px;">${l}</div><input type="text" class="cap tk-in" data-k="${k}" placeholder="${esc(ph)}">`).join("")).join("") + `<div class="ed-hint">Same fields every month; empty fields are left out of the report.</div>`;
+        body.querySelectorAll(".tk-in").forEach(i=>{ i.value = b.fields[i.dataset.k] || ""; i.addEventListener("input", ()=>{ b.fields[i.dataset.k] = i.value; changed(false); }); });
+      } else if(b.type === "story"){
+        body.innerHTML = `<div class="ed-hint" style="margin:0 0 3px;"><b>What we did</b> — one bullet per line (start with •)</div><textarea class="s-done" style="min-height:70px;"></textarea>
+          <div class="ed-hint" style="margin:8px 0 3px;"><b>What changed</b> — one tile per line: Label | Value | Note (a note starting with +33%, −12%, ×4.2 or “new” gets a badge)</div><textarea class="s-tiles" style="min-height:70px;"></textarea>
+          <div class="ed-hint" style="margin:8px 0 3px;"><b>Comment</b> (optional) — one line, e.g. why a number is weak or unusual</div><input type="text" class="cap s-comment">`;
+        const d = body.querySelector(".s-done"), t = body.querySelector(".s-tiles"), c = body.querySelector(".s-comment");
+        d.value = b.doneText || ""; t.value = b.tilesText || ""; c.value = b.commentText || "";
+        d.addEventListener("input", ()=>{ b.doneText = d.value; changed(false); });
+        t.addEventListener("input", ()=>{ b.tilesText = t.value; changed(false); });
+        c.addEventListener("input", ()=>{ b.commentText = c.value; changed(false); });
+      } else if(b.type === "numbers"){
+        body.innerHTML = `<textarea placeholder="One tile per line:  Label | Value | Note&#10;Bookings | 80 | ×13.3 vs last year (6 → 80)&#10;Visits to booking form | 2,995 | +354% vs last year"></textarea><div class="ed-hint">A note that starts with +33%, −12%, ×4.2 or “new” gets a badge. Lines starting with # become a footnote. Tab-separated paste from a sheet works too.</div>`;
+        const ta = body.querySelector("textarea"); ta.value = b.tilesText || "";
+        ta.addEventListener("input", ()=>{ b.tilesText = ta.value; changed(false); });
+      } else if(b.type === "table"){
+        body.innerHTML = `<textarea placeholder="Paste rows from Excel / Google Sheets (first row = column headers)"></textarea><div class="ed-hint">Tab-separated (paste from a spreadsheet) or “|”-separated. Lines starting with # become a footnote.</div>`;
+        const ta = body.querySelector("textarea"); ta.value = b.tableText || "";
+        ta.addEventListener("input", ()=>{ b.tableText = ta.value; changed(false); });
+      } else {
+        renderScreenshotEditor(body, b);
+      }
+      row.appendChild(body);
+    }
+    if(b.enabled){
+      const why = hiddenReason(b, ectx);
+      if(why){ const wb = document.createElement("div"); wb.className = "ed-body"; wb.innerHTML = `<div class="ed-why">Not in the report right now: ${esc(why)}</div>`; row.appendChild(wb); }
+    }
+    if(b.type === "screenshot"){
+      const sb = document.createElement("div"); sb.className = "ed-body";
+      sb.innerHTML = `<label class="chk"><input type="checkbox"> Show the screenshots side by side (one row)</label>`;
+      const i = sb.querySelector("input"); i.checked = !!b.row; i.addEventListener("change", ()=>{ b.row = i.checked; changed(false); });
+      row.appendChild(sb);
+    }
+    if(b.type === "headline"){
+      const hb = document.createElement("div"); hb.className = "ed-body";
+      hb.innerHTML = `<div class="ed-hint" style="margin:0 0 4px;">Numbers to show (fewer is easier to read):</div>` +
+        [["revenue","Revenue"],["bookings","Bookings"],["sessions","Website sessions"],["form","To booking form"]].map(([k,l])=>`<label class="chk" style="margin-right:12px;"><input type="checkbox" data-k="${k}" ${(b.tiles||{})[k] === false ? "" : "checked"}> ${l}</label>`).join("");
+      hb.querySelectorAll("input").forEach(i=>i.addEventListener("change", ()=>{ b.tiles = b.tiles || {}; b.tiles[i.dataset.k] = i.checked; changed(false); }));
+      row.appendChild(hb);
+    }
+    if(b.type === "channels"){
+      const cb = document.createElement("div"); cb.className = "ed-body";
+      cb.innerHTML = `<div class="ed-hint" style="margin:0;">Main channels only: show the top <input type="number" min="1" max="12" style="width:54px;padding:3px 6px;border:1px solid var(--line);border-radius:5px;" value="${esc(b.topN||"")}" placeholder="all"> by sessions and group the rest as “Other channels”. Leave empty to show every channel.</div>`;
+      cb.querySelector("input").addEventListener("input", e=>{ b.topN = e.target.value; changed(false); });
+      row.appendChild(cb);
+    }
+    if(b.type === "activities" || b.type === "planned"){
+      const hb = document.createElement("div"); hb.className = "ed-body"; hb.innerHTML = `<div class="ed-hint" style="margin:0;">${esc(cardHint(b.type))}</div>`; row.appendChild(hb);
+    }
+    if(b.type === "planned"){
+      const pl = (currentProgress?.cards || []).filter(c=>(c.stage === "Planned" || c.stage === "In Preparation") && c.id);
+      const pb = document.createElement("div"); pb.className = "ed-body";
+      pb.innerHTML = `<div class="ed-hint" style="margin:0 0 6px;"><b>Edit the plans here</b> — changes are saved to the Progress tab.</div>`;
+      pl.forEach(c=>{ const w = document.createElement("div"); w.className = "card-img"; w.appendChild(showToggle(c)); w.appendChild(cardExtras(c, false)); w.appendChild(cardTextFields(c, "Plan")); if(cardIsHidden(c)) w.style.opacity = ".6"; pb.appendChild(w); });
+      const addP = document.createElement("button"); addP.type = "button"; addP.className = "btn-mini"; addP.textContent = "+ Add next step"; addP.addEventListener("click", ()=>addCard("plan", [])); pb.appendChild(addP);
+      row.appendChild(pb);
+    }
+    if(b.type === "activities"){
+      const gb = document.createElement("div"); gb.className = "ed-body";
+      gb.innerHTML = `<div class="ed-hint" style="margin:0 0 3px;"><b>Group</b> — show only cards with these tags (comma-separated, empty = all cards)</div><input type="text" class="cap a-tags" placeholder="e.g. Organic, SEO">
+        <div class="ed-hint" style="margin:8px 0 3px;"><b>Results</b> — tiles under the cards, one per line: Label | Value | Note. Show only what the general results above don't already say.</div><textarea class="a-tiles" style="min-height:60px;"></textarea>
+        <div class="ed-hint" style="margin:8px 0 3px;"><b>Label above the tiles</b> (default: What changed)</div><input type="text" class="cap a-label">
+        <div class="ed-hint" style="margin:8px 0 3px;"><b>Comment</b> (optional)</div><input type="text" class="cap a-comment">`;
+      const at = gb.querySelector(".a-tags"), tl = gb.querySelector(".a-tiles"), ac = gb.querySelector(".a-comment"), al = gb.querySelector(".a-label");
+      at.value = b.tagFilter || ""; tl.value = b.tilesText || ""; ac.value = b.commentText || ""; al.value = b.resultsLabel || "";
+      al.addEventListener("input", ()=>{ b.resultsLabel = al.value; changed(false); });
+      at.addEventListener("input", ()=>{ b.tagFilter = at.value; changed(false); });
+      tl.addEventListener("input", ()=>{ b.tilesText = tl.value; changed(false); });
+      ac.addEventListener("input", ()=>{ b.commentText = ac.value; changed(false); });
+      const addA = document.createElement("button"); addA.type = "button"; addA.className = "btn-mini"; addA.style.marginTop = "8px"; addA.textContent = "+ Add activity";
+      addA.addEventListener("click", ()=>addCard("done", (b.tagFilter || "").split(",").map(x=>x.trim()).filter(Boolean).slice(0, 1))); gb.appendChild(addA);
+      row.appendChild(gb);
+      const ctx2 = buildCtx(), shown = ctx2 ? cardsForBlock(ctx2, b, true) : [];
+      if(shown.length){
+        const lb = document.createElement("div"); lb.className = "ed-body";
+        lb.innerHTML = `<div class="ed-hint" style="margin:0 0 6px;"><b>Screenshots per activity.</b> Edit the text of an activity here, and attach screenshots: they appear inside that activity and stay with it in later reports.</div>`;
+        shown.forEach(c=>lb.appendChild(cardImageEditor(c)));
+        row.appendChild(lb);
+      }
+    }
+    card.appendChild(row);
+  });
+  // add block
+  const add = document.createElement("div"); add.className = "ed-add";
+  const missing = BUILTINS.filter(t=>!report.blocks.some(b=>b.type===t));
+  add.innerHTML = `<select id="addType"><option value="text">+ Text block</option><option value="screenshot">+ Screenshots</option><option value="takeaways">+ Key takeaways (form)</option><option value="story">+ Did → changed</option><option value="numbers">+ Number tiles</option><option value="table">+ Table (paste)</option>${missing.map(t=>`<option value="${t}">Restore: ${esc(DEFAULT_TITLES[t]||TYPE_LABELS[t])}</option>`).join("")}</select><span class="ed-hint" style="margin:0;">place</span><select id="addAfter"><option value="-1">at the end</option>${report.blocks.map((x,k)=>`<option value="${k}">after “${esc(titleOf(x))}”</option>`).join("")}</select><button class="btn secondary" id="addBtn">Add</button>`;
+  card.appendChild(add);
+  // channel labels
+  const chans = [...new Set(((ctxRowsForEditor())||[]).map(r=>(r.channel||"").trim()).filter(Boolean))];
+  if(chans.length){
+    const lab = document.createElement("div"); lab.className = "ed-labels";
+    lab.innerHTML = `<div class="ed-hint" style="margin:0 0 4px;"><b>Client view: campaigns are grouped by channel.</b> Rename a channel to merge campaigns under one label (e.g. "Google Ads" → "Google Search"). The campaign split shows only in Internal view or when ticked above.</div>`;
+    chans.forEach(ch=>{
+      const r = document.createElement("div"); r.className = "lab-row";
+      r.innerHTML = `<span class="k">${esc(ch)}</span><span>shown as</span><input type="text" value="${esc((report.channelLabels||{})[ch] || "")}" placeholder="${esc(ch)}">`;
+      r.querySelector("input").addEventListener("input", e=>{ const v = e.target.value.trim(); if(v) report.channelLabels[ch] = v; else delete report.channelLabels[ch]; changed(false); });
+      lab.appendChild(r);
+    });
+    card.appendChild(lab);
+  }
+  root.appendChild(card);
+  card.querySelector("#presetSel").addEventListener("change", e=>{
+    const v = e.target.value; if(!v) return;
+    if(confirm("Replace the current layout with the preset? Text, screenshots and tables you added will be removed from this report.")){
+      const p = presetLayout(v, el("langSelect").value); p.settings.lang = el("langSelect").value; p.settings.rangeFrom = el("periodFromSelect").value; report.blocks = p.blocks; report.settings = p.settings; applySettings(p.settings); changed(true);
+    } else e.target.value = "";
+  });
+  card.querySelector("#addBtn").addEventListener("click", ()=>{
+    const t = card.querySelector("#addType").value;
+    const b = t==="text" ? mkBlock("text",{title:"", text:""}) : t==="screenshot" ? mkBlock("screenshot",{title:"Screenshots", images:[]}) : t==="table" ? mkBlock("table",{title:"", tableText:""}) : t==="takeaways" ? mkBlock("takeaways",{title:"", fields:{}}) : t==="story" ? mkBlock("story",{title:"", doneText:"", tilesText:"", commentText:""}) : t==="numbers" ? mkBlock("numbers",{title:"", tilesText:""}) : mkBlock(t);
+    const at = parseInt(card.querySelector("#addAfter").value, 10);
+    if(at < 0) report.blocks.push(b); else report.blocks.splice(at+1, 0, b);
+    pendingScroll = b.id; changed(true);
+  });
+  card.querySelector("#saveNowBtn").addEventListener("click", saveReport);
+}
+// Why a Progress card does or doesn't appear in the report — the most common "it's not showing" question.
+function cardHint(type){
+  const cards = currentProgress?.cards || [];
+  if(!cards.length) return "No cards in this hotel's Progress tab yet.";
+  const ctx = buildCtx(); if(!ctx) return "";
+  if(type === "planned"){
+    const n = cards.filter(c=>c.stage==="Planned").length;
+    return `Shows cards with stage “Planned”: ${n} now.`;
+  }
+  const scope = ctx.st.activityScope, hidden = []; let shown = 0;
+  cards.forEach(c=>{
+    if(c.stage === "Planned") return;
+    if(!(c.stage === "Done/Paused" || c.stage === "Live")){ hidden.push(`“${c.title||"untitled"}” — stage “${c.stage||"none"}” (only Done/Paused and Live are shown)`); return; }
+    if(cardIsHidden(c)) hidden.push(`“${c.title||"untitled"}” — ${(report.hiddenCards || {})[c.id] ? "hidden by you" : "a duplicate, hidden automatically"} (tick “Show in this report” to bring it back)`);
+    else if(cardPeriodOk(c, ctx)) shown++;
+    else hidden.push(`“${c.title||"untitled"}” — period “${c.period||"none"}”` + (scope !== "all" ? ` (set Activities to “Since start”, or give the card a period inside this report)` : " is later than this report"));
+  });
+  return `Showing ${shown} of ${shown + hidden.length} cards.` + (hidden.length ? " Not shown: " + hidden.join("; ") + "." : "");
+}
+function ctxRowsForEditor(){
+  const c = buildCtx();
+  if(c) return c.rows;
+  const p = (currentResults?.periods||[]).find(x=>x.period===primaryPeriodLabel);
+  return p ? p.rows : [];
+}
+function renderScreenshotEditor(body, b){
+  body.innerHTML = `<div class="dropzone" tabindex="0">Paste a screenshot (Ctrl+V), drop an image here, or click to choose files</div><input type="file" accept="image/*" multiple style="display:none"><div class="thumbs"></div>`;
+  const dz = body.querySelector(".dropzone"), fi = body.querySelector("input[type=file]"), th = body.querySelector(".thumbs");
+  const drawThumbs = ()=>{
+    th.innerHTML = "";
+    (b.images||[]).forEach((im, k)=>{
+      const r = document.createElement("div"); r.className = "thumb-row";
+      r.innerHTML = `<img data-imgid="${esc(im.id)}" alt=""><input type="text" class="cap" placeholder="Caption (optional)" value="${esc(im.caption||"")}"><button class="ed-del">✕</button>`;
+      r.querySelector("input").addEventListener("input", e=>{ im.caption = e.target.value; changed(false); });
+      r.querySelector("button").addEventListener("click", ()=>{ b.images.splice(k,1); changed(true); });
+      th.appendChild(r);
+    });
+    hydrateImages(th);
+  };
+  const addFiles = async files => {
+    const imgs = [...files].filter(f=>f.type.startsWith("image/")); if(!imgs.length) return;
+    try{
+      for(const f of imgs){
+        setStatus("Compressing image…"); const url = await compressImage(f);
+        setStatus("Saving image…"); const id = await storeImage(url);
+        b.images.push({id, caption:""});
+      }
+      changed(true);
+    }catch(e){ setStatus("⚠ Image failed: " + e.message); }
+  };
+  dz.addEventListener("click", ()=>{ lastTarget = "block:" + b.id; fi.click(); });
+  dz.addEventListener("focus", ()=>{ lastTarget = "block:" + b.id; });
+  fi.addEventListener("change", ()=>{ addFiles(fi.files); fi.value = ""; });
+  dz.addEventListener("dragover", e=>{ e.preventDefault(); dz.classList.add("over"); });
+  dz.addEventListener("dragleave", ()=>dz.classList.remove("over"));
+  dz.addEventListener("drop", e=>{ e.preventDefault(); dz.classList.remove("over"); addFiles(e.dataTransfer.files); });
+  body._addFiles = addFiles; body.dataset.target = "block:" + b.id;
+  drawThumbs();
+}
+document.addEventListener("paste", e=>{
+  if(!editMode || !report) return;
+  const files = [...(e.clipboardData?.files || [])].filter(f=>f.type.startsWith("image/")); if(!files.length) return;
+  let node = lastTarget ? document.querySelector(`[data-target="${lastTarget}"]`) : null;
+  if(!node){ const all = [...document.querySelectorAll("[data-target]")]; if(all.length === 1) node = all[0]; }
+  if(!node || !node._addFiles){ setStatus("Click a screenshot drop area first, then paste (Ctrl+V)."); return; }
+  e.preventDefault(); node._addFiles(files);
 });
-el("showSpendToggle").addEventListener("change", renderReport);
-el("basisSelect").addEventListener("change", renderReport);
-el("showComparisonsToggle").addEventListener("change", renderReport);
-el("printBtn").addEventListener("click", ()=> window.print());
+
+// Screenshots attached to an activity card live on the Progress card (card.images). Read-modify-write the latest
+// Progress record so edits made in the workspace in the meantime aren't overwritten.
+const capTimers = {};
+async function persistCard(cardId, keys){
+  const local = (currentProgress.cards || []).find(c=>c.id === cardId); if(!local) return;
+  setSave("saving", "Saving…");
+  try{
+    let latest; try{ latest = JSON.parse(await stGet(`dmh-progress:${currentHotel.id}`)); }catch(e){ latest = currentProgress; }
+    const t = (latest.cards || []).find(c=>c.id === cardId); if(t) keys.forEach(k=>{ t[k] = local[k]; });
+    await stSet(`dmh-progress:${currentHotel.id}`, JSON.stringify(latest));
+    setSave("ok", "✓ Activity saved " + new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"}));
+  }catch(e){ setSave("err", "⚠ Not saved — " + e.message); }
+}
+const persistCardImages = id => persistCard(id, ["images"]);
+function showToggle(c){
+  const dup = dupMap()[c.id];
+  const l = document.createElement("label"); l.className = "chk"; l.style.cssText = "margin:0 0 6px;display:flex;flex-wrap:wrap;gap:4px;";
+  l.innerHTML = `<input type="checkbox"> Show in this report${dup ? ` <span style="color:#b45309;">— looks like a duplicate of “${esc(dup.title || "untitled")}”, hidden automatically</span>` : ""}`;
+  const i = l.querySelector("input"); i.checked = !cardIsHidden(c);
+  i.addEventListener("change", ()=>{
+    report.hiddenCards = report.hiddenCards || {}; report.shownCards = report.shownCards || {};
+    if(i.checked){ delete report.hiddenCards[c.id]; if(dup) report.shownCards[c.id] = true; }
+    else { report.hiddenCards[c.id] = true; delete report.shownCards[c.id]; }
+    changed(true);
+  });
+  return l;
+}
+// Create / delete activities right here (they are saved to the Progress tab of the workspace, onto its latest version).
+async function persistProgress(mutator){
+  setSave("saving", "Saving…");
+  try{
+    let latest; try{ latest = JSON.parse(await stGet(`dmh-progress:${currentHotel.id}`)); }catch(e){ latest = JSON.parse(JSON.stringify(currentProgress)); }
+    mutator(latest); await stSet(`dmh-progress:${currentHotel.id}`, JSON.stringify(latest));
+    setSave("ok", "✓ Activity saved " + new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"}));
+  }catch(e){ setSave("err", "⚠ Not saved — " + e.message); }
+}
+function nextMonthLabel(label){ const t = parsePeriodDate(label); if(t === null) return ""; const d = new Date(t); d.setMonth(d.getMonth() + 1); return MONTHS_EN[d.getMonth()] + " " + d.getFullYear(); }
+async function addCard(kind, tags){
+  const ctx = buildCtx(), base = ctx ? (ctx.endLabel || ctx.periodLabel) : primaryPeriodLabel;
+  const c = {id:"card-" + Date.now() + "-" + Math.floor(Math.random() * 1000), title: kind === "plan" ? "New next step" : "New activity", tags: tags || [],
+    period: kind === "plan" ? nextMonthLabel(base) : (base || ""), stage: kind === "plan" ? "Planned" : "Done/Paused", subtasks: [], notes: ""};
+  currentProgress.cards = currentProgress.cards || []; currentProgress.cards.push(c);
+  renderAll();
+  await persistProgress(l=>{ l.cards = l.cards || []; if(!l.cards.some(x=>x.id === c.id)) l.cards.push(c); });
+}
+async function deleteCard(id){
+  const c = (currentProgress.cards || []).find(x=>x.id === id);
+  if(!confirm(`Delete “${(c && c.title) || "this activity"}” from the workspace? This removes it from every report. To only leave it out of this report, untick “Show in this report” instead.`)) return;
+  currentProgress.cards = (currentProgress.cards || []).filter(x=>x.id !== id);
+  renderAll();
+  await persistProgress(l=>{ l.cards = (l.cards || []).filter(x=>x.id !== id); });
+}
+function cardExtras(c, withShots){
+  const d = document.createElement("div"); d.style.cssText = "display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:0 0 6px;";
+  if(withShots){
+    const l = document.createElement("label"); l.className = "chk"; l.style.margin = "0";
+    l.innerHTML = `<input type="checkbox"> Show screenshots`;
+    const i = l.querySelector("input"); i.checked = !(report.hiddenImages || {})[c.id];
+    i.addEventListener("change", ()=>{ report.hiddenImages = report.hiddenImages || {}; if(i.checked) delete report.hiddenImages[c.id]; else report.hiddenImages[c.id] = true; changed(true); });
+    d.appendChild(l);
+  }
+  const del = document.createElement("button"); del.type = "button"; del.className = "btn-mini"; del.textContent = "Delete"; del.style.cssText = "margin-left:auto;color:#b42318;border-color:#f0b4ae;";
+  del.addEventListener("click", ()=>deleteCard(c.id)); d.appendChild(del);
+  return d;
+}
+const cardTextTimers = {};
+function scheduleCardText(id, key){
+  const k = id + ":" + key; clearTimeout(cardTextTimers[k]); setSave("saving", "Saving…");
+  cardTextTimers[k] = setTimeout(()=>persistCard(id, [key]), 900);
+}
+// Title and text of an activity card, editable right here (they live in the Progress tab of the workspace).
+function cardTextFields(c, textLabel){
+  const d = document.createElement("div");
+  d.innerHTML = `<div class="ed-hint" style="margin:0 0 2px;">Title</div><input type="text" class="cap ct-title">
+    <div class="ed-hint" style="margin:6px 0 2px;">${textLabel} <span style="opacity:.7">(shown in the report)</span></div><textarea class="ct-notes" style="min-height:52px;"></textarea>`;
+  const ti = d.querySelector(".ct-title"), no = d.querySelector(".ct-notes");
+  ti.value = c.title || ""; no.value = c.notes || "";
+  ti.addEventListener("input", ()=>{ c.title = ti.value; renderReport(); scheduleCardText(c.id, "title"); });
+  no.addEventListener("input", ()=>{ c.notes = no.value; renderReport(); scheduleCardText(c.id, "notes"); });
+  return d;
+}
+function cardImageEditor(c){
+  const w = document.createElement("div"); w.className = "card-img"; w.dataset.target = "card:" + c.id;
+  if(!Array.isArray(c.images)) c.images = [];
+  w.innerHTML = `<div class="ci-title"><span class="ed-type">${c.stage === "Live" ? "ongoing" : "completed"}</span></div><div class="ci-text"></div>
+    <div class="dropzone small" tabindex="0">+ Screenshot — click here, then paste (Ctrl+V), drop a file, or click to choose</div>
+    <input type="file" accept="image/*" multiple style="display:none"><div class="thumbs"></div>`;
+  w.querySelector(".ci-text").appendChild(showToggle(c));
+  w.querySelector(".ci-text").appendChild(cardExtras(c, true));
+  w.querySelector(".ci-text").appendChild(cardTextFields(c, "Result"));
+  if((report.hiddenCards || {})[c.id]) w.style.opacity = ".6";
+  const dz = w.querySelector(".dropzone"), fi = w.querySelector("input[type=file]"), th = w.querySelector(".thumbs");
+  const draw = () => {
+    th.innerHTML = "";
+    c.images.forEach((im, k)=>{
+      const r = document.createElement("div"); r.className = "thumb-row";
+      r.innerHTML = `<img data-imgid="${esc(im.id)}" alt=""><input type="text" class="cap" placeholder="Caption (optional)" value="${esc(im.caption||"")}"><button class="ed-del">✕</button>`;
+      r.querySelector("input").addEventListener("input", e=>{
+        im.caption = e.target.value; renderReport();
+        clearTimeout(capTimers[c.id]); setSave("saving", "Saving…"); capTimers[c.id] = setTimeout(()=>persistCardImages(c.id), 900);
+      });
+      r.querySelector("button").addEventListener("click", async ()=>{ c.images.splice(k, 1); await persistCardImages(c.id); renderEditor(); renderReport(); });
+      th.appendChild(r);
+    });
+    hydrateImages(th);
+  };
+  const addFiles = async files => {
+    const imgs = [...files].filter(f=>f.type.startsWith("image/")); if(!imgs.length) return;
+    try{
+      for(const f of imgs){
+        setStatus("Compressing image…"); const url = await compressImage(f);
+        setStatus("Saving image…"); const id = await storeImage(url);
+        c.images.push({id, caption:""});
+      }
+      setStatus(""); await persistCardImages(c.id); renderEditor(); renderReport();
+    }catch(e){ setSave("err", "⚠ Image failed — " + e.message); }
+  };
+  dz.addEventListener("click", ()=>{ lastTarget = "card:" + c.id; fi.click(); });
+  dz.addEventListener("focus", ()=>{ lastTarget = "card:" + c.id; });
+  fi.addEventListener("change", ()=>{ addFiles(fi.files); fi.value = ""; });
+  dz.addEventListener("dragover", e=>{ e.preventDefault(); dz.classList.add("over"); });
+  dz.addEventListener("dragleave", ()=>dz.classList.remove("over"));
+  dz.addEventListener("drop", e=>{ e.preventDefault(); dz.classList.remove("over"); addFiles(e.dataTransfer.files); });
+  w._addFiles = addFiles;
+  draw();
+  return w;
+}
+
+/* ================= load / controls / import ================= */
+async function loadHotelIndex(){ try{ hotelIndex = JSON.parse(await stGet("dmh-hotel-index")); }catch(e){ hotelIndex = []; } }
+function populateHotelSelect(){
+  const sel = el("hotelSelect"); sel.innerHTML = '<option value="">Select a hotel...</option>';
+  hotelIndex.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(h=>{ const o = document.createElement("option"); o.value = h.id; o.textContent = h.name; sel.appendChild(o); });
+}
+function renderPeriodSelect(){
+  const sel = el("periodSelect"), from = el("periodFromSelect"), periods = sortPeriodsChronologically(currentResults?.periods || []);
+  if(!periods.length){ sel.innerHTML = '<option value="">No periods logged</option>'; from.innerHTML = '<option value="">—</option>'; return; }
+  sel.innerHTML = periods.map(p=>`<option value="${esc(p.period)}" ${p.period===primaryPeriodLabel?"selected":""}>${esc(p.period)}</option>`).join("");
+  // the range can start at any earlier period; empty = just the selected month
+  const endIdx = periods.findIndex(p=>p.period===primaryPeriodLabel);
+  from.innerHTML = '<option value="">— single month —</option>' + periods.slice(0, Math.max(endIdx, 0)).map(p=>`<option value="${esc(p.period)}">${esc(p.period)}</option>`).join("");
+  from.value = [...from.options].some(o=>o.value === rangeFromWanted) ? rangeFromWanted : "";
+}
+function renderAll(){ renderEditor(); renderChecks(); renderReport(); }
+// The report keeps a copy of the workspace data; coming back to this tab re-reads results and activities (the layout is untouched).
+async function refreshWorkspaceData(){
+  if(!currentHotel || !currentHotel.id) return false;
+  const id = currentHotel.id;
+  try{
+    const r = JSON.parse(await stGet(`dmh-results:${id}`)), p = JSON.parse(await stGet(`dmh-progress:${id}`));
+    const before = JSON.stringify([currentResults, currentProgress]);
+    currentResults = r; currentProgress = p;
+    if(JSON.stringify([r, p]) === before) return false;
+    renderPeriodSelect(); renderAll();
+    setStatus("Data refreshed " + new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"}));
+    return true;
+  }catch(e){ return false; }
+}
+let tabHiddenAt = 0;
+document.addEventListener("visibilitychange", ()=>{
+  if(document.hidden){ tabHiddenAt = Date.now(); return; }
+  if(tabHiddenAt && Date.now() - tabHiddenAt > 8000) refreshWorkspaceData();
+});
+async function loadAllForHotel(id){
+  setStatus("Loading...");
+  try{ currentHotel = JSON.parse(await stGet(`dmh-hotel:${id}`)); }catch(e){ currentHotel = null; }
+  try{ currentResults = JSON.parse(await stGet(`dmh-results:${id}`)); }catch(e){ currentResults = {periods:[]}; }
+  try{ currentProgress = JSON.parse(await stGet(`dmh-progress:${id}`)); }catch(e){ currentProgress = {cards:[]}; }
+  const periods = sortPeriodsChronologically(currentResults.periods || []);
+  primaryPeriodLabel = periods.length ? periods[periods.length-1].period : null;
+  await loadReportForPeriod();
+  loadedAt = new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"});
+  setStatus("Loaded " + loadedAt); el("loadBtn").textContent = "Reload data";
+  setSave("", ""); renderPeriodSelect(); renderAll();
+}
+function syncAudienceUi(){ el("clientShowRow").style.display = el("audienceSelect").value === "client" ? "flex" : "none"; }
+function settingsChanged(){ if(report){ report.settings = readSettings(); scheduleSave(); } renderChecks(); renderReport(); if(editMode) renderEditor(); }
+
+el("loadBtn").addEventListener("click", ()=>{ const id = el("hotelSelect").value; if(id) loadAllForHotel(id); });
+el("editBtn").addEventListener("click", ()=>{ editMode = !editMode; el("editBtn").textContent = editMode ? "Done editing" : "Edit layout"; document.querySelector(".shell").classList.toggle("editing", editMode); renderEditor(); renderReport(); });
+el("printBtn").addEventListener("click", ()=>{
+  if(el("audienceSelect").value === "internal" && !confirm("You're in Internal view — the PDF will include internal data and a banner. Print anyway?")) return;
+  const open = (report?.blocks || []).filter(b=>b.enabled).some(b=>[b.text, b.tilesText, b.doneText, b.commentText].some(t=>/\[[^\]]{2,}\]/.test(t || "")));
+  if(open && !confirm("Some text still contains [placeholders] to fill in. Print anyway?")) return;
+  window.print();
+});
+el("audienceSelect").addEventListener("change", ()=>{ syncAudienceUi(); renderChecks(); renderReport(); if(editMode) renderEditor(); });
+["periodFromSelect","langSelect","basisSelect","compPrevToggle","compYoyToggle","activityScopeSelect","cs_spend","cs_brand","cs_diag"].forEach(id=>el(id).addEventListener("change", settingsChanged));
+el("periodSelect").addEventListener("change", async ()=>{
+  if(saveTimer) await saveReport();
+  primaryPeriodLabel = el("periodSelect").value; await loadReportForPeriod(); renderPeriodSelect(); renderAll();
+});
+
+async function importKV(dict){
+  const keys = Object.keys(dict); let n = 0;
+  const srcIds = [...new Set(keys.map(k=>(k.match(/^dmh-hotel:(.+)$/)||[])[1]).filter(Boolean))];
+  const src = srcIds[0], selId = el("hotelSelect").value;
+  let dst = null;
+  const selName = (hotelIndex.find(h=>h.id === selId) || {}).name || selId;
+  // A file holds one hotel. If another hotel is selected, offer to put the data into IT instead of creating a duplicate.
+  if(srcIds.length === 1 && selId && selId !== src){
+    let srcName = src; try{ srcName = (JSON.parse(dict["dmh-hotel-index"] || "[]").find(h=>h.id === src) || {}).name || src; }catch(e){}
+    if(confirm(`Import into “${selName}” (the hotel selected above)?\n\nOK — add the file's periods, activities and report layout to “${selName}”. Periods, activities and layouts with the same name are replaced; everything else is kept.\n\nCancel — import as a separate hotel “${srcName}”.`)) dst = selId;
+  }
+  const P = (a, b) => `${a}${b}`;
+  const mapKey = k => {
+    if(!dst) return k;
+    if(k === `dmh-hotel:${src}` || k === "dmh-hotel-index") return null;           // the selected hotel keeps its own record
+    if(k === `dmh-results:${src}`) return `dmh-results:${dst}`;
+    if(k === `dmh-progress:${src}`) return `dmh-progress:${dst}`;
+    if(k.startsWith(`dmh-report:${src}:`)) return `dmh-report:${dst}:` + k.slice(`dmh-report:${src}:`.length);
+    return k;                                                                         // screenshots are global
+  };
+  for(const k of keys){
+    const nk = mapKey(k); if(nk === null){ n++; continue; }
+    let v = dict[k];
+    if(k === "dmh-hotel-index"){
+      let cur = []; try{ cur = JSON.parse(await stGet(k)); }catch(e){}
+      JSON.parse(v).forEach(h=>{ const i = cur.findIndex(c=>c.id===h.id); if(i>=0) cur[i] = h; else cur.push(h); });
+      v = JSON.stringify(cur);
+    } else if(dst && (nk === `dmh-results:${dst}` || nk === `dmh-progress:${dst}`)){
+      // merge into what the hotel already has
+      const incoming = JSON.parse(v); let cur = null; try{ cur = JSON.parse(await stGet(nk)); }catch(e){}
+      if(nk.startsWith("dmh-results:")){
+        cur = cur && Array.isArray(cur.periods) ? cur : {periods:[]};
+        incoming.periods.forEach(p=>{ const i = cur.periods.findIndex(x=>x.period === p.period); if(i >= 0) cur.periods[i] = p; else cur.periods.push(p); });
+      } else {
+        cur = cur && Array.isArray(cur.cards) ? cur : {cards:[], ideas:[], generalNotes:[]};
+        const extra = cur.cards.filter(x=>!incoming.cards.some(c=>c.id === x.id));
+        const replace = extra.length > 0 && confirm(`“${selName}” already has ${extra.length} activit${extra.length === 1 ? "y" : "ies"} that ${extra.length === 1 ? "is" : "are"} not in the file:\n${extra.slice(0, 6).map(x=>"• " + (x.title || "untitled")).join("\n")}${extra.length > 6 ? "\n…" : ""}\n\nOK — replace them with the file's activities (best when you import an updated report: no duplicates; screenshots attached to the replaced activities are removed).\nCancel — keep them and add the file's activities (they may duplicate; you can hide any card with “Show in this report”).`);
+        if(replace) cur.cards = incoming.cards.slice();
+        else incoming.cards.forEach(c=>{ const i = cur.cards.findIndex(x=>x.id === c.id); if(i >= 0) cur.cards[i] = c; else cur.cards.push(c); });
+      }
+      v = JSON.stringify(cur);
+    }
+    await stSet(nk, v); setStatus(`Importing ${++n}/${keys.length}…`);
+  }
+  await loadHotelIndex(); populateHotelSelect();
+  if(dst){ el("hotelSelect").value = dst; await loadAllForHotel(dst); setStatus(`Imported into the selected hotel (${keys.length} records).`); }
+  else setStatus(`Imported ${keys.length} records — pick the hotel and click Load data.`);
+}
+el("importBtn").addEventListener("click", ()=>el("importFile").click());
+el("importFile").addEventListener("change", async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  try{ await importKV(JSON.parse(await f.text())); }catch(err){ setStatus("⚠ Import failed: " + err.message); }
+  e.target.value = "";
+});
 
 (async function init(){
-  el("statusText").textContent = "Loading hotel list...";
-  try{ await loadHotelIndex(); populateHotelSelect(); el("statusText").textContent = ""; }
-  catch(e){ el("statusText").textContent = "⚠ " + e.message; }
+  syncAudienceUi();
+  setStatus("Loading hotel list...");
+  try{
+    await loadHotelIndex(); populateHotelSelect(); setStatus("");
+    const hp = new URLSearchParams((location.hash || "").replace(/^#/, "")), target = window.__AUTOLOAD_HOTEL || hp.get("hotel");   // link from the DMH Hub
+    if(target){
+      el("hotelSelect").value = target; await loadAllForHotel(target);
+      const per = hp.get("period");
+      if(per){ const o = [...el("periodSelect").options].find(x=>samePeriod(x.value, per)); if(o){ el("periodSelect").value = o.value; el("periodSelect").dispatchEvent(new Event("change")); } }
+    }
+  }catch(e){ setStatus("⚠ " + e.message); }
 })();
+
 </script>
 </body>
 </html>
