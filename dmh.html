@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DMH Hub</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{--brand:#4D1774;--brand-dark:#2E0D45;--accent:#F65925;--paper:#EEECF4;--card:#fff;--ink:#2E0D45;--ink-soft:#7A6690;--line:#DDD5E8;--brand-soft:#F1E9F7;--accent-soft:#FDE7DE;--slate:#F4F2F8;--ok:#1a7f4b;--ok-soft:#e3f4ea;--warn:#b45309;--warn-soft:#fdf0dc;--bad:#b42318;}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font:13px/1.45 'IBM Plex Sans',system-ui,sans-serif;}
+button,input,select,textarea{font:inherit;color:inherit;}
+.top{display:flex;align-items:center;gap:22px;padding:10px 22px;background:var(--brand-dark);color:#fff;position:sticky;top:0;z-index:20;}
+.logo{font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#d9c8ea;white-space:nowrap;}
+.top nav{display:flex;gap:4px;} .top nav button{background:none;border:0;color:#d9c8ea;padding:7px 14px;border-radius:7px;cursor:pointer;font-weight:500;}
+.top nav button.on{background:rgba(255,255,255,.14);color:#fff;} .top nav button:hover{background:rgba(255,255,255,.08);}
+.badge{background:var(--accent);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:5px;}
+#status{margin-left:auto;font-size:12px;color:#d9c8ea;} #status.err{color:#ffb4a8;}
+.demo{background:var(--accent-soft);color:#7a2c10;padding:7px 22px;font-size:12px;border-bottom:1px solid #f3c9b6;}
+main{padding:18px 22px 60px;max-width:1700px;margin:0 auto;}
+h1{font:600 22px 'Fraunces',serif;margin:0 0 4px;} h2{font:600 15px 'Fraunces',serif;margin:0 0 10px;color:var(--brand);}
+.sub{color:var(--ink-soft);margin:0 0 14px;}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.bar input[type=search],.bar select{border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:#fff;}
+.bar input[type=search]{min-width:200px;}
+.chk{display:inline-flex;gap:6px;align-items:center;cursor:pointer;color:var(--ink-soft);}
+.btn{border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:7px;padding:7px 13px;font-weight:600;cursor:pointer;}
+.btn.sec{background:#fff;color:var(--brand);} .btn.sm{padding:4px 9px;font-size:12px;} .btn.ghost{border-color:transparent;background:none;color:var(--brand);}
+.btn.bad{color:var(--bad);border-color:#f0b4ae;background:#fff;}
+.tablewrap{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:calc(100vh - 190px);}
+table.grid{border-collapse:separate;border-spacing:0;width:100%;min-width:1280px;}
+.grid th{position:sticky;top:0;background:#fbf9fd;z-index:2;text-align:left;font:600 10.5px 'IBM Plex Sans';letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;}
+.grid th.grp{top:0;color:var(--brand);border-bottom:0;padding-bottom:0;} .grid th.grp select{font:600 11px 'IBM Plex Sans';border:1px solid var(--line);border-radius:6px;padding:2px 6px;background:#fff;color:var(--brand);}
+.grid td{padding:7px 10px;border-bottom:1px solid #eee9f3;vertical-align:middle;white-space:nowrap;}
+.grid tbody tr:hover{background:#faf7fd;} .grid td.mid{border-left:1px solid var(--line);}
+.grid tfoot td{position:sticky;bottom:0;background:#fbf9fd;font-weight:600;border-top:1px solid var(--line);}
+.grid td{padding:6px 8px;} .grid th{padding:9px 8px;} input.cell{width:72px;} .chip{padding:2px 6px;font-size:10.5px;}
+.grid td:nth-child(1),.grid th:nth-child(1){position:sticky;left:0;z-index:1;background:#fff;min-width:74px;max-width:74px;} .grid th:nth-child(1){background:#fbf9fd;z-index:3;}
+.grid td:nth-child(2),.grid th:nth-child(2){position:sticky;left:74px;z-index:1;background:#fff;box-shadow:1px 0 0 var(--line);min-width:170px;} .grid th:nth-child(2){background:#fbf9fd;z-index:3;}
+.grid tbody tr:hover td:nth-child(1),.grid tbody tr:hover td:nth-child(2){background:#faf7fd;} .grid tfoot td:nth-child(1),.grid tfoot td:nth-child(2){background:#fbf9fd;}
+.id{font:12px 'IBM Plex Mono',monospace;color:var(--ink-soft);}
+a.hname{font-weight:600;color:var(--brand);cursor:pointer;text-decoration:none;} a.hname:hover{text-decoration:underline;}
+input.cell{width:84px;border:1px solid transparent;border-radius:6px;padding:4px 6px;text-align:right;background:transparent;}
+input.cell:hover{border-color:var(--line);background:#fff;} input.cell:focus{outline:2px solid var(--brand);background:#fff;}
+.ro{display:inline-block;min-width:84px;text-align:right;padding:4px 6px;color:var(--ink-soft);cursor:pointer;} .num{text-align:right;}
+.muted{color:var(--ink-soft);} .sm{font-size:11.5px;}
+.chips{display:flex;gap:4px;flex-wrap:wrap;} .chips.nw{flex-wrap:nowrap;}
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 8px;font-size:11px;border:1px solid var(--line);background:#fff;color:var(--ink-soft);}
+.chip i{width:7px;height:7px;border-radius:50%;background:#ccc;display:inline-block;}
+.chip.live{background:var(--ok-soft);border-color:#bfe3cf;color:var(--ok);} .chip.live i{background:var(--ok);}
+.chip.planned{background:var(--warn-soft);border-color:#f1d6a6;color:var(--warn);} .chip.planned i{background:#e59a2b;}
+.chip.paused{background:#eee;color:#777;} .chip.off{opacity:.55;border-style:dashed;} button.chip{cursor:pointer;}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11px;background:var(--brand-soft);color:var(--brand);}
+.pill.warn{background:var(--warn-soft);color:var(--warn);} .pill.ok{background:var(--ok-soft);color:var(--ok);} .pill.bad{background:#fde8e6;color:var(--bad);}
+select.mini{border:1px solid var(--line);border-radius:6px;padding:3px 6px;background:#fff;font-size:12px;}
+.cols{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:16px;align-items:start;} @media(max-width:1000px){.cols{grid-template-columns:1fr;}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;} .fields .full{grid-column:1/-1;}
+.fields label{display:block;font:600 10px 'IBM Plex Sans';letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:3px;}
+.fields input,.fields select,.fields textarea,.inp{width:100%;border:1px solid var(--line);border-radius:7px;padding:6px 8px;background:#fff;}
+.todo{display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #f0ecf5;} .todo.done span{text-decoration:line-through;color:var(--ink-soft);}
+.todo span{flex:1;} .due{font-size:11px;color:var(--ink-soft);} .due.late{color:var(--bad);font-weight:600;}
+.addrow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;} .addrow #tdText{flex:1 1 100%;} .addrow input{flex:1;border:1px solid var(--line);border-radius:7px;padding:6px 8px;}
+.work{border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-bottom:8px;background:#fff;}
+.work .head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;} .work .head input.t{flex:1;min-width:180px;border:1px solid transparent;border-radius:6px;padding:4px 6px;font-weight:600;}
+.work .head input.t:hover,.work .head input.t:focus{border-color:var(--line);outline:none;}
+.work .body{margin-top:8px;display:none;} .work.open .body{display:block;} .work textarea{width:100%;min-height:54px;border:1px solid var(--line);border-radius:7px;padding:6px 8px;}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;} .thumbs .th{position:relative;} .thumbs img{height:76px;border:1px solid var(--line);border-radius:6px;display:block;background:#fff;}
+.thumbs .x{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:11px;line-height:16px;padding:0;}
+.grp-title{font:600 11px 'IBM Plex Sans';letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin:12px 0 6px;}
+table.mini{width:100%;border-collapse:collapse;} .mini th{font:600 10.5px 'IBM Plex Sans';text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);} .mini th:first-child,.mini td:first-child{text-align:left;}
+.mini td{padding:6px 8px;border-bottom:1px solid #f0ecf5;text-align:right;white-space:nowrap;} .mini tr:hover{background:#faf7fd;}
+.modal{position:fixed;inset:0;background:rgba(46,13,69,.45);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow:auto;} .modal[hidden]{display:none;}
+.sheet{background:#fff;border-radius:12px;max-width:860px;width:100%;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.sheet h2{font-size:17px;} .sheet .foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;} .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.camp{width:100%;border-collapse:collapse;margin-top:6px;} .camp th{font:600 10.5px 'IBM Plex Sans';text-transform:uppercase;color:var(--ink-soft);text-align:left;padding:4px 4px;} .camp td{padding:3px 3px;} .camp input{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px;}
+.empty{padding:26px;text-align:center;color:var(--ink-soft);}
+.feehint{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+@media print{.top,.bar{display:none;}}
+</style>
+</head>
+<body>
+<header class="top"><div class="logo">EXELY · DMH HUB</div>
+<nav id="tabs"><button data-act="tab" data-t="hotels" class="on">Hotels</button><button data-act="tab" data-t="todo">To do<span class="badge" id="todoBadge" hidden></span></button><button data-act="tab" data-t="settings">Settings</button></nav>
+<div id="status"></div></header>
+<div id="demoBanner" class="demo" hidden>Demo data (not saved anywhere). The hub reads your real hotels, results and activities from the same Google Sheet as the other DMH tools.</div>
+<main id="app"><div class="empty">Loading…</div></main>
+<div id="modal" class="modal" hidden></div>
+<script>
+/* =============== backend (same Google Sheet as the other DMH tools) =============== */
+const KEY_URL = "dmh-sheets-url";
+let SHEETS_WEBAPP_URL = "PASTE_YOUR_DEPLOYED_WEB_APP_URL_HERE";
+(function remember(){
+  try{
+    const ok = u => /^https:\/\/script\.google\.com\//.test(String(u||"").trim());
+    if(ok(SHEETS_WEBAPP_URL)){ localStorage.setItem(KEY_URL, SHEETS_WEBAPP_URL.trim()); return; }
+    if(SHEETS_WEBAPP_URL.indexOf("PASTE_YOUR") !== 0) return;
+    let s = localStorage.getItem(KEY_URL);
+    if(!ok(s)){ const v = typeof prompt === "function" ? prompt("Paste your Apps Script web app URL (the same one the other DMH tools use). It is remembered in this browser.") : ""; s = ok(v) ? v.trim() : ""; if(s) localStorage.setItem(KEY_URL, s); }
+    if(s) SHEETS_WEBAPP_URL = s;
+  }catch(e){}
+})();
+const withTimeout = (p, ms, label) => Promise.race([p, new Promise((_, rej)=>setTimeout(()=>rej(new Error("timeout: " + label)), ms))]);
+function backendOk(){ if(SHEETS_WEBAPP_URL.indexOf("PASTE_YOUR") === 0) throw new Error("Backend URL is not set — open Settings and paste it."); }
+async function stGet(key){ backendOk(); const r = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?key=${encodeURIComponent(key)}&_=${Date.now()}`, {cache:"no-store"}), 12000, key); const d = await r.json(); if(d.error) throw new Error(d.error); return d.value; }
+async function stGetBulk(keys){
+  backendOk(); const out = {};
+  for(let i = 0; i < keys.length; i += 24){
+    const part = keys.slice(i, i + 24);
+    try{ const r = await withTimeout(fetch(`${SHEETS_WEBAPP_URL}?keys=${encodeURIComponent(part.join(","))}&_=${Date.now()}`, {cache:"no-store"}), 25000, "loading"); const d = await r.json(); if(d && d.values){ Object.assign(out, d.values); continue; } }catch(e){}
+    await Promise.all(part.map(async k=>{ try{ out[k] = await stGet(k); }catch(e){} }));
+  }
+  return out;
+}
+async function stSet(key, value){ backendOk(); const r = await withTimeout(fetch(SHEETS_WEBAPP_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, cache:"no-store", body:JSON.stringify({action:"set", key, value})}), 20000, "saving " + key); return r.json(); }
+const jget = async k => { try{ const v = await stGet(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } };
+const parse = v => { try{ return v ? JSON.parse(v) : null; }catch(e){ return null; } };
+
+/* images: compressed, stored in ~40k chunks (same scheme as the report tool) */
+const CHUNK = 40000, imgCache = {};
+async function storeImage(url){ const id = "im" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); const n = Math.ceil(url.length / CHUNK); for(let i = 0; i < n; i++) await stSet(`dmh-img:${id}:c${i}`, "~" + url.slice(i * CHUNK, (i + 1) * CHUNK)); await stSet(`dmh-img:${id}`, JSON.stringify({n, len:url.length})); imgCache[id] = url; return id; }
+async function fetchImage(id){ if(imgCache[id]) return imgCache[id]; const meta = JSON.parse(await stGet(`dmh-img:${id}`)); const keys = Array.from({length:meta.n}, (_, i)=>`dmh-img:${id}:c${i}`); const parts = await stGetBulk(keys); const url = keys.map(k=>String(parts[k]).replace(/^~/, "")).join(""); imgCache[id] = url; return url; }
+function hydrate(root){ root.querySelectorAll("img[data-imgid]").forEach(img=>fetchImage(img.dataset.imgid).then(u=>{ img.src = u; }).catch(()=>{ img.alt = "image unavailable"; })); }
+async function compressImage(file){
+  const bmp = await createImageBitmap(file); let scale = Math.min(1, 1000 / bmp.width), q = .8, out = "";
+  for(let a = 0; a < 7; a++){ const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale); const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h); cx.drawImage(bmp, 0, 0, w, h); out = c.toDataURL("image/jpeg", q); if(out.length <= 140000) break; if(q > .5) q -= .1; else scale *= .85; }
+  return out;
+}
+
+/* =============== small helpers =============== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[c]));
+const num = v => { const n = parseFloat(String(v ?? "").replace(/[\s,\u00a0$]/g, "")); return isNaN(n) ? 0 : n; };
+const has = v => v !== undefined && v !== null && String(v).trim() !== "";
+const money = v => has(v) ? "$" + Math.round(num(v)).toLocaleString("en-US") : "—";
+const intf = v => has(v) ? Math.round(num(v)).toLocaleString("en-US") : "—";
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+function parsePeriod(l){
+  const t = String(l || "").trim(); let n = t.match(/^(\d{4})[-/.](\d{1,2})$/), n2 = t.match(/^(\d{1,2})[-/.](\d{4})$/);
+  if(n || n2){ const y = +(n ? n[1] : n2[2]), m = +(n ? n[2] : n2[1]); return m >= 1 && m <= 12 ? new Date(y, m - 1, 1).getTime() : null; }
+  const m = t.match(/^([A-Za-z]{3,9})\.?,?\s+(\d{4})$/); if(!m) return null;
+  const i = MONTHS.findIndex(x=>x.slice(0, 3).toLowerCase() === m[1].slice(0, 3).toLowerCase()); return i < 0 ? null : new Date(+m[2], i, 1).getTime();
+}
+const labelOf = t => { const d = new Date(t); return MONTHS[d.getMonth()] + " " + d.getFullYear(); };
+const samePeriod = (a, b) => { const x = String(a || "").trim().toLowerCase(), y = String(b || "").trim().toLowerCase(); if(!x || !y) return false; if(x === y) return true; const p = parsePeriod(a), q = parsePeriod(b); return p !== null && p === q; };
+const nextMonth = l => { const t = parsePeriod(l); if(t === null) return l; const d = new Date(t); d.setMonth(d.getMonth() + 1); return labelOf(d.getTime()); };
+const sumRows = (rows, k) => (rows || []).reduce((a, r)=>a + num(r[k]), 0);
+function say(msg, err){ const s = $("status"); s.textContent = msg || ""; s.className = err ? "err" : ""; if(msg && !err) setTimeout(()=>{ if(s.textContent === msg) s.textContent = ""; }, 2500); }
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+
+/* =============== config, state =============== */
+const DEFAULT_CHANNELS = [
+  {k:"search", n:"Google Search", s:"Search"}, {k:"hotelads", n:"Google Hotel Ads", s:"Hotel Ads"}, {k:"pmax", n:"Performance Max", s:"PMax"},
+  {k:"meta", n:"Meta Ads", s:"Meta"}, {k:"tiktok", n:"TikTok Ads", s:"TikTok"}, {k:"msads", n:"Microsoft Ads", s:"MS Ads"}, {k:"yandex", n:"Yandex Ads", s:"Yandex"},
+  {k:"seo", n:"SEO & website", s:"SEO"}, {k:"gbp", n:"Google Business Profile", s:"GBP"}, {k:"gfl", n:"Free Booking Links", s:"GFL"}, {k:"crm", n:"Email / CRM", s:"CRM"}];
+const DEFAULT_AREAS = [{n:"Website", g:"Website"}, {n:"SEO", g:"Website"}, {n:"Content", g:"Website"}, {n:"Advertising", g:"Advertising"}, {n:"Other", g:"Website"}];
+let CFG = {channels:DEFAULT_CHANNELS, areas:DEFAULT_AREAS, reportUrl:"dmh_hotel_report.html"};
+const norm = s => String(s || "").toLowerCase().replace(/[^a-z0-9а-яё]+/g, "");
+let hotels = [];
+const state = {tab:"hotels", hotel:null, month:null, f:{q:"", country:"", todo:false}, showDone:false, openWork:{}, openTd:{}};
+const byId = id => hotels.find(h=>h.id === id);
+const F = (h, k) => h.rec.sections.hotelData.fields[k] || "";
+const blankPeriod = label => ({period:label, rows:[], seasonalNote:"", visibilityMetrics:[], totalWebsiteTraffic:"", totalBeTraffic:"", totalBookings:"", totalRevenue:"", yoyRevenue:"", yoyTraffic:"", yoyBookings:"", yoyForm:"", channels:[], gsc:{clicks:"", impressions:"", ctr:"", position:"", days:""}});
+
+function normalize(h){
+  h.rec = h.rec || {id:h.id, sections:{}}; h.rec.sections = h.rec.sections || {};
+  const hd = h.rec.sections.hotelData = h.rec.sections.hotelData || {fields:{}, tables:{}, tags:{}}; hd.fields = hd.fields || {};
+  const hub = h.rec.hub = h.rec.hub || {};
+  hub.channels = hub.channels || {}; hub.todo = hub.todo || []; hub.reports = hub.reports || {};
+  h.results = h.results && Array.isArray(h.results.periods) ? h.results : {periods:[]};
+  h.progress = h.progress && Array.isArray(h.progress.cards) ? h.progress : {cards:[], ideas:[], generalNotes:[]};
+}
+async function loadAll(){
+  say("Loading…");
+  const idx = (await jget("dmh-hotel-index")) || [];
+  const cfg = await jget("dmh-hub-config"); if(cfg) CFG = Object.assign({}, CFG, cfg); if(!Array.isArray(CFG.areas) || !CFG.areas.length) CFG.areas = DEFAULT_AREAS.slice();
+  const keys = []; idx.forEach(h=>keys.push(`dmh-hotel:${h.id}`, `dmh-results:${h.id}`, `dmh-progress:${h.id}`));
+  const v = await stGetBulk(keys);
+  hotels = idx.map(h=>({id:h.id, rec:parse(v[`dmh-hotel:${h.id}`]) || {id:h.id, sections:{hotelData:{fields:{name:h.name}}}}, results:parse(v[`dmh-results:${h.id}`]), progress:parse(v[`dmh-progress:${h.id}`])}));
+  hotels.forEach(normalize);
+  hotels.sort((a, b)=>F(a, "name").localeCompare(F(b, "name")));
+  const ms = allMonths(); state.month = state.month || ms.find(m=>hotels.some(h=>periodOf(h, m))) || ms[0];
+  say("");
+}
+function allMonths(){
+  const set = new Map(); hotels.forEach(h=>h.results.periods.forEach(p=>{ const t = parsePeriod(p.period); if(t !== null) set.set(t, labelOf(t)); }));
+  const now = new Date(); const cur = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); set.set(cur, labelOf(cur));
+  return [...set.entries()].sort((a, b)=>b[0] - a[0]).map(x=>x[1]);
+}
+const periodOf = (h, l) => h.results.periods.find(p=>samePeriod(p.period, l));
+function snap(h, l){
+  const p = periodOf(h, l); if(!p) return null; const rows = p.rows || [];
+  return {p, rev:p.totalRevenue, bk:p.totalBookings, form:p.totalBeTraffic, sess:p.totalWebsiteTraffic, rows, paidBk:sumRows(rows, "bookings"), paidRev:sumRows(rows, "revenue"), spend:sumRows(rows, "spend")};
+}
+const country = h => h.rec.hub.country || String(F(h, "location")).split(",").pop().trim();
+function tariff(h){
+  const f = h.rec.hub.fee; if(f && f.type) return f;
+  const m = String(F(h, "modelType")), p = m.match(/(\d+(?:[.,]\d+)?)\s*%/);
+  return p ? {type:/track/i.test(m) ? "tracked" : "all", pct:parseFloat(p[1].replace(",", ".")), derived:true} : null;
+}
+const tariffLabel = h => { const t = tariff(h); if(!t) return F(h, "modelType") || "—"; return t.type === "fixed" ? `$${intf(t.fixed)}/mo fixed` : `${t.pct}% of ${t.type === "tracked" ? "tracked" : "all"}`; };
+function feeOf(h, s){ const t = tariff(h); if(!t || !s) return null; if(t.type === "fixed") return num(t.fixed); const base = t.type === "tracked" ? s.paidRev : num(s.rev); return (t.type === "tracked" ? s.rows.length : has(s.rev)) ? base * num(t.pct) / 100 : null; }
+
+/* ---- saving: always read the latest record first, change only what we touch ---- */
+async function mutate(key, fallback, fn){ let latest = await jget(key); if(!latest) latest = fallback; fn(latest); await stSet(key, JSON.stringify(latest)); return latest; }
+async function mutateResults(h, label, fn){ h.results = await mutate(`dmh-results:${h.id}`, h.results, r=>{ r.periods = r.periods || []; let p = r.periods.find(x=>samePeriod(x.period, label)); if(!p){ p = blankPeriod(labelOf(parsePeriod(label))); r.periods.push(p); } fn(p); }); normalize(h); }
+async function mutateRecord(h, fn){ h.rec = await mutate(`dmh-hotel:${h.id}`, h.rec, r=>{ r.sections = r.sections || {}; r.sections.hotelData = r.sections.hotelData || {fields:{}}; r.hub = r.hub || {}; fn(r); }); normalize(h); }
+async function mutateProgress(h, fn){ h.progress = await mutate(`dmh-progress:${h.id}`, h.progress, p=>{ p.cards = p.cards || []; fn(p); }); normalize(h); }
+const guard = async fn => { try{ say("Saving…"); await fn(); say("Saved ✓"); }catch(e){ say("⚠ " + e.message, true); } };
+
+/* =============== work log (= the activity cards the report reads) =============== */
+const STATUSES = [["progress","In progress"],["planned","Planned"],["done","Done"],["idea","Idea"]];
+const stageOf = s => ({idea:"Idea", planned:"Planned", progress:"Live", done:"Done/Paused"}[s]);
+const statusOf = g => g === "Live" ? "progress" : g === "Done/Paused" ? "done" : (g === "Planned" || g === "In Preparation") ? "planned" : "idea";
+const areaNames = () => CFG.areas.map(a=>a.n);
+const areaGroup = (n, cfg = CFG) => (cfg.areas.find(a=>norm(a.n) === norm(n)) || {}).g || "Website";
+// a card's type = the most specific of its tags that is a known type; older cards fall back to a guess, then to "Other"
+function areaOf(c, cfg = CFG){
+  const tags = (c.tags || []).map(String);
+  for(const t of tags.slice().reverse()){ const a = cfg.areas.find(x=>norm(x.n) === norm(t)); if(a) return a.n; }
+  const low = tags.join("|").toLowerCase();
+  const ad = (/advertis|google ads|paid|meta ads|tiktok|search ads|hotel ads/.test(low)) ? (cfg.areas.find(x=>x.g === "Advertising") || {}).n : "";
+  if(ad) return ad;
+  for(const [re, name] of [[/seo/, "SEO"], [/content|locali/, "Content"], [/website|cro|ux/, "Website"]]){ if(re.test(low)){ const a = cfg.areas.find(x=>norm(x.n) === norm(name)); if(a) return a.n; } }
+  return (cfg.areas.find(x=>norm(x.n) === "other") || cfg.areas[0]).n;
+}
+// the report groups cards by two tags ("Website" / "Advertising"); the second tag is the type
+function tagsOf(name, cfg = CFG){ const base = areaGroup(name, cfg) === "Advertising" ? "Advertising" : "Website"; return norm(name) === norm(base) ? [base] : [base, name]; }
+
+/* =============== rendering =============== */
+const app = $("app");
+function render(){
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on", b.dataset.t === state.tab && !state.hotel));
+  const open = hotels.reduce((a, h)=>a + h.rec.hub.todo.filter(x=>!x.done).length, 0); const bd = $("todoBadge"); bd.hidden = !open; bd.textContent = open;
+  if(state.hotel && byId(state.hotel)) return renderHotel();
+  state.hotel = null;
+  if(state.tab === "todo") return renderTodo(); if(state.tab === "settings") return renderSettings(); renderHotels();
+}
+
+function renderHotels(){
+  const csms = [...new Set(hotels.map(h=>F(h, "csm")).filter(Boolean))].sort(), countries = [...new Set(hotels.map(country).filter(Boolean))].sort();
+  app.innerHTML = `<h1>Hotels</h1><p class="sub">Everything at a glance. Numbers for the chosen month can be typed straight into the table.</p>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search name, ID, country…" value="${esc(state.f.q)}">
+    <select data-flt="country"><option value="">All countries</option>${countries.map(c=>`<option ${state.f.country === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>
+    <label class="chk"><input type="checkbox" data-flt="todo" ${state.f.todo ? "checked" : ""}> open to-dos only</label>
+    <span style="margin-left:auto"></span><button class="btn" data-act="addhotel">+ Add hotel</button>
+  </div><div id="gridHost"></div>`;
+  renderGrid();
+}
+function filtered(){
+  const f = state.f, q = f.q.trim().toLowerCase();
+  return hotels.filter(h=>{
+    if(q && ![h.id, F(h, "name"), country(h), F(h, "location")].join(" ").toLowerCase().includes(q)) return false;
+    if(f.country && country(h) !== f.country) return false;
+    if(f.todo && !h.rec.hub.todo.some(x=>!x.done)) return false; return true;
+  });
+}
+function renderGrid(){
+  const list = filtered(), ms = allMonths(), T = {rev:0, bk:0, pbk:0, prev:0, spend:0, fee:0, anyFee:false};
+  const body = list.map(h=>{
+    const s = snap(h, state.month), hub = h.rec.hub, fee = feeOf(h, s), open = hub.todo.filter(x=>!x.done), multi = s && s.rows.length > 1;
+    if(s){ T.rev += num(s.rev); T.bk += num(s.bk); T.pbk += s.paidBk; T.prev += s.paidRev; T.spend += s.spend; } if(fee !== null){ T.fee += fee; T.anyFee = true; }
+    const chips = CFG.channels.map(c=>hub.channels[c.k] ? `<span class="chip ${hub.channels[c.k]}" title="${esc(c.n)} — ${hub.channels[c.k]}"><i></i>${esc(c.s)}</span>` : "").join("") || `<span class="muted sm">—</span>`;
+    const cell = (f, v, cur) => { const raw = has(v) ? String(v) : "", shown = raw === "" ? "" : (cur ? "$" : "") + Math.round(num(raw)).toLocaleString("en-US"); return `<input class="cell" inputmode="decimal" data-cell="${f}" data-h="${esc(h.id)}" data-raw="${esc(raw)}" data-fmt="${esc(shown)}" value="${esc(shown)}">`; };
+    const paid = (f, v, shown, cur) => multi ? `<span class="ro" data-act="month" data-h="${esc(h.id)}" title="${s.rows.length} campaigns — click to edit">${shown}</span>` : cell(f, v, cur);
+    const share = s && has(s.bk) && s.paidBk ? `<span class="muted sm"> ${Math.round(s.paidBk / num(s.bk) * 100)}%</span>` : "";
+    const rep = hub.reports[state.month] || "";
+    return `<tr>
+      <td class="id">${esc(h.id)}</td><td><a class="hname" data-act="hotel" data-h="${esc(h.id)}">${esc(F(h, "name") || h.id)}</a><div class="muted sm">${esc(country(h))}</div></td>
+      <td class="sm">${esc(tariffLabel(h))}</td><td>${esc(F(h, "csm")) || '<span class="muted">—</span>'}</td>
+      <td><div class="chips nw">${chips}</div></td>
+      <td class="mid num">${cell("rev", s && s.rev, true)}</td><td class="num">${cell("bk", s && s.bk)}</td>
+      <td class="num">${paid("pbk", s && s.rows.length ? s.paidBk : "", s ? intf(s.paidBk) : "—")}${share}</td>
+      <td class="num">${paid("prev", s && s.rows.length ? s.paidRev : "", s && s.paidRev ? money(s.paidRev) : "—", true)}</td>
+      <td class="num">${paid("spend", s && s.spend ? s.spend : "", s && s.spend ? money(s.spend) : "—", true)}</td>
+      <td class="num">${fee === null ? (tariff(h) ? '<span class="muted">—</span>' : `<span class="pill warn" data-act="hotel" data-h="${esc(h.id)}" style="cursor:pointer">set tariff</span>`) : money(fee)}</td>
+      <td><select class="mini" data-rep="${esc(h.id)}"><option value="">—</option>${["draft", "ready", "sent"].map(x=>`<option value="${x}" ${rep === x ? "selected" : ""}>${x}</option>`).join("")}</select>
+          <button class="btn ghost sm" data-act="report" data-h="${esc(h.id)}" title="Open the report for ${esc(state.month)}">↗</button></td>
+      <td>${open.length ? `<span class="pill warn" title="${esc(open.map(x=>x.text).join(" • "))}">${open.length}</span>` : ""}</td></tr>`;
+  }).join("");
+  $("gridHost").innerHTML = list.length ? `<div class="tablewrap"><table class="grid"><thead>
+    <tr><th class="grp" colspan="5">Hotel</th><th class="grp mid" colspan="7">Month <select data-flt="month">${ms.map(m=>`<option ${m === state.month ? "selected" : ""}>${esc(m)}</option>`).join("")}</select></th><th class="grp"></th></tr>
+    <tr><th>ID</th><th>Hotel</th><th>Tariff</th><th>CSM</th><th>Channels</th><th class="mid num">Revenue</th><th class="num">Bookings</th><th class="num">Paid bookings</th><th class="num">Paid revenue</th><th class="num">Ad spend</th><th class="num" title="Our fee: tariff × revenue (all or tracked)">Our fee</th><th>Report</th><th>To do</th></tr></thead>
+    <tbody>${body}</tbody><tfoot><tr><td colspan="5">${list.length} hotel${list.length === 1 ? "" : "s"}</td><td class="mid num">${money(T.rev)}</td><td class="num">${intf(T.bk)}</td><td class="num">${intf(T.pbk)}</td><td class="num">${money(T.prev)}</td><td class="num">${T.spend ? money(T.spend) : "—"}</td><td class="num">${T.anyFee ? money(T.fee) : "—"}</td><td></td><td></td></tr></tfoot></table></div>`
+    : `<div class="empty">No hotels match. <button class="btn sec sm" data-act="addhotel">+ Add hotel</button></div>`;
+}
+
+/* ---------------- one hotel ---------------- */
+function monthsFor(h, extra){ const s = new Set(allMonths()); h.results.periods.forEach(p=>{ const t = parsePeriod(p.period); if(t !== null) s.add(labelOf(t)); }); const cur = parsePeriod(state.month); if(cur !== null){ for(let i = 1; i <= 3; i++){ const d = new Date(cur); d.setMonth(d.getMonth() + i); s.add(labelOf(d.getTime())); } } if(extra) s.add(extra); return [...s].sort((a, b)=>parsePeriod(b) - parsePeriod(a)); }
+function renderHotel(){
+  const h = byId(state.hotel), hub = h.rec.hub, hd = k => esc(F(h, k)), t = tariff(h) || {type:"", pct:"", fixed:""};
+  const open = hub.todo, cards = h.progress.cards, items = cards.map(c=>({c, st:statusOf(c.stage)}));
+  const grp = (st, title) => { let list = items.filter(x=>x.st === st); if(!list.length) return ""; const hide = st === "done" && !state.showDone && list.length > 4; if(hide) list = list.slice(-4); return `<div class="grp-title">${title} · ${items.filter(x=>x.st === st).length}</div>${list.map(x=>workHtml(h, x.c)).join("")}${hide ? `<button class="btn ghost sm" data-act="showdone">Show all ${items.filter(x=>x.st === "done").length} done</button>` : ""}`; };
+  const rows = h.results.periods.slice().sort((a, b)=>(parsePeriod(b.period) || 0) - (parsePeriod(a.period) || 0)).slice(0, 12).map(p=>{ const s = snap(h, p.period), fee = feeOf(h, s), lab = labelOf(parsePeriod(p.period)); return `<tr><td>${esc(p.period)}</td><td>${money(s.rev)}</td><td>${intf(s.bk)}</td><td>${intf(s.form)}</td><td>${s.rows.length ? intf(s.paidBk) : "—"}</td><td>${s.rows.length ? money(s.paidRev) : "—"}</td><td>${s.spend ? money(s.spend) : "—"}</td><td>${fee === null ? "—" : money(fee)}</td><td><select class="mini" data-rep="${esc(h.id)}" data-m="${esc(lab)}"><option value="">—</option>${["draft", "ready", "sent"].map(x=>`<option value="${x}" ${hub.reports[lab] === x ? "selected" : ""}>${x}</option>`).join("")}</select></td><td><button class="btn sec sm" data-act="month" data-h="${esc(h.id)}" data-m="${esc(p.period)}">Edit</button> <button class="btn ghost sm" data-act="report" data-h="${esc(h.id)}" data-m="${esc(p.period)}">Report ↗</button></td></tr>`; }).join("");
+  app.innerHTML = `<div class="bar"><button class="btn sec sm" data-act="back">← Hotels</button><h1 style="margin:0">${hd("name") || esc(h.id)}</h1><span class="id">${esc(h.id)}</span>
+      <span style="margin-left:auto"></span><select class="mini" id="repMonth">${monthsFor(h).map(m=>`<option ${m === state.month ? "selected" : ""}>${esc(m)}</option>`).join("")}</select><button class="btn" data-act="report" data-h="${esc(h.id)}" data-pick="1">Open report ↗</button></div>
+  <div class="cols"><div>
+    <div class="card"><h2>Hotel</h2><div class="fields">
+      <div class="full"><label>Name</label><input data-prof="name" value="${hd("name")}"></div>
+      <div><label>Location (city, country)</label><input data-prof="location" value="${hd("location")}"></div><div><label>CSM</label><input data-prof="csm" value="${hd("csm")}"></div>
+      <div><label>Website</label><input data-prof="website" value="${hd("website")}"></div><div><label>Promo code</label><input data-hub="promo" value="${esc(hub.promo || "")}"></div>
+      <div><label>Brief (link)</label><input data-hub="brief" value="${esc(hub.brief || "")}"></div><div><label>Hotel materials (link)</label><input data-hub="materials" value="${esc(hub.materials || "")}"></div>
+      <div><label>Tariff</label><select data-fee="type"><option value="">— not set —</option><option value="all" ${t.type === "all" ? "selected" : ""}>% of all bookings</option><option value="tracked" ${t.type === "tracked" ? "selected" : ""}>% of tracked bookings</option><option value="fixed" ${t.type === "fixed" ? "selected" : ""}>Fixed per month</option></select></div>
+      <div><label>${t.type === "fixed" ? "Amount, $" : "Percent, %"}</label><input data-fee="${t.type === "fixed" ? "fixed" : "pct"}" value="${esc(t.type === "fixed" ? t.fixed : t.pct)}"></div>
+      <div class="full"><label>Notes</label><textarea data-hub="note" rows="2">${esc(hub.note || "")}</textarea></div></div>
+      <div class="feehint">“Tracked” = revenue from the campaign rows entered for the month. Model note from the old card: ${esc(F(h, "modelType")) || "—"}.</div></div>
+    <div class="card"><h2>To do</h2>${open.map(x=>tdHtml(h, x, true)).join("") || '<div class="muted">Nothing open.</div>'}
+      <div class="addrow"><input id="tdText" placeholder="Add: access, question, follow-up…"><input id="tdDue" type="date" style="flex:none;width:140px"><button class="btn sm" data-act="addtodo">Add</button></div></div>
+    <div class="card"><h2>Channels</h2><div class="chips">${CFG.channels.map(c=>{ const st = hub.channels[c.k] || ""; return `<button class="chip ${st || "off"}" data-act="chan" data-k="${c.k}" title="Click: planned → live → paused → off"><i></i>${esc(c.n)}${st ? " · " + st : ""}</button>`; }).join("")}</div></div>
+  </div><div>
+    <div class="card"><h2>Work</h2><div class="addrow" style="margin:0 0 4px"><input id="wTitle" placeholder="New work item — what are we doing?"><select class="mini" id="wArea">${areaNames().map(a=>`<option>${esc(a)}</option>`).join("")}</select><select class="mini" id="wStatus">${STATUSES.map(([k, n])=>`<option value="${k}">${n}</option>`).join("")}</select><button class="btn sm" data-act="addwork">Add</button></div>
+      ${grp("progress", "In progress")}${grp("planned", "Planned")}${grp("done", "Done")}${grp("idea", "Ideas")}${cards.length ? "" : '<div class="muted" style="margin-top:8px">No work items yet.</div>'}</div>
+    <div class="card"><h2>Results by month</h2>${rows ? `<table class="mini"><thead><tr><th>Month</th><th>Revenue</th><th>Bookings</th><th>Form visits</th><th>Paid bk.</th><th>Paid rev.</th><th>Spend</th><th>Our fee</th><th>Report</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="muted">No months yet.</div>'}
+      <div class="addrow"><select class="mini" id="newMonth" style="flex:none">${monthsFor(h).map(m=>`<option ${m === state.month ? "selected" : ""}>${esc(m)}</option>`).join("")}</select><button class="btn sec sm" data-act="month" data-h="${esc(h.id)}" data-new="1">+ Add / open month</button></div></div>
+  </div></div>`;
+  hydrate(app);
+}
+function workHtml(h, c){
+  const st = statusOf(c.stage), area = areaOf(c), imgs = c.images || [], ms = monthsFor(h, c.period), openCls = state.openWork[c.id] ? "open" : "";
+  return `<div class="work ${openCls}" data-card="${esc(c.id)}"><div class="head">
+    <input class="t" data-wf="title" value="${esc(c.title)}" placeholder="Title">
+    <select class="mini" data-wf="area">${(areaNames().includes(area) ? areaNames() : areaNames().concat([area])).map(a=>`<option ${a === area ? "selected" : ""}>${esc(a)}</option>`).join("")}</select>
+    <select class="mini" data-wf="status">${STATUSES.map(([k, n])=>`<option value="${k}" ${k === st ? "selected" : ""}>${n}</option>`).join("")}</select>
+    <select class="mini" data-wf="period" title="${st === "planned" ? "target month" : st === "progress" ? "started" : "done in"}"><option value="">—</option>${ms.map(m=>`<option ${samePeriod(m, c.period) ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>
+    <button class="btn ghost sm" data-act="togglework" data-id="${esc(c.id)}">${imgs.length ? "📷" + imgs.length + " " : ""}${(c.notes || "").trim() ? "Details" : "+ Details"}</button><button class="btn ghost sm" data-act="delwork" data-id="${esc(c.id)}" title="Delete">✕</button></div>
+    <div class="body"><textarea data-wf="notes" placeholder="Result, in one or two sentences — this text goes into the report">${esc(c.notes || "")}</textarea>
+    <div class="thumbs">${imgs.map((im, i)=>`<div class="th"><img data-imgid="${esc(im.id)}" alt=""><button class="x" data-act="delimg" data-id="${esc(c.id)}" data-i="${i}">✕</button></div>`).join("")}</div>
+    <div style="margin-top:8px"><button class="btn sec sm" data-act="addphoto" data-id="${esc(c.id)}">+ Photo</button> <span class="muted sm">or paste a screenshot (Ctrl+V) while this box is open</span></div></div></div>`;
+}
+
+/* ---------------- month drawer ---------------- */
+function openMonth(hid, label){
+  const h = byId(hid), lab = labelOf(parsePeriod(label)), p = periodOf(h, lab) || blankPeriod(lab), rows = (p.rows || []).map(r=>Object.assign({}, r));
+  state.drawer = {hid, lab, rows}; const inp = (id, v) => `<div><label>${id.l}</label><input class="inp" id="${id.i}" inputmode="decimal" value="${has(v) ? esc(v) : ""}"></div>`;
+  $("modal").hidden = false;
+  $("modal").innerHTML = `<div class="sheet"><h2>${esc(F(h, "name"))} — ${esc(lab)}</h2>
+    <div class="grp-title">Overall results</div><div class="grid4 fields">${inp({l:"Revenue, $", i:"m-rev"}, p.totalRevenue)}${inp({l:"Bookings", i:"m-bk"}, p.totalBookings)}${inp({l:"Booking-form visits", i:"m-form"}, p.totalBeTraffic)}${inp({l:"Website sessions", i:"m-sess"}, p.totalWebsiteTraffic)}</div>
+    <div class="grp-title">Same month last year (for “vs last year” in the report; leave empty if there is no fair comparison)</div><div class="grid3 fields">${inp({l:"Revenue, $", i:"m-yrev"}, p.yoyRevenue)}${inp({l:"Bookings", i:"m-ybk"}, p.yoyBookings)}${inp({l:"Booking-form visits", i:"m-yform"}, p.yoyForm)}</div>
+    <div class="grp-title">Paid campaigns</div><table class="camp"><thead><tr><th>Campaign</th><th>Channel (as the client sees it)</th><th>Spend, $</th><th>Visits</th><th>Bookings</th><th>Revenue, $</th><th></th></tr></thead><tbody id="campBody"></tbody></table>
+    <button class="btn sec sm" data-act="addcamp" style="margin-top:6px">+ Campaign row</button>
+    <div class="feehint" id="feeLine"></div>
+    <div class="foot"><button class="btn sec" data-act="closemodal">Cancel</button><button class="btn" data-act="savemonth">Save</button></div></div>`;
+  drawCamps(); feeLine();
+}
+function drawCamps(){
+  $("campBody").innerHTML = state.drawer.rows.map((r, i)=>`<tr>${["campaign", "channel", "spend", "traffic", "bookings", "revenue"].map(k=>`<td><input data-cr="${i}" data-k="${k}" value="${has(r[k]) ? esc(r[k]) : ""}" ${["spend", "traffic", "bookings", "revenue"].includes(k) ? 'inputmode="decimal"' : ""}></td>`).join("")}<td><button class="btn ghost sm" data-act="delcamp" data-i="${i}">✕</button></td></tr>`).join("") || `<tr><td colspan="7" class="muted sm">No campaign rows. Add one per campaign, or a single “Paid (total)” row.</td></tr>`;
+}
+function feeLine(){
+  const d = state.drawer, h = byId(d.hid), t = tariff(h); const rev = $("m-rev") ? $("m-rev").value : "";
+  const paidRev = sumRows(d.rows, "revenue"), s = {rev, paidRev, rows:d.rows}, fee = feeOf(h, s);
+  $("feeLine").innerHTML = t ? `Our fee (${esc(tariffLabel(h))}): <b>${fee === null ? "—" : money(fee)}</b>` : "Set the tariff on the hotel page to see our fee.";
+}
+async function saveMonth(){
+  const d = state.drawer, h = byId(d.hid), v = id => { const x = $(id).value.trim(); return x === "" ? "" : num(x); };
+  const rows = d.rows.filter(r=>["campaign", "channel", "spend", "traffic", "bookings", "revenue"].some(k=>has(r[k]))).map(r=>({campaign:r.campaign || "", channel:r.channel || r.campaign || "", spend:has(r.spend) ? num(r.spend) : "", traffic:has(r.traffic) ? num(r.traffic) : "", bookings:has(r.bookings) ? num(r.bookings) : "", revenue:has(r.revenue) ? num(r.revenue) : ""}));
+  await guard(()=>mutateResults(h, d.lab, p=>{ p.totalRevenue = v("m-rev"); p.totalBookings = v("m-bk"); p.totalBeTraffic = v("m-form"); p.totalWebsiteTraffic = v("m-sess"); p.yoyRevenue = v("m-yrev"); p.yoyBookings = v("m-ybk"); p.yoyForm = v("m-yform"); p.rows = rows; }));
+  closeModal(); render();
+}
+const closeModal = () => { $("modal").hidden = true; $("modal").innerHTML = ""; state.drawer = null; };
+
+/* ---------------- to do, settings ---------------- */
+function tdHtml(h, x, withDelete){
+  const today = new Date().toISOString().slice(0, 10), open = state.openTd[x.id], hasNote = (x.note || "").trim();
+  return `<div class="tdwrap"><div class="todo ${x.done ? "done" : ""}"><input type="checkbox" data-td="${x.id}" data-h="${esc(h.id)}" ${x.done ? "checked" : ""}>
+    <span data-act="toggletd" data-id="${x.id}" style="cursor:pointer" title="Click to ${open ? "hide" : "open"} the note">${open ? "▾" : "▸"} ${esc(x.text)}${hasNote && !open ? ' <span class="muted sm">📝</span>' : ""}</span>
+    ${withDelete ? "" : `<a class="hname sm" data-act="hotel" data-h="${esc(h.id)}" style="flex:none">${esc(F(h, "name"))}</a>`}
+    ${x.due ? `<span class="due ${!x.done && x.due < today ? "late" : ""}" style="flex:none;min-width:80px;text-align:right">${esc(x.due)}</span>` : ""}
+    ${withDelete ? `<button class="btn ghost sm" data-act="deltodo" data-id="${x.id}">✕</button>` : ""}</div>
+    ${open ? `<textarea class="inp" data-tdnote="${x.id}" data-h="${esc(h.id)}" rows="3" placeholder="Details, questions, links…" style="margin:2px 0 8px 26px;width:calc(100% - 26px)">${esc(x.note || "")}</textarea>` : ""}</div>`;
+}
+function renderTodo(){
+  const csms = [...new Set(hotels.map(h=>F(h, "csm")).filter(Boolean))].sort(), today = new Date().toISOString().slice(0, 10), csm = state.todoCsm || "";
+  let all = []; hotels.forEach(h=>{ if(csm && F(h, "csm") !== csm) return; h.rec.hub.todo.forEach(x=>all.push({h, x})); });
+  if(!state.showDone) all = all.filter(a=>!a.x.done);
+  all.sort((a, b)=>(a.x.done - b.x.done) || (a.x.due || "9999").localeCompare(b.x.due || "9999"));
+  const row = a=>tdHtml(a.h, a.x, false);
+  app.innerHTML = `<h1>To do</h1><p class="sub">Open items from all hotels, soonest first.</p><div class="bar"><select data-flt="todoCsm"><option value="">All CSMs</option>${csms.map(c=>`<option ${csm === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select><label class="chk"><input type="checkbox" data-flt="showDone" ${state.showDone ? "checked" : ""}> show done</label></div>
+  <div class="card">${all.map(row).join("") || '<div class="muted">Nothing to do. 🎉</div>'}
+  <div class="addrow"><select class="mini" id="tdHotel" style="flex:none">${hotels.map(h=>`<option value="${esc(h.id)}">${esc(F(h, "name"))}</option>`).join("")}</select><input id="tdText" placeholder="New to-do"><input id="tdDue" type="date" style="flex:none;width:140px"><button class="btn sm" data-act="addtodo" data-all="1">Add</button></div></div>`;
+}
+function makeDraft(){ return {channels:CFG.channels.map(c=>Object.assign({}, c, {orig:c.k})), areas:CFG.areas.map(a=>Object.assign({}, a, {orig:a.n})), cmoves:[], amoves:[], err:""}; }
+const usedChan = k => hotels.filter(h=>h.rec.hub.channels[k]).length;
+const usedArea = n => hotels.reduce((a, h)=>a + h.progress.cards.filter(c=>norm(areaOf(c)) === norm(n)).length, 0);
+function renderSettings(){
+  if(!state.draft) state.draft = makeDraft();
+  const d = state.draft, url = localStorage.getItem(KEY_URL) || "";
+  app.innerHTML = `<h1>Settings</h1>
+  <div class="card" style="max-width:760px"><h2>Connection</h2><div class="fields"><div class="full"><label>Apps Script web app URL (shared with the other DMH tools in this browser)</label><input id="setUrl" value="${esc(url)}" placeholder="https://script.google.com/…"></div>
+    <div class="full"><label>Report page (the report builder file)</label><input id="setReport" value="${esc(CFG.reportUrl)}"></div></div></div>
+  <div class="card" style="max-width:760px"><h2>Channels</h2><div class="muted sm" style="margin-bottom:8px">Full name and the short label shown in the table. Renaming here changes it for every hotel; names must be unique.</div>
+    ${d.channels.map((c, i)=>`<div class="addrow" style="margin:4px 0;flex-wrap:nowrap"><input data-dr="ch" data-i="${i}" data-k="n" value="${esc(c.n)}"><input data-dr="ch" data-i="${i}" data-k="s" value="${esc(c.s)}" style="flex:none;width:120px"><span class="muted sm" style="width:90px;flex:none">${c.orig ? usedChan(c.orig) + " hotel" + (usedChan(c.orig) === 1 ? "" : "s") : "new"}</span><button class="btn ghost sm" data-act="delchan" data-i="${i}">✕</button></div>`).join("")}
+    <button class="btn sec sm" data-act="addchan" style="margin-top:8px">+ Channel</button></div>
+  <div class="card" style="max-width:760px"><h2>Activity types</h2><div class="muted sm" style="margin-bottom:8px">Types of work in the work list. “Report group” decides where an item appears in the client report: under website work or under advertising.</div>
+    ${d.areas.map((a, i)=>`<div class="addrow" style="margin:4px 0;flex-wrap:nowrap"><input data-dr="ar" data-i="${i}" data-k="n" value="${esc(a.n)}"><select class="mini" data-dr="ar" data-i="${i}" data-k="g" style="flex:none;width:150px"><option ${a.g !== "Advertising" ? "selected" : ""}>Website</option><option ${a.g === "Advertising" ? "selected" : ""}>Advertising</option></select><span class="muted sm" style="width:90px;flex:none">${a.orig ? usedArea(a.orig) + " item" + (usedArea(a.orig) === 1 ? "" : "s") : "new"}</span><button class="btn ghost sm" data-act="delarea" data-i="${i}">✕</button></div>`).join("")}
+    <button class="btn sec sm" data-act="addarea" style="margin-top:8px">+ Type</button></div>
+  <div id="setErr" class="pill bad" style="display:${d.err ? "inline-block" : "none"};margin-bottom:10px">${esc(d.err)}</div>
+  <div><button class="btn" data-act="savesettings">Save settings</button> <button class="btn sec" data-act="cancelsettings">Discard changes</button></div>`;
+}
+function validateDraft(d){
+  for(const [list, label, keys] of [[d.channels, "channel", ["n", "s"]], [d.areas, "activity type", ["n"]]]){
+    for(const k of keys){ const seen = new Map();
+      for(const x of list){ const v = String(x[k] || "").trim(); if(!v) return `A ${label} has an empty ${k === "s" ? "short label" : "name"}.`; const nv = norm(v) || v.toLowerCase(); if(seen.has(nv)) return `“${v}” is already used by another ${label}${k === "s" ? " (short label)" : ""}. Names must be unique — use ✕ on one of them and choose where to merge it.`; seen.set(nv, 1); } } }
+  return "";
+}
+function moveDialog(kind, i){
+  const d = state.draft, list = kind === "ch" ? d.channels : d.areas, x = list[i], others = list.filter((_, j)=>j !== i);
+  const used = kind === "ch" ? usedChan(x.orig) : usedArea(x.orig), what = kind === "ch" ? `${used} hotel${used === 1 ? "" : "s"}` : `${used} item${used === 1 ? "" : "s"}`;
+  if(!x.orig || !used){ list.splice(i, 1); return renderSettings(); }
+  if(!others.length){ d.err = "At least one must remain."; return renderSettings(); }
+  state.mergeFrom = {kind, i};
+  $("modal").hidden = false; $("modal").innerHTML = `<div class="sheet" style="max-width:520px"><h2>Remove “${esc(x.n)}”</h2><p>It is used in <b>${what}</b>. Move ${kind === "ch" ? "its status" : "those items"} to another ${kind === "ch" ? "channel" : "type"} so nothing is lost or duplicated:</p>
+    <select class="inp" id="mergeTo">${others.map(o=>`<option value="${esc(kind === "ch" ? o.k : o.orig || o.n)}">${esc(o.n)}</option>`).join("")}${kind === "ch" ? '<option value="">— just remove it from the hotels —</option>' : ""}</select>
+    <div class="foot"><button class="btn sec" data-act="closemodal">Cancel</button><button class="btn" data-act="confirmmerge">Move and remove</button></div></div>`;
+}
+async function applySettings(){
+  const d = state.draft, oldCfg = JSON.parse(JSON.stringify(CFG)), err = validateDraft(d); if(err){ d.err = err; return renderSettings(); }
+  const newCh = d.channels.map(c=>({k:c.k, n:c.n.trim(), s:c.s.trim()})), newAr = d.areas.map(a=>({n:a.n.trim(), g:a.g === "Advertising" ? "Advertising" : "Website"}));
+  const newCfg = {channels:newCh, areas:newAr, reportUrl:$("setReport").value.trim() || "dmh_hotel_report.html"};
+  // which activity items must be re-tagged: renamed types, changed report group, removed types (moved)
+  const toName = new Map(); d.areas.forEach(a=>{ if(a.orig) toName.set(norm(a.orig), a.n.trim()); }); d.amoves.forEach(m=>{ const t = d.areas.find(a=>(a.orig || a.n) === m.to); toName.set(norm(m.from), t ? t.n.trim() : m.to); });
+  const retag = []; hotels.forEach(h=>h.progress.cards.forEach(c=>{ const was = areaOf(c, oldCfg), now = toName.get(norm(was)); if(now === undefined) return; const og = areaGroup(was, oldCfg), ng = areaGroup(now, newCfg); if(norm(was) !== norm(now) || og !== ng) retag.push([h, c.id, now]); }));
+  const chanWork = hotels.filter(h=>d.cmoves.some(m=>h.rec.hub.channels[m.from]));
+  if((retag.length || chanWork.length) && !confirm(`This updates ${retag.length} activity item(s) and ${chanWork.length} hotel channel setting(s). Continue?`)) return;
+  await guard(async ()=>{
+    for(const h of hotels.filter(x=>retag.some(r=>r[0] === x))) await mutateProgress(h, p=>{ retag.filter(r=>r[0] === h).forEach(([, id, name])=>{ const c = p.cards.find(x=>x.id === id); if(c) c.tags = tagsOf(name, newCfg); }); });
+    for(const h of chanWork) await mutateRecord(h, r=>{ const ch = Object.assign({}, r.hub.channels), rank = {live:3, paused:2, planned:1}; d.cmoves.forEach(m=>{ const st = ch[m.from]; if(!st) return; delete ch[m.from]; if(m.to && (!ch[m.to] || rank[st] > rank[ch[m.to]])) ch[m.to] = st; }); r.hub.channels = ch; });
+    const u = $("setUrl").value.trim(); if(u){ localStorage.setItem(KEY_URL, u); SHEETS_WEBAPP_URL = u; }
+    await stSet("dmh-hub-config", JSON.stringify(newCfg)); CFG = newCfg;
+  });
+  state.draft = null; render();
+}
+
+/* =============== events =============== */
+const H = {
+  tab(t){ state.tab = t.dataset.t; state.hotel = null; render(); },
+  back(){ state.hotel = null; render(); },
+  hotel(t){ state.hotel = t.dataset.h; render(); window.scrollTo(0, 0); },
+  month(t){ openMonth(t.dataset.h, t.dataset.new ? $("newMonth").value : (t.dataset.m || state.month)); },
+  closemodal: closeModal, savemonth: saveMonth,
+  addcamp(){ state.drawer.rows.push({}); drawCamps(); }, delcamp(t){ state.drawer.rows.splice(+t.dataset.i, 1); drawCamps(); feeLine(); },
+  report(t){ const h = byId(t.dataset.h); const m = t.dataset.pick ? $("repMonth").value : (t.dataset.m || state.month); window.open(`${CFG.reportUrl}#hotel=${encodeURIComponent(h.id)}&period=${encodeURIComponent(m)}`, "_blank"); },
+  showdone(){ state.showDone = true; render(); },
+  toggletd(t){ state.openTd[t.dataset.id] = !state.openTd[t.dataset.id]; render(); },
+  async chan(t){ const h = byId(state.hotel), order = ["", "planned", "live", "paused"], cur = h.rec.hub.channels[t.dataset.k] || "", nx = order[(order.indexOf(cur) + 1) % 4]; await guard(()=>mutateRecord(h, r=>{ if(nx) r.hub.channels = Object.assign({}, r.hub.channels, {[t.dataset.k]:nx}); else { const c = Object.assign({}, r.hub.channels); delete c[t.dataset.k]; r.hub.channels = c; } })); render(); },
+  async addtodo(t){ const all = !!t.dataset.all, h = byId(all ? $("tdHotel").value : state.hotel), text = $("tdText").value.trim(); if(!text) return; const due = $("tdDue").value; await guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).concat([{id:uid("t"), text, due, done:false}]); })); render(); },
+  async deltodo(t){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).filter(x=>x.id !== t.dataset.id); })); render(); },
+  async addwork(){
+    const h = byId(state.hotel), title = $("wTitle").value.trim(); if(!title) return; const area = $("wArea").value, st = $("wStatus").value, per = st === "planned" ? nextMonth(state.month) : state.month, c = {id:uid("w"), title, tags:tagsOf(area), period:per, stage:stageOf(st), notes:"", subtasks:[], images:[]};
+    state.openWork[c.id] = true; await guard(()=>mutateProgress(h, p=>{ p.cards.push(c); })); render();
+  },
+  togglework(t){ state.openWork[t.dataset.id] = !state.openWork[t.dataset.id]; t.closest(".work").classList.toggle("open"); },
+  async delwork(t){ const h = byId(state.hotel); const c = h.progress.cards.find(x=>x.id === t.dataset.id); if(!confirm(`Delete “${(c && c.title) || "this item"}”? It also disappears from the reports.`)) return; await guard(()=>mutateProgress(h, p=>{ p.cards = p.cards.filter(x=>x.id !== t.dataset.id); })); render(); },
+  addphoto(t){ const f = document.createElement("input"); f.type = "file"; f.accept = "image/*"; f.multiple = true; f.onchange = ()=>addImages(t.dataset.id, [...f.files]); f.click(); },
+  async delimg(t){ const h = byId(state.hotel); await guard(()=>mutateProgress(h, p=>{ const c = p.cards.find(x=>x.id === t.dataset.id); if(c) (c.images = c.images || []).splice(+t.dataset.i, 1); })); render(); },
+  addhotel(){
+    $("modal").hidden = false; $("modal").innerHTML = `<div class="sheet" style="max-width:520px"><h2>Add hotel</h2><div class="fields"><div><label>Exely ID</label><input class="inp" id="nh-id"></div><div><label>Name</label><input class="inp" id="nh-name"></div><div><label>Location (city, country)</label><input class="inp" id="nh-loc"></div><div><label>CSM</label><input class="inp" id="nh-csm"></div></div><div class="foot"><button class="btn sec" data-act="closemodal">Cancel</button><button class="btn" data-act="savehotel">Create</button></div></div>`;
+  },
+  async savehotel(){
+    const id = $("nh-id").value.trim(), name = $("nh-name").value.trim(); if(!id || !name) return say("ID and name are required", true); if(byId(id)) return say("A hotel with this ID already exists", true);
+    const rec = {id, sections:{hotelData:{fields:{name, location:$("nh-loc").value.trim(), csm:$("nh-csm").value.trim()}, tables:{}, tags:{}}}, hub:{channels:{}, todo:[], reports:{}}};
+    await guard(async ()=>{ await stSet(`dmh-hotel:${id}`, JSON.stringify(rec)); await mutate("dmh-hotel-index", [], ix=>{ if(!ix.some(x=>x.id === id)) ix.push({id, name}); }); });
+    hotels.push({id, rec, results:{periods:[]}, progress:{cards:[], ideas:[], generalNotes:[]}}); normalize(hotels[hotels.length - 1]); hotels.sort((a, b)=>F(a, "name").localeCompare(F(b, "name"))); closeModal(); state.hotel = id; render();
+  },
+  addchan(){ state.draft.channels.push({k:"c" + Date.now().toString(36), n:"", s:""}); renderSettings(); }, addarea(){ state.draft.areas.push({n:"", g:"Website"}); renderSettings(); },
+  delchan(t){ moveDialog("ch", +t.dataset.i); }, delarea(t){ moveDialog("ar", +t.dataset.i); },
+  confirmmerge(){ const d = state.draft, {kind, i} = state.mergeFrom, to = $("mergeTo").value, list = kind === "ch" ? d.channels : d.areas, x = list[i];
+    if(kind === "ch") d.cmoves.push({from:x.orig, to}); else d.amoves.push({from:x.orig, to});
+    list.splice(i, 1); closeModal(); renderSettings(); },
+  cancelsettings(){ state.draft = null; renderSettings(); },
+  savesettings: applySettings
+};
+document.addEventListener("click", e=>{ const t = e.target.closest("[data-act]"); if(t && H[t.dataset.act]){ e.preventDefault(); H[t.dataset.act](t, e); } });
+document.addEventListener("input", e=>{
+  const t = e.target; if(t.id === "q"){ state.f.q = t.value; renderGrid(); }
+  if(t.dataset.cr !== undefined){ state.drawer.rows[+t.dataset.cr][t.dataset.k] = t.value; if(t.dataset.k === "revenue") feeLine(); }
+  if(t.id === "m-rev") feeLine();
+});
+document.addEventListener("change", async e=>{
+  const t = e.target, d = t.dataset;
+  if(d.flt){ if(d.flt === "month") state.month = t.value; else if(d.flt === "todo") state.f.todo = t.checked; else if(d.flt === "showDone"){ state.showDone = t.checked; return renderTodo(); } else if(d.flt === "todoCsm"){ state.todoCsm = t.value; return renderTodo(); } else state.f[d.flt] = t.value; return renderGrid(); }
+  if(d.dr){ state.draft[d.dr === "ch" ? "channels" : "areas"][+d.i][d.k] = t.value; return; }
+  if(d.cell){ const h = byId(d.h), f = d.cell, val = t.value.trim() === "" ? "" : num(t.value);
+    await guard(()=>mutateResults(h, state.month, p=>{ if(f === "rev") p.totalRevenue = val; else if(f === "bk") p.totalBookings = val; else { p.rows = p.rows || []; if(!p.rows.length) p.rows.push({campaign:"Paid (total)", channel:"Paid", spend:"", traffic:"", bookings:"", revenue:""}); p.rows[0][{pbk:"bookings", prev:"revenue", spend:"spend"}[f]] = val; } })); return renderGrid(); }
+  if(d.rep){ const h = byId(d.rep), lab = d.m || state.month; await guard(()=>mutateRecord(h, r=>{ r.hub.reports = Object.assign({}, r.hub.reports, {[lab]:t.value}); })); return; }
+  if(d.prof){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ r.sections.hotelData.fields[d.prof] = t.value.trim(); })); if(d.prof === "name") await guard(()=>mutate("dmh-hotel-index", [], ix=>{ const x = ix.find(i=>i.id === h.id); if(x) x.name = t.value.trim(); })); return; }
+  if(d.hub){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ r.hub[d.hub] = t.value.trim(); })); return; }
+  if(d.fee){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ const f = Object.assign({}, r.hub.fee || (tariff(h) || {})); delete f.derived; if(d.fee === "type"){ if(!t.value){ delete r.hub.fee; r.hub.fee = {type:""}; return; } f.type = t.value; } else f[d.fee] = num(t.value); r.hub.fee = f; })); return render(); }
+  if(d.tdnote){ const h = byId(d.h); await guard(()=>mutateRecord(h, r=>{ const x = (r.hub.todo || []).find(i=>i.id === d.tdnote); if(x) x.note = t.value; })); return; }
+  if(d.td){ const h = byId(d.h || state.hotel); await guard(()=>mutateRecord(h, r=>{ const x = (r.hub.todo || []).find(i=>i.id === d.td); if(x) x.done = t.checked; })); return render(); }
+  if(d.wf){ const card = t.closest(".work").dataset.card, h = byId(state.hotel);
+    await guard(()=>mutateProgress(h, p=>{ const c = p.cards.find(x=>x.id === card); if(!c) return; if(d.wf === "title") c.title = t.value; else if(d.wf === "notes") c.notes = t.value; else if(d.wf === "period") c.period = t.value; else if(d.wf === "status") c.stage = stageOf(t.value); else if(d.wf === "area") c.tags = tagsOf(t.value); }));
+    if(["status", "area"].includes(d.wf)) render(); return; }
+  if(t.id === "repMonth") state.month = t.value;
+});
+async function addImages(cardId, files){
+  const h = byId(state.hotel); if(!files.length) return;
+  await guard(async ()=>{ for(const f of files){ const id = await storeImage(await compressImage(f)); await mutateProgress(h, p=>{ const c = p.cards.find(x=>x.id === cardId); if(c) (c.images = c.images || []).push({id, caption:""}); }); } });
+  state.openWork[cardId] = true; render();
+}
+document.addEventListener("paste", e=>{ const w = document.activeElement && document.activeElement.closest && document.activeElement.closest(".work"); if(!w) return; const files = [...(e.clipboardData ? e.clipboardData.files : [])].filter(f=>f.type.startsWith("image/")); if(files.length){ e.preventDefault(); addImages(w.dataset.card, files); } });
+document.addEventListener("focusin", e=>{ const t = e.target; if(t.classList && t.classList.contains("cell")){ t.value = t.dataset.raw; t.select(); } });
+document.addEventListener("focusout", e=>{ const t = e.target; if(t.classList && t.classList.contains("cell") && t.value === t.dataset.raw) t.value = t.dataset.fmt; });
+document.addEventListener("input", e=>{ const t = e.target; if(t.dataset.dr){ state.draft[t.dataset.dr === "ch" ? "channels" : "areas"][+t.dataset.i][t.dataset.k] = t.value; state.draft.err = ""; const er = $("setErr"); if(er) er.style.display = "none"; } });
+// coming back to the tab: pick up changes made in the other DMH tools
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", async ()=>{ if(document.hidden){ hiddenAt = Date.now(); return; } if(hiddenAt && Date.now() - hiddenAt > 8000 && !state.drawer && !document.activeElement.matches("input,textarea,select")){ try{ await loadAll(); render(); }catch(e){} } });
+
+(async function init(){
+  if(window.__DEMO) $("demoBanner").hidden = false;
+  try{ await loadAll(); render(); }catch(e){ app.innerHTML = `<div class="empty">⚠ ${esc(e.message)}<br><br><button class="btn" data-act="tab" data-t="settings">Open Settings</button></div>`; say(e.message, true); }
+})();
+
+</script>
+</body>
+</html>
