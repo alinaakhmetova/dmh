@@ -211,13 +211,21 @@ function tariff(h){
   const m = String(F(h, "modelType")), p = m.match(/(\d+(?:[.,]\d+)?)\s*%/);
   return p ? {type:/track/i.test(m) ? "tracked" : "all", pct:parseFloat(p[1].replace(",", ".")), derived:true} : null;
 }
-const tariffLabel = h => { const t = tariff(h); if(!t) return F(h, "modelType") || "—"; return t.type === "fixed" ? `$${intf(t.fixed)}/mo fixed` : `${t.pct}% of ${t.type === "tracked" ? "tracked" : "all"}`; };
-function feeOf(h, s){ const t = tariff(h); if(!t || !s) return null; if(t.type === "fixed") return num(t.fixed); const base = t.type === "tracked" ? s.paidRev : num(s.rev); return (t.type === "tracked" ? s.rows.length : has(s.rev)) ? base * num(t.pct) / 100 : null; }
+const tariffLabel = h => { const t = tariff(h); if(!t || !t.type) return F(h, "modelType") || "—"; if(t.type !== "fixed" && !has(t.pct)) return "— set %"; return t.type === "fixed" ? `$${intf(t.fixed)}/mo fixed` : `${t.pct}% of ${t.type === "tracked" ? "tracked" : "all"}`; };
+function feeOf(h, s){ const t = tariff(h); if(!t || !t.type || !s) return null; if(t.type === "fixed") return has(t.fixed) ? num(t.fixed) : null; if(!has(t.pct)) return null; const base = t.type === "tracked" ? s.paidRev : num(s.rev); return (t.type === "tracked" ? s.rows.length : has(s.rev)) ? base * num(t.pct) / 100 : null; }
 
 /* ---- saving: always read the latest record first, change only what we touch ---- */
-async function mutate(key, fallback, fn){ let latest = await jget(key); if(!latest) latest = fallback; fn(latest); await stSet(key, JSON.stringify(latest)); return latest; }
+const chains = new Map(), qlen = new Map();
+const enqueue = (key, job) => { qlen.set(key, (qlen.get(key) || 0) + 1); const prev = chains.get(key) || Promise.resolve(); const next = prev.catch(()=>{}).then(job).finally(()=>qlen.set(key, qlen.get(key) - 1)); chains.set(key, next); return next; };
+const idle = key => !(qlen.get(key) > 0);
+async function mutate(key, fallback, fn){ return enqueue(key, async ()=>{ let latest = await jget(key); if(!latest) latest = fallback; fn(latest); await stSet(key, JSON.stringify(latest)); return latest; }); }
 async function mutateResults(h, label, fn){ h.results = await mutate(`dmh-results:${h.id}`, h.results, r=>{ r.periods = r.periods || []; let p = r.periods.find(x=>samePeriod(x.period, label)); if(!p){ p = blankPeriod(labelOf(parsePeriod(label))); r.periods.push(p); } fn(p); }); normalize(h); }
-async function mutateRecord(h, fn){ h.rec = await mutate(`dmh-hotel:${h.id}`, h.rec, r=>{ r.sections = r.sections || {}; r.sections.hotelData = r.sections.hotelData || {fields:{}}; r.hub = r.hub || {}; fn(r); }); normalize(h); }
+async function mutateRecord(h, fn){
+  const key = `dmh-hotel:${h.id}`, before = JSON.parse(JSON.stringify(h.rec)), apply = r=>{ r.sections = r.sections || {}; r.sections.hotelData = r.sections.hotelData || {fields:{}}; r.hub = r.hub || {}; fn(r); };
+  apply(h.rec); normalize(h);                                              // the change is visible at once…
+  const latest = await mutate(key, before, apply);                        // …and written after the previous writes, on top of the latest saved version
+  if(idle(key)){ h.rec = latest; normalize(h); }                          // only the last write may replace what is on screen
+}
 async function mutateProgress(h, fn){ h.progress = await mutate(`dmh-progress:${h.id}`, h.progress, p=>{ p.cards = p.cards || []; fn(p); }); normalize(h); }
 const sv = {pending:0, dirty:0, last:"", err:"", retry:null}, timers = new Map();
 const nowT = () => new Date().toLocaleTimeString("en-GB", {hour:"2-digit", minute:"2-digit"});
@@ -506,9 +514,9 @@ const H = {
     hotels.sort((a, b)=>F(a, "name").localeCompare(F(b, "name"))); render();
   },
   toggletd(t){ state.openTd[t.dataset.id] = !state.openTd[t.dataset.id]; render(); },
-  async chan(t){ const h = byId(state.hotel), order = ["", "planned", "live", "paused"], cur = h.rec.hub.channels[t.dataset.k] || "", nx = order[(order.indexOf(cur) + 1) % 4]; await guard(()=>mutateRecord(h, r=>{ if(nx) r.hub.channels = Object.assign({}, r.hub.channels, {[t.dataset.k]:nx}); else { const c = Object.assign({}, r.hub.channels); delete c[t.dataset.k]; r.hub.channels = c; } })); render(); },
-  async addtodo(t){ const all = !!t.dataset.all, h = byId(all ? $("tdHotel").value : state.hotel), text = $("tdText").value.trim(); if(!text) return; state.draftAdd = false; const due = $("tdDue").value; await guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).concat([{id:uid("t"), text, due, done:false}]); })); render(); },
-  async deltodo(t){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).filter(x=>x.id !== t.dataset.id); })); render(); },
+  async chan(t){ const h = byId(state.hotel), order = ["", "planned", "live", "paused"], cur = h.rec.hub.channels[t.dataset.k] || "", nx = order[(order.indexOf(cur) + 1) % 4]; const pr = guard(()=>mutateRecord(h, r=>{ if(nx) r.hub.channels = Object.assign({}, r.hub.channels, {[t.dataset.k]:nx}); else { const c = Object.assign({}, r.hub.channels); delete c[t.dataset.k]; r.hub.channels = c; } })); render(); await pr; },
+  async addtodo(t){ const all = !!t.dataset.all, h = byId(all ? $("tdHotel").value : state.hotel), text = $("tdText").value.trim(); if(!text) return; state.draftAdd = false; const due = $("tdDue").value, nid = uid("t"); const pr = guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).concat([{id:nid, text, due, done:false}]); })); render(); await pr; },
+  async deltodo(t){ const h = byId(state.hotel); const pr = guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).filter(x=>x.id !== t.dataset.id); })); render(); await pr; },
   async addwork(){
     const h = byId(state.hotel), title = $("wTitle").value.trim(); if(!title) return; state.draftAdd = false; const area = $("wArea").value, st = $("wStatus").value, per = st === "planned" ? nextMonth(state.month) : state.month, c = {id:uid("w"), title, tags:tagsOf(area), period:per, stage:stageOf(st), notes:"", subtasks:[], images:[]};
     state.openWork[c.id] = true; await guard(()=>mutateProgress(h, p=>{ p.cards.push(c); })); render();
@@ -559,9 +567,15 @@ async function commitField(t, fromInput){
   if(d.prof){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ r.sections.hotelData.fields[d.prof] = t.value.trim(); })); if(d.prof === "name") await guard(()=>mutate("dmh-hotel-index", [], ix=>{ const x = ix.find(i=>i.id === h.id); if(x) x.name = t.value.trim(); })); return; }
   if(d.col){ const hid = hiddenCols(); if(t.checked) hid.delete(d.col); else hid.add(d.col); localStorage.setItem("dmh-hub-cols", JSON.stringify([...hid])); return renderGrid(); }
   if(d.hub){ const h = byId(state.hotel); const v = t.value.trim(); if(d.hub === "num" && v && hotels.some(x=>x.id !== h.id && exId(x) === v)){ say("Another hotel already has this Exely ID", true); t.value = h.rec.hub.num || ""; return; } await guard(()=>mutateRecord(h, r=>{ r.hub[d.hub] = v; })); if(d.hub === "num" && !fromInput) render(); return; }
-  if(d.fee){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ const f = Object.assign({}, r.hub.fee || (tariff(h) || {})); delete f.derived; if(d.fee === "type"){ if(!t.value){ delete r.hub.fee; r.hub.fee = {type:""}; return; } f.type = t.value; } else f[d.fee] = num(t.value); r.hub.fee = f; })); return render(); }
+  if(d.fee){
+    const h = byId(state.hotel), sel = document.querySelector("[data-fee=type]"), amt = document.querySelector("[data-fee=pct],[data-fee=fixed]"), type = sel.value;
+    const prev = (tariff(h) || {}).type || "", unitChanged = (type === "fixed") !== (prev === "fixed");
+    const raw = (d.fee === "type" && unitChanged) ? "" : (amt ? amt.value.trim() : ""), val = raw === "" ? "" : num(raw);
+    const fee = !type ? {type:""} : (type === "fixed" ? {type, fixed:val} : {type, pct:val});
+    h.rec.hub.fee = fee; if(d.fee === "type") render();                      // show it immediately
+    await guard(()=>mutateRecord(h, r=>{ r.hub.fee = fee; })); return; }
   if(d.tdnote){ const h = byId(d.h); await guard(()=>mutateRecord(h, r=>{ const x = (r.hub.todo || []).find(i=>i.id === d.tdnote); if(x) x.note = t.value; })); return; }
-  if(d.td){ const h = byId(d.h || state.hotel); await guard(()=>mutateRecord(h, r=>{ const x = (r.hub.todo || []).find(i=>i.id === d.td); if(x) x.done = t.checked; })); return render(); }
+  if(d.td){ const h = byId(d.h || state.hotel); const pr = guard(()=>mutateRecord(h, r=>{ const x = (r.hub.todo || []).find(i=>i.id === d.td); if(x) x.done = t.checked; })); render(); return pr; }
   if(d.wf){ const card = t.closest(".work").dataset.card, h = byId(state.hotel);
     await guard(()=>mutateProgress(h, p=>{ const c = p.cards.find(x=>x.id === card); if(!c) return; if(d.wf === "title") c.title = t.value; else if(d.wf === "notes") c.notes = t.value; else if(d.wf === "period") c.period = t.value; else if(d.wf === "status") c.stage = stageOf(t.value); else if(d.wf === "area") c.tags = tagsOf(t.value); }));
     if(["status", "area"].includes(d.wf)) render(); return; }
