@@ -15,7 +15,7 @@ button,input,select,textarea{font:inherit;color:inherit;}
 .top nav{display:flex;gap:4px;} .top nav button{background:none;border:0;color:#d9c8ea;padding:7px 14px;border-radius:7px;cursor:pointer;font-weight:500;}
 .top nav button.on{background:rgba(255,255,255,.14);color:#fff;} .top nav button:hover{background:rgba(255,255,255,.08);}
 .badge{background:var(--accent);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:5px;}
-#status{margin-left:auto;font-size:12px;color:#d9c8ea;} #status.err{color:#ffb4a8;}
+#saveInd{margin-left:auto;font-size:12px;color:#d9c8ea;white-space:nowrap;} #saveInd.ok{color:#9be3bb;} #saveInd.warn{color:#ffd9a0;} #saveInd.bad{color:#ffb4a8;font-weight:600;} #saveInd a{color:#fff;text-decoration:underline;cursor:pointer;margin-left:6px;} #status{font-size:12px;color:#d9c8ea;} #status.err{color:#ffb4a8;}
 .demo{background:var(--accent-soft);color:#7a2c10;padding:7px 22px;font-size:12px;border-bottom:1px solid #f3c9b6;}
 main{padding:18px 22px 60px;max-width:1700px;margin:0 auto;}
 h1{font:600 22px 'Fraunces',serif;margin:0 0 4px;} h2{font:600 15px 'Fraunces',serif;margin:0 0 10px;color:var(--brand);}
@@ -86,7 +86,7 @@ table.mini{width:100%;border-collapse:collapse;} .mini th{font:600 10.5px 'IBM P
 <body>
 <header class="top"><div class="logo">EXELY · DMH HUB</div>
 <nav id="tabs"><button data-act="tab" data-t="hotels" class="on">Hotels</button><button data-act="tab" data-t="todo">Notes<span class="badge" id="todoBadge" hidden></span></button><button data-act="tab" data-t="settings">Settings</button></nav>
-<div id="status"></div></header>
+<div id="saveInd"></div><div id="status"></div></header>
 <div id="demoBanner" class="demo" hidden>Demo data (not saved anywhere). The hub reads your real hotels, results and activities from the same Google Sheet as the other DMH tools.</div>
 <main id="app"><div class="empty">Loading…</div></main>
 <div id="modal" class="modal" hidden></div>
@@ -166,7 +166,7 @@ let hotels = [];
 const COLS = [{k:"id", n:"ID"}, {k:"hotel", n:"Hotel", fixed:true}, {k:"tariff", n:"Tariff"}, {k:"csm", n:"CSM"}, {k:"channels", n:"Channels"}, {k:"notes", n:"Notes"},
   {k:"rev", n:"Revenue", num:1, m:1}, {k:"bk", n:"Bookings", num:1, m:1}, {k:"pbk", n:"Paid bookings", num:1, m:1}, {k:"prev", n:"Paid revenue", num:1, m:1}, {k:"spend", n:"Ad spend", num:1, m:1}, {k:"fee", n:"Our fee", num:1, m:1}, {k:"rep", n:"Report", m:1}];
 const hiddenCols = () => { try{ return new Set(JSON.parse(localStorage.getItem("dmh-hub-cols") || "[]")); }catch(e){ return new Set(); } };
-const state = {tab:"hotels", hotel:null, month:null, f:{q:"", country:"", todo:false}, showDone:false, openWork:{}, openTd:{}};
+const state = {draftAdd:false, tab:"hotels", hotel:null, month:null, f:{q:"", country:"", todo:false}, showDone:false, openWork:{}, openTd:{}};
 const byId = id => hotels.find(h=>h.id === id);
 const F = (h, k) => h.rec.sections.hotelData.fields[k] || "";
 const blankPeriod = label => ({period:label, rows:[], seasonalNote:"", visibilityMetrics:[], totalWebsiteTraffic:"", totalBeTraffic:"", totalBookings:"", totalRevenue:"", yoyRevenue:"", yoyTraffic:"", yoyBookings:"", yoyForm:"", channels:[], gsc:{clicks:"", impressions:"", ctr:"", position:"", days:""}});
@@ -219,7 +219,28 @@ async function mutate(key, fallback, fn){ let latest = await jget(key); if(!late
 async function mutateResults(h, label, fn){ h.results = await mutate(`dmh-results:${h.id}`, h.results, r=>{ r.periods = r.periods || []; let p = r.periods.find(x=>samePeriod(x.period, label)); if(!p){ p = blankPeriod(labelOf(parsePeriod(label))); r.periods.push(p); } fn(p); }); normalize(h); }
 async function mutateRecord(h, fn){ h.rec = await mutate(`dmh-hotel:${h.id}`, h.rec, r=>{ r.sections = r.sections || {}; r.sections.hotelData = r.sections.hotelData || {fields:{}}; r.hub = r.hub || {}; fn(r); }); normalize(h); }
 async function mutateProgress(h, fn){ h.progress = await mutate(`dmh-progress:${h.id}`, h.progress, p=>{ p.cards = p.cards || []; fn(p); }); normalize(h); }
-const guard = async fn => { try{ say("Saving…"); await fn(); say("Saved ✓"); }catch(e){ say("⚠ " + e.message, true); } };
+const sv = {pending:0, dirty:0, last:"", err:"", retry:null}, timers = new Map();
+const nowT = () => new Date().toLocaleTimeString("en-GB", {hour:"2-digit", minute:"2-digit"});
+function paintSave(){
+  const el = $("saveInd"); if(!el) return; let t = "", c = "";
+  if(sv.err){ t = `⚠ Not saved — ${esc(sv.err)} <a data-act="retrysave">Retry</a>`; c = "bad"; }
+  else if(sv.pending){ t = "Saving…"; }
+  else if(sv.dirty){ t = "Unsaved changes…"; c = "warn"; }
+  else if(state.draftAdd){ t = "✎ Not added yet — press Enter or click Add"; c = "warn"; }
+  else if(sv.last){ t = `✓ All changes saved ${sv.last}`; c = "ok"; }
+  el.className = c; el.innerHTML = t;
+}
+async function guard(fn){
+  sv.pending++; paintSave();
+  try{ await fn(); sv.err = ""; sv.last = nowT(); sv.retry = null; }
+  catch(e){ sv.err = e.message; sv.retry = fn; }
+  finally{ sv.pending--; paintSave(); }
+}
+function schedule(t){   // typing: save about a second after the last keystroke, without waiting for the field to lose focus
+  if(timers.has(t)) clearTimeout(timers.get(t));
+  timers.set(t, setTimeout(()=>{ timers.delete(t); sv.dirty = timers.size; commitField(t, true); }, 800)); sv.dirty = timers.size; paintSave();
+}
+window.addEventListener("beforeunload", e=>{ if(sv.pending || sv.dirty || sv.err || state.draftAdd){ e.preventDefault(); e.returnValue = ""; } });
 
 /* =============== work log (= the activity cards the report reads) =============== */
 const STATUSES = [["progress","In progress"],["planned","Planned"],["done","Done"],["idea","Idea"]];
@@ -256,7 +277,6 @@ function renderHotels(){
   <div class="bar">
     <input type="search" id="q" placeholder="Search name, ID, country…" value="${esc(state.f.q)}">
     <select data-flt="country"><option value="">All countries</option>${countries.map(c=>`<option ${state.f.country === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>
-    <label class="chk"><input type="checkbox" data-flt="todo" ${state.f.todo ? "checked" : ""}> with open notes</label>
     <span style="margin-left:auto"></span><span style="position:relative"><button class="btn sec" data-act="colmenu">Columns ▾</button><div id="colMenu" class="menu" hidden>${COLS.filter(c=>!c.fixed).map(c=>`<label class="chk"><input type="checkbox" data-col="${c.k}" ${hiddenCols().has(c.k) ? "" : "checked"}> ${c.n}</label>`).join("")}</div></span><button class="btn" data-act="addhotel">+ Add hotel</button>
   </div><div id="gridHost"></div>`;
   renderGrid();
@@ -311,7 +331,7 @@ function renderHotel(){
   const grp = (st, title) => { let list = items.filter(x=>x.st === st); if(!list.length) return ""; const hide = st === "done" && !state.showDone && list.length > 4; if(hide) list = list.slice(-4); return `<div class="grp-title">${title} · ${items.filter(x=>x.st === st).length}</div>${list.map(x=>workHtml(h, x.c)).join("")}${hide ? `<button class="btn ghost sm" data-act="showdone">Show all ${items.filter(x=>x.st === "done").length} done</button>` : ""}`; };
   const rows = h.results.periods.slice().sort((a, b)=>(parsePeriod(b.period) || 0) - (parsePeriod(a.period) || 0)).slice(0, 12).map(p=>{ const s = snap(h, p.period), fee = feeOf(h, s), lab = labelOf(parsePeriod(p.period)); return `<tr><td>${esc(p.period)}</td><td>${money(s.rev)}</td><td>${intf(s.bk)}</td><td>${intf(s.form)}</td><td>${s.rows.length ? intf(s.paidBk) : "—"}</td><td>${s.rows.length ? money(s.paidRev) : "—"}</td><td>${s.spend ? money(s.spend) : "—"}</td><td>${fee === null ? "—" : money(fee)}</td><td><select class="mini" data-rep="${esc(h.id)}" data-m="${esc(lab)}"><option value="">—</option>${["draft", "ready", "sent"].map(x=>`<option value="${x}" ${hub.reports[lab] === x ? "selected" : ""}>${x}</option>`).join("")}</select></td><td><button class="btn sec sm" data-act="month" data-h="${esc(h.id)}" data-m="${esc(p.period)}">Edit</button> <button class="btn ghost sm" data-act="report" data-h="${esc(h.id)}" data-m="${esc(p.period)}">Report ↗</button></td></tr>`; }).join("");
   app.innerHTML = `<div class="bar"><button class="btn sec sm" data-act="back">← Hotels</button><h1 style="margin:0">${esc(dispName(h))}</h1><span class="id" title="technical key: ${esc(h.id)}">${esc(exId(h)) || ""}</span>
-      <span style="margin-left:auto"></span><select class="mini" id="repMonth">${monthsFor(h).map(m=>`<option ${m === state.month ? "selected" : ""}>${esc(m)}</option>`).join("")}</select><button class="btn" data-act="report" data-h="${esc(h.id)}" data-pick="1">Open report ↗</button><button class="btn bad sm" data-act="deletehotel">Delete hotel</button></div>
+      <span style="margin-left:auto"></span><button class="btn sec" data-act="saveall" title="Everything is also saved automatically — this just forces it and confirms">Save</button><select class="mini" id="repMonth">${monthsFor(h).map(m=>`<option ${m === state.month ? "selected" : ""}>${esc(m)}</option>`).join("")}</select><button class="btn" data-act="report" data-h="${esc(h.id)}" data-pick="1">Open report ↗</button><button class="btn bad sm" data-act="deletehotel">Delete hotel</button></div>
   <div class="cols"><div>
     <div class="card"><h2>Hotel</h2><div class="fields">
       <div><label>Name</label><input data-prof="name" value="${hd("name")}"></div><div><label>Exely ID (number)</label><input data-hub="num" value="${esc(h.rec.hub.num || (tail(F(h, "name")) || {}).num || "")}" placeholder="e.g. 504673"></div>
@@ -321,7 +341,7 @@ function renderHotel(){
       <div><label>Tariff</label><select data-fee="type"><option value="">— not set —</option><option value="all" ${t.type === "all" ? "selected" : ""}>% of all bookings</option><option value="tracked" ${t.type === "tracked" ? "selected" : ""}>% of tracked bookings</option><option value="fixed" ${t.type === "fixed" ? "selected" : ""}>Fixed per month</option></select></div>
       <div><label>${t.type === "fixed" ? "Amount, $" : "Percent, %"}</label><input data-fee="${t.type === "fixed" ? "fixed" : "pct"}" value="${esc(t.type === "fixed" ? t.fixed : t.pct)}"></div>
       <div class="full"><label>Notes</label><textarea data-hub="note" rows="2">${esc(hub.note || "")}</textarea></div></div>
-      <div class="feehint">The number from the name is shown in the ID column and hidden from the name here; Settings → “Move numbers out of names” cleans the saved names. “Tracked” = revenue from the campaign rows entered for the month. Model note from the old card: ${esc(F(h, "modelType")) || "—"}.</div></div>
+</div>
     <div class="card"><h2>Notes</h2>${open.map(x=>tdHtml(h, x, true)).join("") || '<div class="muted">No open notes.</div>'}
       <div class="addrow"><input id="tdText" placeholder="Add: access requested, waiting for the hotel, legal…"><input id="tdDue" type="date" style="flex:none;width:140px"><button class="btn sm" data-act="addtodo">Add</button></div></div>
     <div class="card"><h2>Channels</h2><div class="chips">${CFG.channels.map(c=>{ const st = hub.channels[c.k] || ""; return `<button class="chip ${st || "off"}" data-act="chan" data-k="${c.k}" title="Click: planned → live → paused → off"><i></i>${esc(c.n)}${st ? " · " + st : ""}</button>`; }).join("")}</div></div>
@@ -384,7 +404,7 @@ function tdHtml(h, x, withDelete){
     ${withDelete ? "" : `<a class="hname sm" data-act="hotel" data-h="${esc(h.id)}" style="flex:none">${esc(F(h, "name"))}</a>`}
     ${x.due ? `<span class="due ${!x.done && x.due < today ? "late" : ""}" style="flex:none;min-width:80px;text-align:right">${esc(x.due)}</span>` : ""}
     ${withDelete ? `<button class="btn ghost sm" data-act="deltodo" data-id="${x.id}">✕</button>` : ""}</div>
-    ${open ? `<textarea class="inp" data-tdnote="${x.id}" data-h="${esc(h.id)}" rows="3" placeholder="Details, questions, links…" style="margin:2px 0 8px 26px;width:calc(100% - 26px)">${esc(x.note || "")}</textarea>` : ""}</div>`;
+    ${open ? `<textarea class="inp" data-tdnote="${x.id}" data-h="${esc(h.id)}" rows="3" placeholder="Details, questions, links…" style="margin:2px 0 4px 26px;width:calc(100% - 26px)">${esc(x.note || "")}</textarea><div style="margin:0 0 8px 26px"><button class="btn sec sm" data-act="saveall">Save note</button> <span class="muted sm">saved automatically while you type</span></div>` : ""}</div>`;
 }
 function renderTodo(){
   const csms = [...new Set(hotels.map(h=>F(h, "csm")).filter(Boolean))].sort(), today = new Date().toISOString().slice(0, 10), csm = state.todoCsm || "";
@@ -459,6 +479,13 @@ const H = {
   addcamp(){ state.drawer.rows.push({}); drawCamps(); }, delcamp(t){ state.drawer.rows.splice(+t.dataset.i, 1); drawCamps(); feeLine(); },
   report(t){ const h = byId(t.dataset.h); const m = t.dataset.pick ? $("repMonth").value : (t.dataset.m || state.month); window.open(`${CFG.reportUrl}#hotel=${encodeURIComponent(h.id)}&period=${encodeURIComponent(m)}`, "_blank"); },
   showdone(){ state.showDone = true; render(); },
+  retrysave(){ if(sv.retry){ const f = sv.retry; sv.err = ""; guard(f); } },
+  async saveall(){
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    for(const t of [...timers.keys()]) await commitField(t, true);
+    if(state.draftAdd){ say("You typed a note that is not added yet — press Enter or click Add"); return paintSave(); }
+    if(!sv.err){ sv.last = nowT(); } paintSave(); say("Saved ✓");
+  },
   colmenu(){ const m = $("colMenu"); m.hidden = !m.hidden; },
   deletehotel(){
     const h = byId(state.hotel); $("modal").hidden = false;
@@ -480,10 +507,10 @@ const H = {
   },
   toggletd(t){ state.openTd[t.dataset.id] = !state.openTd[t.dataset.id]; render(); },
   async chan(t){ const h = byId(state.hotel), order = ["", "planned", "live", "paused"], cur = h.rec.hub.channels[t.dataset.k] || "", nx = order[(order.indexOf(cur) + 1) % 4]; await guard(()=>mutateRecord(h, r=>{ if(nx) r.hub.channels = Object.assign({}, r.hub.channels, {[t.dataset.k]:nx}); else { const c = Object.assign({}, r.hub.channels); delete c[t.dataset.k]; r.hub.channels = c; } })); render(); },
-  async addtodo(t){ const all = !!t.dataset.all, h = byId(all ? $("tdHotel").value : state.hotel), text = $("tdText").value.trim(); if(!text) return; const due = $("tdDue").value; await guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).concat([{id:uid("t"), text, due, done:false}]); })); render(); },
+  async addtodo(t){ const all = !!t.dataset.all, h = byId(all ? $("tdHotel").value : state.hotel), text = $("tdText").value.trim(); if(!text) return; state.draftAdd = false; const due = $("tdDue").value; await guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).concat([{id:uid("t"), text, due, done:false}]); })); render(); },
   async deltodo(t){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).filter(x=>x.id !== t.dataset.id); })); render(); },
   async addwork(){
-    const h = byId(state.hotel), title = $("wTitle").value.trim(); if(!title) return; const area = $("wArea").value, st = $("wStatus").value, per = st === "planned" ? nextMonth(state.month) : state.month, c = {id:uid("w"), title, tags:tagsOf(area), period:per, stage:stageOf(st), notes:"", subtasks:[], images:[]};
+    const h = byId(state.hotel), title = $("wTitle").value.trim(); if(!title) return; state.draftAdd = false; const area = $("wArea").value, st = $("wStatus").value, per = st === "planned" ? nextMonth(state.month) : state.month, c = {id:uid("w"), title, tags:tagsOf(area), period:per, stage:stageOf(st), notes:"", subtasks:[], images:[]};
     state.openWork[c.id] = true; await guard(()=>mutateProgress(h, p=>{ p.cards.push(c); })); render();
   },
   togglework(t){ state.openWork[t.dataset.id] = !state.openWork[t.dataset.id]; t.closest(".work").classList.toggle("open"); },
@@ -511,12 +538,19 @@ const H = {
 };
 document.addEventListener("click", e=>{ const t = e.target.closest("[data-act]"); if(t && H[t.dataset.act]){ e.preventDefault(); H[t.dataset.act](t, e); } const m = $("colMenu"); if(m && !m.hidden && !e.target.closest("#colMenu") && !(t && t.dataset.act === "colmenu")) m.hidden = true; });
 document.addEventListener("input", e=>{
+  const t = e.target, d = t.dataset;
+  if(d.tdnote !== undefined || d.prof !== undefined || d.hub !== undefined || d.wf === "title" || d.wf === "notes") schedule(t);
+  if(t.id === "tdText" || t.id === "wTitle"){ state.draftAdd = t.value.trim() !== ""; paintSave(); }
+});
+document.addEventListener("keydown", e=>{ if(e.key === "Enter" && !e.shiftKey && (e.target.id === "tdText" || e.target.id === "wTitle")){ e.preventDefault(); const b = document.querySelector(e.target.id === "tdText" ? "[data-act=addtodo]" : "[data-act=addwork]"); if(b) b.click(); } });
+document.addEventListener("input", e=>{
   const t = e.target; if(t.id === "q"){ state.f.q = t.value; renderGrid(); }
   if(t.dataset.cr !== undefined){ state.drawer.rows[+t.dataset.cr][t.dataset.k] = t.value; if(t.dataset.k === "revenue") feeLine(); }
   if(t.id === "m-rev") feeLine();
 });
-document.addEventListener("change", async e=>{
-  const t = e.target, d = t.dataset;
+async function commitField(t, fromInput){
+  if(timers.has(t)){ clearTimeout(timers.get(t)); timers.delete(t); sv.dirty = timers.size; }
+  const d = t.dataset;
   if(d.flt){ if(d.flt === "month") state.month = t.value; else if(d.flt === "todo") state.f.todo = t.checked; else if(d.flt === "showDone"){ state.showDone = t.checked; return renderTodo(); } else if(d.flt === "todoCsm"){ state.todoCsm = t.value; return renderTodo(); } else state.f[d.flt] = t.value; return renderGrid(); }
   if(d.dr){ state.draft[d.dr === "ch" ? "channels" : "areas"][+d.i][d.k] = t.value; return; }
   if(d.cell){ const h = byId(d.h), f = d.cell, val = t.value.trim() === "" ? "" : num(t.value);
@@ -524,7 +558,7 @@ document.addEventListener("change", async e=>{
   if(d.rep){ const h = byId(d.rep), lab = d.m || state.month; await guard(()=>mutateRecord(h, r=>{ r.hub.reports = Object.assign({}, r.hub.reports, {[lab]:t.value}); })); return; }
   if(d.prof){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ r.sections.hotelData.fields[d.prof] = t.value.trim(); })); if(d.prof === "name") await guard(()=>mutate("dmh-hotel-index", [], ix=>{ const x = ix.find(i=>i.id === h.id); if(x) x.name = t.value.trim(); })); return; }
   if(d.col){ const hid = hiddenCols(); if(t.checked) hid.delete(d.col); else hid.add(d.col); localStorage.setItem("dmh-hub-cols", JSON.stringify([...hid])); return renderGrid(); }
-  if(d.hub){ const h = byId(state.hotel); const v = t.value.trim(); if(d.hub === "num" && v && hotels.some(x=>x.id !== h.id && exId(x) === v)){ say("Another hotel already has this Exely ID", true); t.value = h.rec.hub.num || ""; return; } await guard(()=>mutateRecord(h, r=>{ r.hub[d.hub] = v; })); if(d.hub === "num") render(); return; }
+  if(d.hub){ const h = byId(state.hotel); const v = t.value.trim(); if(d.hub === "num" && v && hotels.some(x=>x.id !== h.id && exId(x) === v)){ say("Another hotel already has this Exely ID", true); t.value = h.rec.hub.num || ""; return; } await guard(()=>mutateRecord(h, r=>{ r.hub[d.hub] = v; })); if(d.hub === "num" && !fromInput) render(); return; }
   if(d.fee){ const h = byId(state.hotel); await guard(()=>mutateRecord(h, r=>{ const f = Object.assign({}, r.hub.fee || (tariff(h) || {})); delete f.derived; if(d.fee === "type"){ if(!t.value){ delete r.hub.fee; r.hub.fee = {type:""}; return; } f.type = t.value; } else f[d.fee] = num(t.value); r.hub.fee = f; })); return render(); }
   if(d.tdnote){ const h = byId(d.h); await guard(()=>mutateRecord(h, r=>{ const x = (r.hub.todo || []).find(i=>i.id === d.tdnote); if(x) x.note = t.value; })); return; }
   if(d.td){ const h = byId(d.h || state.hotel); await guard(()=>mutateRecord(h, r=>{ const x = (r.hub.todo || []).find(i=>i.id === d.td); if(x) x.done = t.checked; })); return render(); }
@@ -532,7 +566,8 @@ document.addEventListener("change", async e=>{
     await guard(()=>mutateProgress(h, p=>{ const c = p.cards.find(x=>x.id === card); if(!c) return; if(d.wf === "title") c.title = t.value; else if(d.wf === "notes") c.notes = t.value; else if(d.wf === "period") c.period = t.value; else if(d.wf === "status") c.stage = stageOf(t.value); else if(d.wf === "area") c.tags = tagsOf(t.value); }));
     if(["status", "area"].includes(d.wf)) render(); return; }
   if(t.id === "repMonth") state.month = t.value;
-});
+}
+document.addEventListener("change", e=>commitField(e.target));
 async function addImages(cardId, files){
   const h = byId(state.hotel); if(!files.length) return;
   await guard(async ()=>{ for(const f of files){ const id = await storeImage(await compressImage(f)); await mutateProgress(h, p=>{ const c = p.cards.find(x=>x.id === cardId); if(c) (c.images = c.images || []).push({id, caption:""}); }); } });
@@ -547,6 +582,7 @@ let hiddenAt = 0;
 document.addEventListener("visibilitychange", async ()=>{ if(document.hidden){ hiddenAt = Date.now(); return; } if(hiddenAt && Date.now() - hiddenAt > 8000 && !state.drawer && !document.activeElement.matches("input,textarea,select")){ try{ await loadAll(); render(); }catch(e){} } });
 
 (async function init(){
+  paintSave();
   if(window.__DEMO) $("demoBanner").hidden = false;
   try{ await loadAll(); render(); }catch(e){ app.innerHTML = `<div class="empty">⚠ ${esc(e.message)}<br><br><button class="btn" data-act="tab" data-t="settings">Open Settings</button></div>`; say(e.message, true); }
 })();
