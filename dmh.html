@@ -84,7 +84,7 @@ table.mini{width:100%;border-collapse:collapse;} .mini th{font:600 10.5px 'IBM P
 </style>
 </head>
 <body>
-<header class="top"><div class="logo">EXELY · DMH </div>
+<header class="top"><div class="logo">EXELY · DMH HUB</div>
 <nav id="tabs"><button data-act="tab" data-t="hotels" class="on">Hotels</button><button data-act="tab" data-t="todo">Notes<span class="badge" id="todoBadge" hidden></span></button><button data-act="tab" data-t="settings">Settings</button></nav>
 <div id="saveInd"></div><div id="status"></div></header>
 <div id="demoBanner" class="demo" hidden>Demo data (not saved anywhere). The hub reads your real hotels, results and activities from the same Google Sheet as the other DMH tools.</div>
@@ -192,8 +192,11 @@ async function loadAll(){
   say("");
 }
 function allMonths(){
-  const set = new Map(); hotels.forEach(h=>h.results.periods.forEach(p=>{ const t = parsePeriod(p.period); if(t !== null) set.set(t, labelOf(t)); }));
-  const now = new Date(); const cur = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); set.set(cur, labelOf(cur));
+  const now = new Date(), cur = new Date(now.getFullYear(), now.getMonth(), 1), set = new Map();
+  let lo = new Date(cur.getFullYear(), cur.getMonth() - 5, 1).getTime();                         // at least the last 6 months
+  hotels.forEach(h=>h.results.periods.forEach(p=>{ const t = parsePeriod(p.period); if(t !== null){ set.set(t, labelOf(t)); lo = Math.min(lo, t); } }));
+  const hi = new Date(cur.getFullYear(), cur.getMonth() + 1, 1).getTime();                        // and next month
+  for(let d = new Date(lo); d.getTime() <= hi; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) set.set(d.getTime(), labelOf(d.getTime()));
   return [...set.entries()].sort((a, b)=>b[0] - a[0]).map(x=>x[1]);
 }
 const periodOf = (h, l) => h.results.periods.find(p=>samePeriod(p.period, l));
@@ -400,7 +403,7 @@ async function saveMonth(){
   const d = state.drawer, h = byId(d.hid), v = id => { const x = $(id).value.trim(); return x === "" ? "" : num(x); };
   const rows = d.rows.filter(r=>["campaign", "channel", "spend", "traffic", "bookings", "revenue"].some(k=>has(r[k]))).map(r=>({campaign:r.campaign || "", channel:r.channel || r.campaign || "", spend:has(r.spend) ? num(r.spend) : "", traffic:has(r.traffic) ? num(r.traffic) : "", bookings:has(r.bookings) ? num(r.bookings) : "", revenue:has(r.revenue) ? num(r.revenue) : ""}));
   await guard(()=>mutateResults(h, d.lab, p=>{ p.totalRevenue = v("m-rev"); p.totalBookings = v("m-bk"); p.totalBeTraffic = v("m-form"); p.totalWebsiteTraffic = v("m-sess"); p.yoyRevenue = v("m-yrev"); p.yoyBookings = v("m-ybk"); p.yoyForm = v("m-yform"); p.rows = rows; }));
-  closeModal(); render();
+  state.month = d.lab; closeModal(); render();
 }
 const closeModal = () => { $("modal").hidden = true; $("modal").innerHTML = ""; state.drawer = null; };
 
@@ -515,11 +518,15 @@ const H = {
   },
   toggletd(t){ state.openTd[t.dataset.id] = !state.openTd[t.dataset.id]; render(); },
   async chan(t){ const h = byId(state.hotel), order = ["", "planned", "live", "paused"], cur = h.rec.hub.channels[t.dataset.k] || "", nx = order[(order.indexOf(cur) + 1) % 4]; const pr = guard(()=>mutateRecord(h, r=>{ if(nx) r.hub.channels = Object.assign({}, r.hub.channels, {[t.dataset.k]:nx}); else { const c = Object.assign({}, r.hub.channels); delete c[t.dataset.k]; r.hub.channels = c; } })); render(); await pr; },
-  async addtodo(t){ const all = !!t.dataset.all, h = byId(all ? $("tdHotel").value : state.hotel), text = $("tdText").value.trim(); if(!text) return; state.draftAdd = false; const due = $("tdDue").value, nid = uid("t"); const pr = guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).concat([{id:nid, text, due, done:false}]); })); render(); await pr; },
+  async addtodo(t){ const all = !!t.dataset.all, h = byId(all ? $("tdHotel").value : state.hotel), text = $("tdText").value.trim(); if(!text){ say("Type the note first, then press Add (or Enter)", true); $("tdText").focus(); return; } state.draftAdd = false; const due = $("tdDue").value, nid = uid("t"); const pr = guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).concat([{id:nid, text, due, done:false}]); })); render(); await pr; },
   async deltodo(t){ const h = byId(state.hotel); const pr = guard(()=>mutateRecord(h, r=>{ r.hub.todo = (r.hub.todo || []).filter(x=>x.id !== t.dataset.id); })); render(); await pr; },
   async addwork(){
-    const h = byId(state.hotel), title = $("wTitle").value.trim(); if(!title) return; state.draftAdd = false; const area = $("wArea").value, st = $("wStatus").value, per = st === "planned" ? nextMonth(state.month) : state.month, c = {id:uid("w"), title, tags:tagsOf(area), period:per, stage:stageOf(st), notes:"", subtasks:[], images:[]};
-    state.openWork[c.id] = true; await guard(()=>mutateProgress(h, p=>{ p.cards.push(c); })); render();
+    const h = byId(state.hotel), inp = $("wTitle"), title = inp.value.trim();
+    if(!title){ say("Type what we are doing first, then press Add (or Enter)", true); inp.focus(); return; }
+    state.draftAdd = false; const area = $("wArea").value, st = $("wStatus").value, per = st === "planned" ? nextMonth(state.month) : state.month;
+    const c = {id:uid("w"), title, tags:tagsOf(area), period:per, stage:stageOf(st), notes:"", subtasks:[], images:[]};
+    state.openWork[c.id] = true; h.progress.cards.push(c); render();                          // visible at once
+    await guard(()=>mutateProgress(h, p=>{ if(!p.cards.some(x=>x.id === c.id)) p.cards.push(c); }));
   },
   togglework(t){ state.openWork[t.dataset.id] = !state.openWork[t.dataset.id]; t.closest(".work").classList.toggle("open"); },
   async delwork(t){ const h = byId(state.hotel); const c = h.progress.cards.find(x=>x.id === t.dataset.id); if(!confirm(`Delete “${(c && c.title) || "this item"}”? It also disappears from the reports.`)) return; await guard(()=>mutateProgress(h, p=>{ p.cards = p.cards.filter(x=>x.id !== t.dataset.id); })); render(); },
