@@ -609,6 +609,9 @@ function normalizeReport(r){
   // A layout with neither the automatic "General results" block nor any filled number tiles would open with no general numbers at all
   // (e.g. hand-typed tiles are cleared for a new month) — put the automatic block back at the top.
   if(!r.blocks.some(b=>b.type === "headline") && !r.blocks.some(b=>b.type === "numbers" && b.enabled && (b.tilesText || "").trim())) r.blocks.unshift(mkBlock("headline"));
+  // "From advertising" typed by hand is cleared for a new month; if the automatic block (built from the campaign rows in Results) is there but switched off, use it.
+  { const manual = r.blocks.find(b=>b.type === "numbers" && /advertis|реклам/i.test(b.title || "")), auto = r.blocks.find(b=>b.type === "ads");
+    if(manual && manual.enabled && !(manual.tilesText || "").trim() && auto && !auto.enabled){ r.blocks.splice(r.blocks.indexOf(auto), 1); r.blocks.splice(r.blocks.indexOf(manual), 0, auto); auto.enabled = true; manual.enabled = false; } }
   if(!r.hiddenCards) r.hiddenCards = {};
   if(!r.shownCards) r.shownCards = {};
   if(!r.hiddenImages) r.hiddenImages = {};
