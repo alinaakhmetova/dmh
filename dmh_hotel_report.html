@@ -606,6 +606,9 @@ function normalizeReport(r){
     if(!r.blocks.some(b=>b.type === "ads")){ const i = r.blocks.findIndex(b=>b.type === "headline"); r.blocks.splice(i >= 0 ? i + 1 : 0, 0, mkBlock("ads")); }
     r.v = 2;
   }
+  // A layout with neither the automatic "General results" block nor any filled number tiles would open with no general numbers at all
+  // (e.g. hand-typed tiles are cleared for a new month) — put the automatic block back at the top.
+  if(!r.blocks.some(b=>b.type === "headline") && !r.blocks.some(b=>b.type === "numbers" && b.enabled && (b.tilesText || "").trim())) r.blocks.unshift(mkBlock("headline"));
   if(!r.hiddenCards) r.hiddenCards = {};
   if(!r.shownCards) r.shownCards = {};
   if(!r.hiddenImages) r.hiddenImages = {};
